@@ -1,0 +1,50 @@
+---
+system:
+  id: {{id}}
+  version: {{version}}
+  description: {{description}}
+  metadata:
+    author: {{author}}
+    created_at: {{created_at}}
+    domain: {{domain_description}}
+    tech_stack: {{tech_stack_list}}
+    last_validated: {{validation_date}}
+    validation_notes: {{validation_notes}}
+
+
+  prompt_components:
+    role:
+      description: "AI persona definition and expertise domain"
+      content: {{role_content}}
+
+    context:
+      description: "How to handle provided background information"
+      content: {{context_handling_instructions}}
+
+    process:
+      description: "Step-by-step reasoning approach"
+      content: {{step_by_step_process}}
+
+    constraints:
+      description: "Limitations and boundaries for responses"
+      content: {{constraints_list}}
+
+    examples:
+      description: "Input-output pairs demonstrating desired behavior"
+      content: {{few_shot_examples}}
+
+    output_format:
+      description: "Required structure and format for responses"
+      content: {{format_specification}}
+
+  # Inference parameters
+  inference_parameters:
+    temperature: {{temperature_setting}}
+    max_tokens: {{max_output_length}}
+    stop_sequences: {{stop_sequences}}
+
+  # Validation framework
+  validation:
+    test_cases: {{test_case_references}}
+    evaluation_metrics: {{metric_definitions}}
+    compliance_requirements: {{compliance_rules}}

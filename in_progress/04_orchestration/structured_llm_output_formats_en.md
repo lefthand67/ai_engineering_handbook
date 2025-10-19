@@ -2,10 +2,10 @@
 
 ---
 
-Владелец: Вадим Рудаков, lefthand67@gmail.com  
-Версия: 0.1.0  
-Дата создания: 18.10.2025  
-Дата изменения: 18.10.2025  
+Owner: Vadim Rudakov, lefthand67@gmail.com  
+Version: 1.1.0
+Birth: 18.10.2025  
+Modified: 19.10.2025  
 
 ---
 
@@ -16,6 +16,8 @@ This handbook addresses the trade-offs of major data formats when building a sys
 Language Models operate simultaneously in two fundamentally different communication spaces: **machine-to-machine** and **machine-to-human**. Understanding this distinction is essential for designing predictable and maintainable modular systems.
 
 ### **1. Data Exchange (Machine-to-Machine)**
+
+Main section is `04_orchestration`.
 
 This mode governs **structured communication** between an LLM and another computational agent — such as a backend service, database, or orchestration layer. Here, the LLM’s output becomes **input for code**, not humans.
 
@@ -48,9 +50,7 @@ This mode governs **communicative generation** where the LLM’s output targets 
 - **Design Mindset:** Treat the LLM as a *content rendering engine* that shapes output for cognitive flow, not syntactic conformance.  
 - **Common Formats:** Markdown (default), HTML (UI-specific), LaTeX (technical/scientific).
 
-Example:
-
-An LLM rendering an instructional message:
+Example: An LLM rendering an instructional message:
 
 ```markdown
 ### Summary
@@ -60,7 +60,7 @@ Recommendation: Focus on Section 3 for the strongest technical opportunities.
 
 ### **Architectural Implication**
 
-- **Data exchange** feeds machines; **content generation** feeds cognition.
+- **Data exchange** feeds machines (orchestration layer); **content generation** feeds cognition (infrastructure layer).
 - The former prioritizes **precision**; the latter, **presentation**.
 - A well-architected LLM system clearly delineates when the model is **encoding structured data** versus when it is **expressing structured meaning**.
 
@@ -89,6 +89,7 @@ These formats are used when the LLM's primary output is intended for the **end-u
 | **LaTeX** / **$\text{\TeX}$** | **Scientific/Mathematical Documentation.** | Unambiguous formatting for complex equations ($\frac{dy}{dx}$), tables, and scholarly documents. | Highly specialized; verbose; requires a dedicated renderer. Should be used only when math or precise formatting is mandatory. |
 
 ### **General Recommendation for User Output**
+
 **Use Markdown** for all conversational and instructional output. It is the most token-efficient and reliably generated format for an LLM, providing structure (headings, lists, code blocks) without the high error rate of more complex markup like HTML.
 
 ## III. The Principle of Separation of Concerns (Hybrid Approach)

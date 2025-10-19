@@ -1,4 +1,0 @@
-myst build --html
-nginx.conf
-
-podman run -d --rm --name mkdocs-nginx -p 8000:80 -v $PWD/_build/html/:/usr/share/nginx/html:ro -v $PWD/nginx.conf:/etc/nginx/conf.d/default.conf:ro docker.io/library/nginx:latest

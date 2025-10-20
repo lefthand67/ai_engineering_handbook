@@ -1,111 +1,115 @@
-# Архитектурные слои LLM-системы
+## A Multi-Layered AI System Architecture
 
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.1.0
-Birth: 01.10.2025  
-Modified: 01.10.2025  
+Version: 0.1.0
+Birth: 10.09.2025  
+Modified: 21.10.2025  
 
 ---
 
-Инженерия промптов и архитектура AI-систем 2025: многослойный подход с учетом DevSecOps и OWASP
+## Part I. A Practical Guide for DevSecOps (Quick Start)
 
-## Часть I. Практический гайд для DevSecOps (быстрый старт)
+This part is a step-by-step guide. Its goal is to quickly launch and stabilize an AI system with DevSecOps and OWASP considerations.
 
-Эта часть — **пошаговый гайд**. Его цель: быстро запустить и стабилизировать AI-систему с учётом DevSecOps и OWASP.
+**Five Architecture Layers**
 
-### Пять слоёв архитектуры
+|| Layer | Key Components |
+| --- | --- | --- |
+|1.| **Execution Layer** | Hardware, optimization, performance |
+|2.| **Model Layer** | Fine-tuning, datasets, model cards |
+|3.| **Prompt-as-Infrastructure Layer** (How an agent thinks/acts)| Version-controlled prompts, CI/CD, templates |
+|4.| **Prompt Orchestration & Reasoning Layer** (How the agents communicate)| Agents, frameworks, patterns |
+|5.| **Context Layer** | Vector DBs, knowledge graphs, retrieval |
 
-1. **Вычислительный слой (Execution)**: Hardware, optimization, performance
-1. **Модельный слой (Model)**: Fine-tuning, datasets, model cards
-1. **Инфраструктурный слой - промпт как инфраструктура (Prompt-as-Infrastructure)**: Version-controlled prompts, CI/CD, templates
-1. **Слой оркестрации (Prompt Orchestration & Reasoning)**: Agents, frameworks, patterns
-1. **Контекстный слой (Context)**: Vector DBs, knowledge graphs, retrieval
+**Practical Recommendations**
 
-## Практические рекомендации
+  * **Whitelisting** addresses, **rate limiting**.
+  * Implement **OWASP metrics** in prompt and pipeline checks (sanitization, rate-limiting).
+  * Start development with **Infrastructure and Execution**—the foundation for stable operation—then Architecture (Model) + Context.
+  * Monitor latency and costs (**quantization, MoE**).
+  * Use **DSPy** for resource-efficient prompt management; avoid over-engineering.
+  * Control power consumption, apply quantization and model optimizations.
+  * **OWASP and RBAC** are a must-have.
+  * Train the team on the **DevSecOps** approach and integration with ML operations (e.g., MLflow for metrics).
 
-- Белый список адресов, rate limiting.
-- Внедряйте OWASP-метрики в проверку промптов и pipeline (sanitization, rate-limiting).  
-- Начинайте развитие с Infrastructure и Execution — фундамент для стабильной работы, затем Architecture + Context.
-- Следите за latency и затратами (quantization, MoE).
-- Используйте DSPy для ресурсоэффективного управления промптами, избегайте over-engineering.  
-- Контролируйте энергопотребление, применяйте quantization и оптимизации моделей.
-- OWASP и RBAC — must-have.
-- Обучайте команду работе с DevSecOps-подходом и интеграцией с ML-операциями (например, MLflow для метрик).
+**Hidden Mistakes**
 
-### Скрытые ошибки
+  * **Technical debt:** Quick prototypes on LangChain $\rightarrow$ difficult to maintain later.
+  * **Over-engineering:** Overly complex multi-agent schemes $\rightarrow$ increased latency and costs.
+  * **Security debt:** Forgotten system prompts $\rightarrow$ leaks.
 
-* **Технический долг**: быстрые прототипы на LangChain → потом тяжело поддерживать.
-* **Over-engineering**: слишком сложные multi-agent схемы → рост latency и расходов.
-* **Security debt**: забытые system prompts → утечки.
+-----
 
-## <b>Часть II. Корпоративный стандарт (глубина и обоснования)</b>
+### Part II. Corporate Standard (Depth and Rationale)
 
-### Введение
+**Introduction**
 
-В современных AI-системах качество архитектуры и безопасность имеют решающее значение. Эта статья призвана предоставить профессиональное и в то же время доступное руководство для инженеров и DevSecOps-специалистов, работающих с локальными и open-source моделями (например, Llama 3.1 4B, Phi-3), применяющими инструменты DSPy, Pydantic, Chain-of-Thought (CoT) и Retrieval-Augmented Generation (RAG).
+In modern AI systems, the quality of architecture and security are crucial. This article aims to provide a professional yet accessible guide for engineers and DevSecOps specialists working with local and open-source models (e.g., Llama 3.1 4B, Phi-3), applying tools like **DSPy, Pydantic, Chain-of-Thought (CoT), and Retrieval-Augmented Generation (RAG)**.
 
-Уделено внимание актуальным рискам безопасности, рекомендациям OWASP 2025, а также практическим советам и примерам, применимым именно в контексте анализа логов (syslogs, SQL-запросы к базе).
+Attention is given to current security risks, **OWASP 2025 recommendations**, as well as practical advice and examples specifically applicable in the context of log analysis (syslogs, SQL queries to the database).
 
-### 1. Вычислительный слой (Execution Layer)
+#### 1. Execution Layer
 
-Этот слой содержит аппаратное и программное обеспечение, обеспечивающее выполнение моделей с заданной производительностью и стабильностью.
+This layer contains the hardware and software that ensures model execution with specified performance and stability.
 
-- **Ключевые задачи:** 
-	- минимизация задержек (latency обычно <100 ms), 
-	- эффективное использование ресурсов, 
-	- стабильность при нагрузках.
-	
-- **Компоненты:** 
-	- GPU/TPU (например, Nvidia RTX 4000), 
-	- оптимизации для inference (quantization INT8, batching через TensorRT), 
-	- сетевые API для потоковой обработки.
+**Key Tasks:**
 
-- **Важные ограничения и риски:**
-  - Quantization снижает точность моделей примерно на 5–10%.
-  - Уязвимость к DoS-атакам с неограниченным потреблением ресурсов (OWASP LLM10).
-  - side-channel атаки на GPU.
-  
-- **Практические рекомендации:** 
-	- изоляция inference-контейнеров, 
-	- observability (Prometheus + Grafana),
-	- ограничивайте количество запросов (rate limiting), чтобы защититься от атак.
+- Minimizing latency (latency usually $<100$ ms),
+- Efficient resource utilization (CUDA optimization),
+- Stability under load.
 
-- **Иллюстрация:**  
+Here’s the table including **cost efficiency versus performance impact**, matching what an AI infrastructure design document in a production environment would look like:
+
+| Category | Components | Constraints and Risks | Practical Recommendations | Mitigation Rationale | Cost Efficiency vs. Performance Impact |
+|-----------|-------------|------------------------|-----------------------------|-----------------------|----------------------------------------|
+| **Core Infrastructure** | Operating system (Linux, RTOS) | Kernel and syscall vulnerabilities affecting GPU memory isolation | Harden OS kernel, apply real-time patches only if deterministic latency is required | Limits attack surface and kernel exploit exposure | RTOS offers low latency (~10–20% better response) but increases maintenance and licensing cost |
+| **Hardware Acceleration** | GPU/TPU (e.g., Nvidia RTX 4090, H100) | Side-channel leaks, unbounded GPU utilization | Enable MIG, enforce thermal and power limits via DCGM | Physical partitioning and monitoring prevent data leaks | MIG isolation lowers throughput by ~15% but saves 30–40% energy per instance |
+| **Compute Optimization** | CUDA kernels, TensorRT batching, quantization (INT8/FP16) | Quantization can reduce accuracy; improper CUDA tuning causes kernel stalls | Mixed-precision policy: INT8 for embeddings, FP16 for logits | Balances accuracy with energy efficiency | INT8 gives ~3× speedup and 60% cost reduction; FP16 achieves near-original accuracy with 1.5× throughput |
+| **Networking and APIs** | gRPC/WebSocket for streaming inference | DoS, request floods, model endpoint exhaustion | Use Envoy filters, tokenized rate limiting, server-side batching | Protects endpoints, maintains SLA under attack | Rate limiting costs negligible; dynamic batching improves GPU occupancy up to 25% |
+| **Observability and Control** | Prometheus + Grafana stack | Metrics misexposure or information leakage | Gather metrics via dedicated proxy; segregate telemetry network | Keeps internal signals safe while providing full visibility | ~1–2% CPU overhead; prevents debug leaks that could cost downtime or compliance fines |
+
+Each optimization here reflects field-hardened design trade-offs. For instance, INT8 quantization is ideal for large-scale recommendation models where minor losses in precision are masked by the ensemble, whereas fine-tuned biomedical or legal models typically require at least FP16 inference.
+
+**Illustration:**
 
 ```python
 import torch
 from transformers import AutoModelForCausalLM
+
 model = AutoModelForCausalLM.from_pretrained("microsoft/Phi-3-mini-4b", load_in_8bit=True)
 output = model("Analyze syslog error: timeout")
 ```
 
-### 2. Модельный слой (Model Architecture and Training Layer)
+#### 2. Model Architecture and Training Layer
 
-Слой, отвечающий за архитектуру и обучение модели с учётом специфики задачи.
+The layer responsible for the model's architecture and training, considering the task's specificity.
 
-- **Задачи:** 
-	- адаптация модели под задачи,
-	- предотвращение переобучения,
-	- повысить точность и объяснимость.
+**Tasks:**
 
-- **Состав:** трансформеры типа Phi-3 4B, с MoE-компонентами для повышения эффективности, fine-tuning с LoRA для экономии ресурсов.
+  * Adapting the model for the tasks,
+  * Preventing overfitting,
+  * Increasing accuracy and explainability.
 
-- **Риски:**
-	- Атаки на данные (data poisoning).
-	- Переобучение (overfitting).
-	- Усиление смещений (bias amplification).
-	- Высокие вычислительные и энергетические затраты (обучение GPT-4 эквивалентно 355 GPU-летам).
-	- Невоспроизводимое обучение (non-reproducible training).
+**Composition:** Transformers like Phi-3 4B, with **MoE** components to enhance efficiency, fine-tuning with **LoRA** for resource saving.
 
-- **Практические рекомендации:** 
-	- проводите аудит данных для соответствия требованиям EU AI Act,
-	- data lineage → MLflow + DVC (Data Version Control),
-	- валидация датасетов,
-	- модельные карты (model cards - стандартизированные документы, описывающие модели машинного обучения и LLM, чтобы команда и стейкхолдеры понимали, как, для чего и с какими ограничениями их можно использовать).
+**Risks:**
 
-- **Иллюстрация:**
+  * Data poisoning attacks.
+  * Overfitting.
+  * Bias amplification.
+  * High computational and energy costs (training GPT-4 is equivalent to 355 GPU-years).
+  * Non-reproducible training.
+
+**Practical Recommendations:**
+
+  * Conduct a **data audit** for compliance with the EU AI Act,
+  * **Data lineage** $\rightarrow$ MLflow + DVC (Data Version Control),
+  * Dataset validation,
+  * **Model cards** (standardized documents describing machine learning models and LLMs so that the team and stakeholders understand how, for what purpose, and with what limitations they can be used).
+
+**Illustration:**
 
 ```python
 from peft import LoraConfig, get_peft_model
@@ -114,89 +118,100 @@ config = LoraConfig(r=8, lora_alpha=16, target_modules=["q_proj"])
 model = get_peft_model(model, config)
 ```
 
-### 3. Промпт как инфраструктура (Prompt-as-Infrastructure)
+#### 3\. Prompt-as-Infrastructure
 
-Промпты — это управляемые, версионируемые конфигурации, а не просто текст.
+Prompts are managed, version-controlled configurations, not just text.
 
-- **Цель:** 
-	- воспроизводимость (reproducibility), 
-	- аудит изменений (auditability), 
-	- интеграция с CI/CD.
+**Goal:**
 
-- **Практики:** хранение в структурированных файлах YAML/JSON с semantic versioning, контроль через Git, автоматическая валидация с использованием Pydantic.
+  * Reproducibility,
+  * Auditability of changes,
+  * Integration with CI/CD.
 
-- **Риски:** 
-	- prompt injection (OWASP LLM01), 
-	- утечка секретов при отсутствии контроля доступа.
-	
-- **Рекомендации:** 
-	- реализуйте RBAC и аудит активности,
-	- GitOps для промптов,
-    - CI/CD тестирование промптов (pytest + golden prompts).
+**Practices:** Storage in structured YAML/JSON files with semantic versioning, control via **Git**, automatic validation using **Pydantic**.
 
-- **Пример YAML для промпта:**
-  ```yaml
-  prompt:
-    version: "1.0.0"
-    text: "Parse syslog: {log} into JSON"
-    rbac: ["sec_ops"]
-  ```
+**Risks:**
 
-### 4. Слой оркестрации (Prompt Orchestration & Reasoning Layer)
+  * **Prompt injection (OWASP LLM01)**,
+  * Secret leakage in the absence of access control.
 
-Отвечает за логику, последовательность и интеграцию промптов.
+**Recommendations:**
 
-- **Цель:** структурировать reasoning и повысить точность.
+  * Implement **RBAC** and activity auditing,
+  * **GitOps for prompts**,
+  * CI/CD testing of prompts (**pytest + golden prompts**).
 
-- **Состав:** 
-	- DSPy (сосредоточен на программной авто-оптимизации и структурировании reasoning), 
-	- LangChain (ориентирован на построение workflow с интеграцией данных и API; но больше латентность).
+**YAML Example for a Prompt:**
 
-- **Функции:** 
-	- Chain-of-Thought (CoT) - ориентирован на расширение prompt-а с текстовым рассуждением, 
-	- Retrieval-Augmented Generation (RAG) - генерация ответа дополняется релевантной информацией из внешних баз данных или векторных индексов, расширяя контекст и снижая вероятность ошибок,
-	- мультиагентные сценарии -  координация нескольких LLM или специализированных агентов с разделением ролей и совместной работой для решения комплексных задач.
+```yaml
+prompt:
+  version: "1.0.0"
+  text: "Parse syslog: {log} into JSON"
+  rbac: ["sec_ops"]
+```
 
-- **Риски:** 
-	- утечка системных промптов (OWASP LLM02 - system prompt leakage), 
-	- сложность отладки в LangChain.
+#### 4\. Prompt Orchestration & Reasoning Layer
 
-- **Сравнительная таблица:**
+Responsible for the logic, sequence, and integration of prompts.
 
-| Фреймворк | Преимущества                     | Ограничения                   | Рекомендуемое использование          |
-|-----------|---------------------------------|-------------------------------|-------------------------------------|
-| **DSPy**  | Автоматический tuning, высокое качество | Зависит от обучающих данных     | Продакшн и сложные пайплайны         |
-| **LangChain** | Лучшие интеграции, флексибильность | Повышенная задержка, debug-сложности | Быстрые прототипы, SQL-интеграция  |
+**Goal:** Structure reasoning and increase accuracy.
 
-- **Рекомендации:** 
-	- фильтруйте ввод для избежания injection.
-	- DSPy для промышленной эксплуатации,
-	- LangChain для экспериментальных прототипов,
-	- red-teaming (симуляция атак на промпты).
+**Composition:**
 
-### 5. Контекстный слой (Context Layer)
+  * **DSPy** (focused on programmatic auto-optimization and structuring reasoning),
+  * **LangChain** (focused on building workflows with data and API integration; but higher latency).
 
-Обеспечивает систему релевантного контекста и управляет динамическими данными. Retrieving and managing data (context).
+**Functions:**
 
-- **Задачи:** 
-	- оптимизация токенового окна, 
-	- повышение качества вывода,
-	- точность поиска и персонализация,
-	- борьба с галлюцинациями.
+  * **Chain-of-Thought (CoT)** - focused on extending the prompt with textual reasoning,
+  * **Retrieval-Augmented Generation (RAG)** - answer generation is supplemented with relevant information from external databases or vector indices, expanding the context and reducing the likelihood of errors,
+  * **Multi-agent scenarios** - coordination of several LLMs or specialized agents with role separation and collaboration to solve complex tasks.
 
-- **Инструменты:** FAISS, Pinecone для векторного поиска; базы данных SQL, графовые БД Neo4j для паттернов.
+**Risks:**
 
-- **Риски:** 
-	- уязвимости в векторных индексах (OWASP LLM08),
-	- атаки на обращение модели (model inversion attacks) - тип атак на большие языковые модели (LLM), при которых злоумышленник пытается извлечь или восстановить конфиденциальную информацию из обучающих данных модели, анализируя её ответы на специально разработанные запросы
-	- шумные retrieval-сеты - наборы данных или фрагментов информации, которые извлекаются системой поиска (например, в Retrieval-Augmented Generation, RAG) из внешних источников, но содержат значительное количество нерелевантных, избыточных или неточных данных.
-	
-- **Рекомендации:** 
-  - hybrid retrieval (semantic + keyword) - метод поиска, который объединяет семантический (по смыслу) и ключевой (по точному совпадению слов) подходы для повышения качества извлечения релевантной информации в Retrieval-Augmented Generation (RAG). ,
-  - регулярная очистка индексов,
-  - контроль версий баз знаний.
+  * System prompt leakage (**OWASP LLM02**),
+  * Difficulty in debugging in LangChain.
 
-- **Пример RAG:**
+**Comparison Table:**
+
+| Framework | Advantages | Limitations | Recommended Use |
+| :--- | :--- | :--- | :--- |
+| **DSPy** | Automatic tuning, high quality | Depends on training data | Production and complex pipelines |
+| **LangChain** | Better integrations, flexibility | Increased latency, debug complexity | Quick prototypes, SQL integration |
+
+**Recommendations:**
+
+  * Filter input to prevent injection.
+  * **DSPy** for industrial operation,
+  * **LangChain** for experimental prototypes,
+  * **Red-teaming** (simulation of attacks on prompts).
+
+#### 5\. Context Layer
+
+Provides the system with relevant context and manages dynamic data. Retrieving and managing data (context).
+
+**Tasks:**
+
+  * Optimizing the token window,
+  * Improving output quality,
+  * Search accuracy and personalization,
+  * Combating hallucinations.
+
+**Tools:** **FAISS, Pinecone** for vector search; SQL databases, Neo4j graph DBs for patterns.
+
+**Risks:**
+
+  * Vulnerabilities in vector indices (**OWASP LLM08**),
+  * **Model inversion attacks** - a type of attack on large language models (LLMs) in which an attacker tries to extract or reconstruct confidential information from the model's training data by analyzing its responses to specially crafted queries,
+  * **Noisy retrieval sets** - datasets or information fragments that are retrieved by a search system (e.g., in Retrieval-Augmented Generation, RAG) from external sources but contain a significant amount of irrelevant, redundant, or inaccurate data.
+
+**Recommendations:**
+
+  * **Hybrid retrieval** (semantic + keyword) - a search method that combines semantic (by meaning) and keyword (by exact word match) approaches to improve the quality of relevant information retrieval in Retrieval-Augmented Generation (RAG),
+  * Regular index cleaning,
+  * Version control for knowledge bases.
+
+**RAG Example:**
 
 ```python
 import faiss
@@ -209,9 +224,11 @@ index.add(embeddings)
 D, I = index.search(model.encode(query), k=5)
 ```
 
-### Взаимосвязь и цикличность слоев
+-----
 
-В архитектуре многослойная взаимосвязь, а не линейная иерархия.
+### Interconnection and Cyclical Nature of Layers
+
+In the architecture, there is a **multi-layered interconnection**, not a linear hierarchy.
 
 ```mermaid
 graph TD
@@ -228,9 +245,9 @@ graph TD
     end
 ```
 
-Цикл обратной связи Context → Model обеспечивает адаптивность моделей и повышение качества.
+The **Context $\rightarrow$ Model feedback loop** ensures model adaptability and quality improvement.
 
-### Структура репозитория для DevSecOps-команд
+### Repository Structure for DevSecOps Teams
 
 ```
 ai/
@@ -310,7 +327,7 @@ ai/
     └── architectural_decisions.md        # ADRs for key design choices
 ```
 
-### Особое внимание на безопасность
+#### Special Attention to Security
 
 ```
 ai/
@@ -332,9 +349,7 @@ ai/
 
 This hybrid approach creates a **Defense-in-Depth** strategy:
 
-1.  **Central Hub (`/security/`):** Provides the **"what"** and **"why"** – the policies, standards, and shared tools.
-2.  **Embedded Security (`/layer/security/`):** Provides the **"how"** – the layer-specific implementation of those policies.
+  * **Central Hub (`/security/`):** Provides the "what" and "why"—the policies, standards, and shared tools.
+  * **Embedded Security (`/layer/security/`):** Provides the "how"—the layer-specific implementation of those policies.
 
 This means a developer working in the `3_infrastructure` layer doesn't need to leave that context to find the relevant security guidelines. They are right there, next to the code and prompts they are securing.
-
-Также смотри руководство по хранению руководств: `culture/HANDBOOKS.md`.

@@ -1,0 +1,5 @@
+release 1.0.0
+* Tree structure prepared for new articles.
+* Articles added:
+  - 1_execution/nvidia_gpu_optimization.md,
+  - 2_model/embeddings_for_small_llms.md.

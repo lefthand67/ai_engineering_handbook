@@ -1,3 +1,7 @@
+release 1.1.0
+* Articles added:
+  - 2_model/training/custom_tokenizer_and_embedding.md
+
 release 1.0.0
 * Tree structure prepared for new articles.
 * Articles added:

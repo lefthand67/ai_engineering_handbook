@@ -1,7 +1,8 @@
 release 1.1.0
 * Articles added:
   - 2_model/training/custom_tokenizer_and_embedding.md
-  - 2_model/optimization/why_rust_for_tokenizers.md
+  - 2_model/why_rust_for_tokenizers.md
+  - 2_model/right_tool_for_right_layer.md added - Python, Rust, and C++ in AI stack
 
 release 1.0.0
 * Tree structure prepared for new articles.

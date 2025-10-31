@@ -47,6 +47,16 @@ This isn’t accidental. It’s **intentional engineering**: using the *right to
 
 This layer is **CPU-bound but logic-heavy** — perfect for Rust’s sweet spot: safe systems programming without garbage collection.
 
+### Pitfalls
+
+**Python–Rust Bindings:** `PyO3` and `maturin` make Rust–Python bridges elegant, but memory management across language boundaries can introduce subtle bugs — especially around data ownership when passing large `numpy` tensors or multithreaded callbacks. Manual review of lifetimes is needed. Not all Python types map directly to Rust types, and vice versa.
+
+**Concurrency:** Python’s GIL blocks true multithreaded CPU processing. Rust sidesteps this, but moving from single-threaded Python to multithreaded Rust can surface data races or deadlocks if not designed carefully from the start.
+
+**The temptation to push Rust “everywhere” can backfire:** Lack of mature GPU offload, sparse ops, and the need for custom kernels can slow adoption. Use Rust surgically—for CPU-bound or security-relevant layers.
+
+**Library ecosystems define workflow speed:** Even if Rust is technically superior for some use cases, its deep learning library support (vs. Python) is still trailing by multiple years.
+
 ## Layer 3: Numerical Computation & GPU Acceleration — **C++**
 
 **Role**: Tensor operations, CUDA kernels, integration with cuDNN/cuBLAS  
@@ -62,6 +72,14 @@ This layer is **CPU-bound but logic-heavy** — perfect for Rust’s sweet spot:
 > ⚡ *When you need every last drop of GPU performance, C++ is still the industry standard.*
 
 Rust *could* do some of this but without official CUDA support, it’s impractical for large-scale GPU kernel development today.
+
+### Pitfalls
+
+Building C++/CUDA components to interoperate with Python or Rust can be brittle, especially with API changes (like different PyBind11 or CUDA/cuDNN versions). Engineers must lock dependencies for reproducible builds.
+
+**Autograd Complexity:** C++ is the home of the **Autograd engine** (the core math and differentiation logic). Writing or debugging custom operations (custom ops) in C++ requires understanding not just the forward pass, but also correctly implementing the corresponding **backward pass** (gradient calculation) and registering it with the framework's C++ kernel dispatch system. A single error in the gradient implementation can lead to silently incorrect model training and stability issues.
+
+**Deployment Rigidity:** Deploying C++/CUDA requires the target machine to have specific, compatible versions of NVIDIA drivers, CUDA toolkits, and often GCC compilers. This creates significant **deployment rigidity** compared to shipping simple Python packages or Rust's static binaries.
 
 ## Visualizing the Stack
 
@@ -103,7 +121,7 @@ C++ is the **perfect "glue"**:
 
 Rust *can* do this (via PyO3 + CUDA wrappers), but **C++ already owns this layer** — and it’s highly optimized.
 
-Rust is gGining ground but not yet for CUDA. Rust **is being used in adjacent areas**:
+Rust is gaining ground but not yet for CUDA. Rust **is being used in adjacent areas**:
 - **CPU-side preprocessing** (e.g., tokenizers, data loading),
 - **Inference runtimes** (e.g., [tract](https://github.com/sonos/tract), [candle](https://github.com/huggingface/candle)),
 - **WebAssembly + GPU** (via WebGPU, not CUDA).
@@ -137,8 +155,14 @@ You don’t need to be expert in all three but **understanding why each exists i
 
 ## The Future
 
-- **Rust’s role is growing**: More CPU-bound AI tools (e.g., `candle`, `llm-rs`) are Rust-first.
+- **Rust’s role is growing**: 
+    - More CPU-bound AI tools (e.g., `candle`, `llm-rs`) are Rust-first.
+    - Warning: While Rust delivers on safety and performance, its AI/ML ecosystem remains immature compared to Python or C++. Many advanced ops (FP16/BF16 tensor support, custom CUDA) require custom or experimental code. Relying on Rust for core model training can mean reimplementing standard practice.
+
 - **C++ remains king for CUDA** — but alternatives like **SYCL** (for Intel) or **WebGPU** may open doors for Rust.
+    - Packaging: Rust’s static binaries are great—but deploying to diverse edge devices, or supporting inference on both CUDA and ROCm, may require complex build/test setups. C++/CUDA still dominates cloud-scale GPU ops, and cross-compiling for different GPU targets is challenging.
+    - Warning: Many C++ kernels are hand-tuned for specific architectures (NVIDIA, AMD), but writing/maintaining them is labor-intensive. Modern frameworks often mix C++/CUDA with Python “glue”—but debugging across these layers is nontrivial and often requires knowledge of arcane build and packaging systems.
+
 - **Python will stay on top** — because usability never goes out of style.
 
 The stack will evolve but the principle remains:

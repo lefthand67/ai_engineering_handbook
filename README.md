@@ -20,6 +20,10 @@ All the problems I call out in this repo I have to learn on my own, so any criti
 
 My main colleague in this endevour is the Language AI models of any size and any descent, that is why I share my files here, on public for human review, in hope to get feedback on where I am getting wrong in my AI systems understanding. Also, I hope, my articles will be helpful to anybody who thinks the same way as I do.
 
+## My other public methodological repositories
+
+1. [llm_from_scratch_practice](https://github.com/lefthand67/llm_from_scratch_practice) - learning LLMs under the hood by writing them from scratch
+
 ## About myself
 
 I am 37, I live in Russia, Yekaterinburg. I am only three years in IT - I started with Machine Learning in 2022, then I worked with relational databases (PostgreSQL, Oracle), and now I am a Tech Lead Linux Engineer in the Russian bigtech. I do my AI research (if one can call such activity like this) in my free time after work between family and sleeping hours. 

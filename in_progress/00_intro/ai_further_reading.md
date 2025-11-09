@@ -1,11 +1,18 @@
-# Что почитать?
+# What to read?
 
 ---
 
-Владелец: Вадим Рудаков, lefthand67@gmail.com  
-Версия: 0.1.0
+Owner: Vadim Rudakov, lefthand67@gmail.com  
+Version: 0.2.0  
+Birth: 01.10.2025  
+Modified: 09.11.2025
 
 ---
+
+## Building LLMs
+
+1. [Machine Learning Systems. Principles and Practices of Engineering Artificially Intelligent Systems](https://www.mlsysbook.ai/) - Harvard
+1. [The Smol Training Playbook: The Secrets to Building World-Class LLMs](https://huggingface.co/spaces/HuggingFaceTB/smol-training-playbook) - HuggingFace
 
 ## Promt Engineering
 

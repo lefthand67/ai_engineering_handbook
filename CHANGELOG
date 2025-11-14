@@ -1,9 +1,10 @@
 release 1.2.0
 * Articles added:
   - 0_intro/ai_systems_multilayer_approach.md
+  - 4_orchestration/patterns/llm_usage_patterns_p1.md
+  - 4_orchestration/patterns/llm_usage_patterns_p2.md
 * New directory added - `0_intro` - with all general and introductory materials
   - ./ai_further_reading.md moved there
-
 
 release 1.1.0
 * Articles added:

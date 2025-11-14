@@ -1,15 +1,14 @@
 # LLM Usage Patterns: Chats, Workflows, and Agents in AI
 
-Part I of "LLM Usage Patterns" Series. Chat, Workflow, Agent: Core Distinctions
-
-[Part II: LLM Usage Patterns: Model Size, Reasoning, and Optimization](/home/commi/Yandex.Disk/it_working/projects/ai/ai_engineering_book/4_orchestration/patterns/llm_usage_patterns_p2.md)
+See also: 
+- [Choosing Model Size for Chats, Workflows, and Agents: Model Size, Reasoning, and Optimization](./2_model/selection/choosing_model_size.md)
 
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
+Version: 0.1.1  
 Birth: 19.10.2025  
-Modified: 14.11.2025
+Modified: 15.11.2025
 
 ---
 

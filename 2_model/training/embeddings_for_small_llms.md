@@ -1,11 +1,11 @@
-# **The Embedded Truth: A Practical Handbook for Engineers**
+# The Embedded Truth: A Practical Handbook for Engineers
 
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.0.0  
+Version: 1.0.1  
 Birth: 25.10.2025  
-Modified: 25.10.2025  
+Modified: 15.11.2025
 
 ---
 

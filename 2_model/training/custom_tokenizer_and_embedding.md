@@ -1,11 +1,11 @@
-# 📚 Actionable Handbook: Custom Domain Embeddings and Tokenization for Local LLMs
+# Custom Domain Embeddings and Tokenization for Local LLMs
 
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.0.0  
+Version: 1.0.1  
 Birth: 27.10.2025  
-Modified: 27.10.2025  
+Modified: 15.11.2025
 
 ---
 
@@ -56,7 +56,7 @@ Before training a new tokenizer, you must prove the existing one is insufficient
     word_count = len(text.split())
 
     print(f"Tokens: {token_count}, Words: {word_count}")
-    
+
     # Simple ratio check: a high ratio indicates word-splitting on jargon
     token_to_word_ratio = token_count / original_word_count
 
@@ -72,7 +72,7 @@ If the OOV rate is high, use the `tokenizers` library to train a **Byte Pair Enc
 
 2.  **Tooling:** Use the **Hugging Face `tokenizers`** library for industrial-grade, fast training.
 
-      * **Pitfall Warning:** Ensure the custom tokenizer is trained with the **special tokens** ($\texttt{<CLS>}$, $\texttt{<SEP>}$) that your final embedding model expects. Misaligning special tokens will break the model's ability to create sentence-level embeddings.
+    * **Pitfall Warning:** Ensure the custom tokenizer is trained with the **special tokens** ($\texttt{<CLS>}$, $\texttt{<SEP>}$) that your final embedding model expects. Misaligning special tokens will break the model's ability to create sentence-level embeddings.
 
 3.  **Deployment Artifact:** Save the trained tokenizer as a **JSON file**. This file becomes a critical, versioned component of your system.
 

@@ -5,8 +5,7 @@
 Owner: Vadim Rudakov, lefthand67@gmail.com  
 Version: 0.1.0  
 Birth: 30.10.2025  
-Modified: 30.10.2025  
-Model: Qwen3-Max
+Modified: 30.10.2025
 
 ---
 

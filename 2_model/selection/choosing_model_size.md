@@ -1,15 +1,14 @@
-# LLM Usage Patterns: Model Size, Reasoning, and Optimization
+# Choosing Model Size for Chats, Workflows, and Agents: Model Size, Reasoning, and Optimization
 
-Part II of "LLM Usage Patterns" Series. Choosing Model Size for Chats, Workflows, and Agents.
-
-[Part I: LLM Usage Patterns: Chats, Workflows, and Agents in AI](/home/commi/Yandex.Disk/it_working/projects/ai/ai_engineering_book/4_orchestration/patterns/llm_usage_patterns_p1.md)
+See also: 
+- [LLM Usage Patterns: Chats, Workflows, and Agents in AI](./4_orchestration/patterns/llm_usage_patterns.md)
 
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
+Version: 0.1.1  
 Birth: 19.10.2025  
-Modified: 14.11.2025
+Modified: 15.11.2025
 
 ---
 

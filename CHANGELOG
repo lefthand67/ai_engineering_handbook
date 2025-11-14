@@ -1,11 +1,12 @@
 release next
+* Articles added:
+  - mlops/workflows/git_three_major_workflows.md
 * Articles moved
   - 2_model/training/python314_parallelism_game_changer.md -> tools/python314_parallelism_game_changer.md
   - 2_model/training/right_tool_for_right_layer.md -> tools/right_tool_for_right_layer.md
   - 2_model/training/why_rust_for_tokenizers.md -> tools/why_rust_for_tokenizers.md
   - 4_orchestration/patterns/llm_usage_patterns_p1.md -> 4_orchestration/patterns/llm_usage_patterns.md
   - 4_orchestration/patterns/llm_usage_patterns_p2.md -> 2_model/selection/choosing_model_size.md
-
 
 release 1.2.0
 * Articles added:

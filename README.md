@@ -6,6 +6,61 @@ The repo is not about prompts, at least, not only about prompts, but about the e
 
 The repo is in the draft state yet, but I am going to distill all the materials into a structured handbook. All the unpublished and dirty drafts are in the `docs/exp` branch, `in_progress` directory. Once the article is ready, it is moved to `main` branch to the dedicated directory.
 
+## Structure
+
+```
+.
+├── 0_intro
+│   ├── ai_further_reading.md
+│   └── ai_systems_multilayer_approach.md
+├── 1_execution
+│   ├── nvidia_gpu_optimization.md
+│   └── security
+├── 2_model
+│   ├── security
+│   ├── selection
+│   │   └── model_cards
+│   ├── training
+│   │   ├── configurations
+│   │   ├── custom_tokenizer_and_embedding.md
+│   │   ├── datasets
+│   │   ├── embeddings_for_small_llms.md
+│   │   ├── python314_parallelism_game_changer.md
+│   │   ├── right_tool_for_right_layer.md
+│   │   └── why_rust_for_tokenizers.md
+│   └── validation
+│       └── bias_mitigation
+├── 3_prompts
+│   └── security
+├── 4_orchestration
+│   ├── frameworks
+│   ├── patterns
+│   │   ├── chain_of_thought
+│   │   ├── llm_usage_patterns_p1.md
+│   │   ├── llm_usage_patterns_p2.md
+│   │   └── rag
+│   ├── security
+│   └── workflows
+├── 5_context
+│   ├── knowledge_bases
+│   ├── retrieval
+│   ├── security
+│   └── vector_stores
+├── CHANGELOG
+├── LICENSE
+├── mlops
+│   ├── ci_cd
+│   │   ├── validation_tests
+│   │   └── workflows
+│   └── security
+│       └── access_control
+├── prompt_consultant.md
+├── README.md
+└── security
+
+34 directories, 14 files
+```
+
 ## Authorship
 
 This is a practical repo, not scientific, so I do not provide sources, you can find them using the helper - `./prompt_consultant.md` monolithic prompt. The lack of sources does not mean I claim that I am the author of ideas I state. I am the owner of files, not the author neither of articles, nor of ideas. I am just an engineer who stands on the shoulders of the giants, i.e. the collective consciousness.

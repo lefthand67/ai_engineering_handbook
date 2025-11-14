@@ -3,8 +3,8 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
-Birth: 15.11.2025__
+Version: 0.1.1  
+Birth: 15.11.2025  
 Modified: 15.11.2025
 
 ---
@@ -19,19 +19,19 @@ This workflow, often associated with the Linux kernel development model (Linus T
 
 | Branch | Role | Stability |
 | :--- | :--- | :--- |
-| **`master` (or `main`)** | The canonical, **stable, production-ready** branch. | Stable |
-| **`next`** | The **integration branch** where all new, pre-tested features are merged before being considered for `master`. | Unstable/Testing |
-| **`maint`** | Used for critical bug fixes against **older, supported stable releases**. | Stable (for a specific old version) |
+| `master` (or `main`) | The canonical, **stable, production-ready** branch. | Stable |
+| `next` | The **integration branch** where all new, pre-tested features are merged before being considered for `master`. | Unstable/Testing |
+| `maint` | Used for critical bug fixes against **older, supported stable releases**. | Stable (for a specific old version) |
 | **Topic Branches** | Short-lived branches for new features or bug fixes. | Development |
 
 ### The Flow and Nuances
 
 1.  **Topic Branch Origin:** Topic branches should generally be **branched from `master`** (the stable base). This ensures the new work is based on the most recent known-good state, preventing instability from the potentially broken `next` branch.
-2.  **Integration:** Topic Branches are merged or rebased into **`next`** (the integration branch) **NOTE**: In highly dynamic projects like the Linux kernel, next may occasionally be reset or rebased if it becomes too unstable to fix..
+2.  **Integration:** Topic Branches are merged or rebased into `next` (the integration branch) **NOTE**: In highly dynamic projects like the Linux kernel, next may occasionally be reset or rebased if it becomes too unstable to fix..
 3.  **Promotion:** Once `next` is stable and thoroughly tested, it is merged into **`master`** and tagged as a new release.
 4.  **Hotfix Flow:**
     * **Forward-Porting:** For bugs found in the current stable release (`master`), the fix should **originate on `master`**. It is then cherry-picked to `next` to carry the fix forward.
-    * **Back-Porting (The `maint` Scenario):** The diagram below illustrates the special case where a bug exists *only* in an older, supported release. The fix is applied to the `maint` branch and then cherry-picked forward to `master` and `next` to ensure the bug cannot reappear.
+    * **Back-Porting (The** `maint` **Scenario):** The diagram below illustrates the special case where a bug exists *only* in an older, supported release. The fix is applied to the `maint` branch and then cherry-picked forward to `master` and `next` to ensure the bug cannot reappear.
 
 ### Mermaid `gitGraph` Diagram
 
@@ -98,12 +98,20 @@ Gitflow is a rigid, powerful, and comprehensive branching model designed for pro
 * **Two Long-Running Branches:** `master` (Production) and `develop` (Integration for next release).
 * **Three Supporting Branches (Short-Lived):** `feature/`, `release/`, and `hotfix/`.
 
+| Branch Name | Role | Created Off | Merged Into | Lifetime |
+| :--- | :--- | :--- | :--- | :--- |
+| `master` (or `main`) | **Production History** (Stores official, tagged release history). | N/A | N/A | Permanent |
+| `develop` | **Integration Branch** (Stores state of code for the next release cycle). | N/A | N/A | Permanent |
+| `feature/` | **New Development** (Adding a new feature or major change). | `develop` | `develop` | Short-Lived |
+| `release/` | **Release Preparation** (Stabilizing, testing, and documentation for an upcoming release). | `develop` | `master` and `develop` | Short-Lived |
+| `hotfix/` | **Urgent Patch** (Fixing critical production bugs immediately). | `master` | `master` and `develop` | Short-Lived |
+
 ### The Flow Summary (Release Cycle)
 
-1.  Start all development from **`develop`**.
-2.  When ready, create a **`release`** branch from `develop` for final testing and fixes.
-3.  The `release/` branch is **merged into `master`** (and tagged) and **merged back into `develop`**.
-4.  A critical production bug requires a **`hotfix`** branch off `master`, which is merged back into both `master` (immediate fix) and `develop` (future proofing).
+1.  Start all development from `develop`.
+2.  When ready, create a `release` branch from `develop` for final testing and fixes.
+3.  The `release/` branch is **merged into** `master` (and tagged) and **merged back into** `develop`.
+4.  A critical production bug requires a `hotfix/` branch off `master`, which is merged back into both `master` (immediate fix) and `develop` (future proofing).
 
 ### Mermaid `gitGraph` Diagram
 
@@ -158,7 +166,7 @@ The GitHub Flow is a highly popular, streamlined, and lightweight workflow desig
 
 | Branch | Role | Stability |
 | :--- | :--- | :--- |
-| **`main` (or `master`)** | The single, permanent branch. It must **always be deployable**. | Production-Ready |
+| `main` (or `master`) | The single, permanent branch. It must **always be deployable**. | Production-Ready |
 | **Topic Branches** | Short-lived branches for **all work** (features, fixes, experiments). | Development |
 
 ### The Flow Summary
@@ -204,7 +212,7 @@ gitGraph
     merge feature/C id: "PR Merge: Feature C (Deploy)"
 ```
 
-## Conclusion and Recommendation Table
+## Conclusion and Recommendation Tables
 
 ### Choosing the Right Git Workflow: Use Cases and Characteristics
 
@@ -228,7 +236,7 @@ How fast you can deploy changes for the three Git workflows.
 | | Clear branch hierarchy, but relies on **cherry-picking** fixes (harder to track). | Many long- and short-lived branches; requires tooling and strict rules for merging. | Extremely simple; only two branch types (`main` and topic). |
 | **Release Velocity** | **Slow/Cyclical** 🐌 | **Medium/Cyclical** 🔄 | **Fast/Continuous** 🚀 |
 | | Features wait for `next` to stabilize, then for `master` merge. Focus is on stability over speed. | Releases are tied to a fixed schedule (e.g., quarterly); long stabilization phase on `release/` branch. | Changes merged to `main` are deployed **immediately**; ideal for CI/CD and high-velocity teams. |
-| **Stability Focus** | **`master` stability** is guaranteed by the buffer of the `next` branch. | **Release stability** is guaranteed by a dedicated, pre-production `release/` branch. | **Feature stability** is guaranteed by robust automated testing and mandatory code review (PRs). |
+| **Stability Focus** | `master` **stability** is guaranteed by the buffer of the `next` branch. | **Release stability** is guaranteed by a dedicated, pre-production `release/` branch. | **Feature stability** is guaranteed by robust automated testing and mandatory code review (PRs). |
 | **Use Case Fit** | Core libraries, infrastructure, or projects where the main branch must *never* break. | Mobile apps, enterprise software with fixed versions, projects supporting older releases. | Web services, SaaS products, teams focused on DevOps and rapid iteration. |
 
 ### Summary

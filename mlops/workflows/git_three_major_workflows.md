@@ -46,7 +46,6 @@ config:
 gitGraph
     %% Initial Setup
     commit id: "Initial Commit"
-    branch master
     checkout master
     commit id: "Master 1.0 Base (Stable)"
 

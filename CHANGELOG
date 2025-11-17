@@ -1,7 +1,8 @@
 release next
 * Articles added:
   - mlops/workflows/git_three_major_workflows.md
-  - tools/ai_tools_in_vim.md
+  - tools/vim/ai_tools_in_vim.md
+  - tools/vim/handout_aider.md
 * Articles moved
   - 2_model/training/python314_parallelism_game_changer.md -> tools/python314_parallelism_game_changer.md
   - 2_model/training/right_tool_for_right_layer.md -> tools/right_tool_for_right_layer.md

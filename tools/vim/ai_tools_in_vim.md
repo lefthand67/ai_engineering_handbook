@@ -3,9 +3,9 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.1  
+Version: 0.3.0  
 Birth: 17.11.2025  
-Modified: 18.11.2025
+Modified: 19.11.2025
 
 ---
 
@@ -13,7 +13,7 @@ The best way to set up Vim for the AI era is by adopting a hybrid strategy: use 
 
 This guide focuses on integrating **Ollama** as your local model host with the **`gergap/vim-ollama`** plugin and the **`Aider`** CLI tool.
 
-# 1. Optimized AI Tooling Strategy
+## 1. Optimized AI Tooling Strategy
 
 | Tool | Type | Core Function | Best For | VS Code Analog |
 | :--- | :--- | :--- | :--- | :--- |
@@ -21,11 +21,11 @@ This guide focuses on integrating **Ollama** as your local model host with the *
 | `gergap/vim-ollama` | Vim Plugin | **Chat, Edit.** Interacts directly with the current buffer. | Single-file refactoring, opening chat buffers, and providing context for selected code. | GitHub Copilot / Inline Chat |
 | `Aider` | CLI Agent | **Multi-file Refactoring & Committing.** Reads Git context and makes atomic changes. | Complex refactors, generating new files, fixing tests across the codebase. | Agentic AI (Continue/Cline) |
 
-> > It is highly advised not to use `llama.vim` and `vim-ollama` simultaneously if you enable FIM in both. The reason is that both plugins aggressively try to intercept the same keystrokes and display logic for inline completion, leading to unpredictable behavior and resource conflicts. If you must use `llama.vim` for its optimized FIM, ensure you explicitly disable FIM completion within your `vim-ollama` configuration (`llama.vim` configuration is not covered in this handbook).
+> It is highly advised not to use `llama.vim` and `vim-ollama` simultaneously if you enable FIM in both. The reason is that both plugins aggressively try to intercept the same keystrokes and display logic for inline completion, leading to unpredictable behavior and resource conflicts. If you must use `llama.vim` for its optimized FIM, ensure you explicitly disable FIM completion within your `vim-ollama` configuration (`llama.vim` configuration is not covered in this handbook).
 
-# 2. Setting Up the Foundation (Ollama and Aider)
+## 2. Setting Up the Foundation: Ollama
 
-## A. Install Ollama and Pull Models
+Install ollama and pull models:
 
 1.  **Install Ollama:** Follow the official guide to install Ollama on your operating system and start the server.
 2.  **Pull Models:** Pull high-quality, code-specific models.
@@ -35,14 +35,19 @@ This guide focuses on integrating **Ollama** as your local model host with the *
     ollama pull gemma3n:e4b        # good for chat
     ```
 
-## B. Install Aider
+## 3. Setting Up Aider
 
-[Read documentation](https://aider.chat/docs/).
+Now let's configure the CLI agent. [Read documentation](https://aider.chat/docs/) for more details.
 
 1.  **Install Aider:**
     ```bash
     # Use uv to install the Aider CLI tool
     uv tool install aider-chat
+    ```
+    
+    or more traditional way:
+    ```bash
+    pipx install aider-chat
     ```
 
 2.  **Configure Aider for Ollama:** Aider needs to know which local model to use. Run Aider from your terminal, specifying the Ollama model:
@@ -56,19 +61,19 @@ This guide focuses on integrating **Ollama** as your local model host with the *
     This will launch the Aider chat interface, allowing you to ask it to change files in the current repository. When Aider makes changes, Vim will detect the file modification and prompt you to reload the buffer.
     
     > You can also run aider in an experimental web browser form: 
-    ```bash
-    # install aider for browser
-    uv tool install aider-chat[browser]
-    
-    # launch aider
-    aider --gui --model ollama_chat/qwen2.5-coder:14B
-    ```
+    > ```bash
+    > # install aider for browser
+    > uv tool install aider-chat[browser]
+    > 
+    > # launch aider
+    > aider --gui --model ollama_chat/qwen2.5-coder:14B
+    > ```
 
-# 3. Configuring `gergap/vim-ollama`
+## 4. Configuring `gergap/vim-ollama`
 
-This plugin provides the essential in-editor AI functionality.
+This plugin provides the essential in-editor AI functionality for code completion, refactoring, and general chat.
 
-## A. Plugin Installation (using `vim-plug`)
+### 4.1 Plugin Installation (using `vim-plug`)
 
 Add the following to your `~/.vimrc`:
 
@@ -87,86 +92,110 @@ After installation, run in VIM:
 :Ollama setup
 ```
 
-This command creates the dedicated configuration file at `~/.vim/config/ollama.vim`. All additional configurations (like, lines of context, or if you want to change the models) should be placed in this file, not in your main `~/.vimrc`.
+General settings like context lines or model selection should be placed in this dedicated file.
 
-## B. Essential Configuration and Key Mappings
+### 4.2 Initial Plugin Settings
 
-Read: `:help vim-ollama-maps`.
+To prevent potential errors upon startup, define the `g:ollama_debug` variable, which handles the plugin's internal logging level, to any integer value.
 
-Define your leader key (if you haven't already, **`<Space>`** is recommended) and the model settings in your `~/.vimrc` (you can pick your own keys):
+**In `~/.vim/config/ollama.vim`:**
+
+```vim
+" Define and initialize the debug variable to prevent E121/E116 errors.
+" Set to 0 to disable logging.
+let g:ollama_debug = 0
+```
+
+> - E121: Undefined variable: g:ollama_debug, and 
+> - E116: Invalid arguments for function ollama#logger#PythonLogLevel(g:ollama_debug).
+
+### 4.3 Configure Key Mappings
+
+This section covers core commands (Normal/Visual Mode) and suggestion handling (Insert Mode). Read the official documentation for advanced options: `:help vim-ollama-maps`.
+
+#### Define a `<Leader>` key
+
+Define your leader key (if you haven't already, **`<Space>`** is recommended):
 
 ```vimrc
 " --- Vim Core Configuration ---
-set clipboard=unnamedplus  " Use system clipboard for yanks/deletes (like VSCodeVim)
 let mapleader = " "        " Set Leader key to Spacebar
+```
 
+#### Custom Mappings for Chat, Review, and Edit (Normal and Visual Modes)
+
+We will **disable default mappings** to prevent conflicts, then define custom ones (you can choose one keys).
+
+**In your `~/.vimrc`:**
+
+```vimrc
 " --- Ollama Plugin Configuration ---
 
-" Map the key commands
-" NNNNNormal Mode: Use for general chat
-nnoremap <Leader>oc :OllamaChat<CR>
+" !! IMPORTANT !! Disable all default plugin mappings
+" This prevents conflicts and ensures only your custom mappings are used.
+let g:ollama_no_maps = 1
 
-" Toggle FIM completion on/off
-nnoremap <Leader>ot :Ollama toggle<CR>
-" VVVVVVisual Mode: Use for refactoring selected code
-vnoremap <Leader>oe :<C-u>OllamaEdit
+" NNNNNormal Mode
+" Use for general chat
+nnoremap <Leader>c :OllamaChat<CR>
+" Toggle FIM completion on/off (Mapped to default key)
+nnoremap <Leader>t :Ollama toggle<CR>
+
+" VVVVVVisual Mode
+" Use for refactoring selected code (Mapped to default key)
+vnoremap <Leader>e :<C-u>OllamaEdit
+" Use for reviewing selected code
+vnoremap <Leader>or :<C-u>OllamaReview
 ```
 
-## C. Acceptance Mappings
+#### Suggestion Mappings (Insert Mode)
 
-### Freeing the `<Tab>` Key
+**Freeing the `<Tab>` Key**
 
-You must use the variable **`g:ollama_no_tab_map`** to explicitly stop the plugin from hijacking the `<Tab>` key.
+The default behavior is for **`<Tab>`** to accept the full suggestion.
 
-Add this line to your **`~/.vimrc`**:
+If you **must** use `<Tab>` for indenting instead, you need to explicitly disable the plugin's mapping:
+
+**Add this line to your `~/.vimrc`:**
 
 ```vimrc
-" Do not map tab to accept entire completion
-" This helps to use Tab as your regular key
-let g:ollama_no_tab_map=v:true
+" Do not map <Tab> to accept the entire completion
+" This restores <Tab> to its default function.
+let g:ollama_no_tab_map = v:true
 ```
 
-The documentation states: "If this variable is defined, the default `<tab>` mapping will not be created." By setting it to `v:true`, you bypass the intrusive, hidden mapping that caused the conflicts.
+**Setting New Custom Acceptance Mappings**
 
-After adding this line and **restarting Vim**, your `<Tab>` key will be restored to its default function (inserting an indent character).
-
-### Setting New Custom Acceptance Mappings
-
-Now that `<Tab>` is free, you can define clear, non-conflicting mappings for the specific acceptance functions you need, using the official `<Plug>` mappings shown in the documentation.
-
-Use the following lines in your `~/.vimrc` to map the functions to easy-to-press keys in **Insert Mode**:
-
-| Action | New Key | `~/.vimrc` Mapping | Purpose |
-| :--- | :--- | :--- | :--- |
-| **Accept Full Block** | **`<C-y>`** (Control-Y) | `inoremap <C-y> <Plug>(ollama-tab-completion)` | Accepts the entire suggested code block. |
-| **Accept Next Line** | **`<C-j>`** (Control-J) | `inoremap <C-j> <Plug>(ollama-insert-line)` | **Line-by-line acceptance.** (The function previously on `<M-Right>`) |
-| **Accept Next Word** | **`<C-l>`** (Control-L) | `inoremap <C-l> <Plug>(ollama-insert-word)` | Word-by-word acceptance. (The function previously on `<M-C-Right>`) |
-
-**Recommended Mappings to Add:**
+If you disabled `<Tab>`, or if you prefer simpler keys for line/word acceptance, use the following official `<Plug>` mappings shown in the documentation:
 
 ```vimrc
-" 1. Accept Full Block Control-Y
-inoremap <C-y> <Plug>(ollama-tab-completion)
-" 2. Accept Next Line Control-J
+" Accept Full Block Control-A
+inoremap <C-a> <Plug>(ollama-tab-completion)
+
+" Accept Next Line Control-J
 inoremap <C-j> <Plug>(ollama-insert-line)
-" 3. Accept Next Word Control-L
+
+" Accept Next Word Control-L
 inoremap <C-l> <Plug>(ollama-insert-word)
+
+" Dismiss the current suggestion (Mapped to default Control-])
+inoremap <C-]> <Plug>(ollama-dismiss)
 ```
 
 By using these official `<Plug>` mappings, you are calling the internal plugin functions directly, guaranteeing stability and avoiding the unreliable terminal transmission of `<M-Right>` or `<M-C-Right>`.
 
-# 4. Workflow and Usage
+## 5. Workflow and Usage
 
 The key to the Vim AI workflow is knowing when to use the plugin and when to use the CLI tool:
 
-## A. In-Vim Task (Plugin): Refactoring a Function
+### 5.1 In-Vim Task (Plugin): Refactoring a Function
 
 1.  **Visual Select:** Use **`V`** or **`v`** to select the function block you want to change.
 2.  **Execute Edit:** Press **`<Space>oe`**.
 3.  **Prompt:** A prompt appears. Type your instruction, e.g., `"Rewrite this function to use list comprehension for performance."`
 4.  **Diff Review:** The plugin opens a split with the AI's proposed changes, allowing you to use `vimdiff` commands to accept or reject line-by-line.
 
-## B. Terminal Task (Aider): Multi-File Feature Implementation
+## 5.2 Terminal Task (Aider): Multi-File Feature Implementation
 
 1.  **Open Terminal:** Use a terminal split in Vim or switch to a terminal (e.g., in tmux/Konsole).
 2.  **Run Aider:** Start the agent: `aider --model ollama_chat/qwen2.5-coder:3b`.

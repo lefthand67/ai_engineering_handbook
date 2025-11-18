@@ -280,3 +280,4 @@ rendered/
 # MyST build outputs
 _build
 myst.yml
+.aider*

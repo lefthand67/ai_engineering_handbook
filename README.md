@@ -4,7 +4,30 @@ Hello and welcome to the repository with methodological articles on AI Software 
 
 The repo is not about prompts, at least, not only about prompts, but about the entire infrastructure around the LLM that we have to build in order to get the reliable and long-term viable AI powered system.
 
-The repo is in the draft state yet, but I am going to distill all the materials into a structured handbook. All the unpublished and dirty drafts are in the `docs/exp` branch, `in_progress` directory. Once the article is ready, it is moved to `main` branch to the dedicated directory.
+That is how a local qwen2.5-coder describes the repo:
+
+---
+
+This repository is a collection of documentation, guides, and resources related to artificial intelligence (AI), machine learning (ML), and MLOps (Machine Learning Operations). It covers various aspects such as AI systems, execution optimization, model training,
+validation, orchestration, context management, security, and tools.
+
+Here's a brief overview of the different sections:
+
+1 `0_intro`: Contains introductory materials on AI further reading and systems with a multilayer approach.
+2 `1_execution`: Focuses on execution-related topics, including GPU optimization and security.
+3 `2_model`: Covers model selection, training configurations, custom tokenizers and embeddings, datasets, and validation techniques like bias mitigation.
+4 `3_prompts`: Contains materials related to prompts in AI systems.
+5 `4_orchestration`: Discusses orchestration frameworks, patterns (like chain of thought and RAG), security, and workflows.
+6 `5_context`: Focuses on knowledge bases, retrieval methods, security, and vector stores.
+7 mlops: Contains MLOps-related materials, including CI/CD validation tests, workflows, and security aspects like access control.
+8 `pr/tg_channel_ai_learning`: A collection of posts or articles related to AI learning.
+9 `prompt_consultant.md`: Likely a guide or document on prompt consulting.
+10 `security`: Contains general security-related materials.
+11 `tools`: Discusses various tools, including those for Python 3.14 parallelism, the right tool for the right layer, and AI tools in Vim.
+
+---
+
+> There are many draft articles that need to be reviewed and published. Such articles are in the `docs/exp` branch, `in_progress` directory. Once the article is ready, it is moved to `main` branch to the dedicated directory.
 
 ## Structure
 

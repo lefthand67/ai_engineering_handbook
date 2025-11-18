@@ -9,6 +9,7 @@ release next
   - 2_model/training/why_rust_for_tokenizers.md -> tools/why_rust_for_tokenizers.md
   - 4_orchestration/patterns/llm_usage_patterns_p1.md -> 4_orchestration/patterns/llm_usage_patterns.md
   - 4_orchestration/patterns/llm_usage_patterns_p2.md -> 2_model/selection/choosing_model_size.md
+* Release Notes created
 
 release 1.2.0
 * Articles added:

@@ -3,23 +3,25 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
+Version: 0.1.1  
 Birth: 18.11.2025  
 Modified: 18.11.2025
 
 ---
 
+Aider is an AI pair programmer that uses your code as context. 
+
 ## Installation and Setup
 
 command|description
 -|-
-`uv tool install aider-chat`|install aider
+`uv tool install aider-chat`|install aider with uv (faster)
+`pipx install aider-chat`|install aider with pipx (traditional way)
 `uv tool install aider-chat[browser]`|install browser extension (experimental feature)
 `aider -h`|show help message and exit
-`--version`|Show the version number and exit
+`aider --version`|Show the version number and exit
 
 ## Configuration
-
 
 ### Configuration File Locations
 
@@ -37,13 +39,11 @@ Args that start with `--` can be set in a config file. The config file uses YAML
 
 command|description
 -|-
-`--model MODEL`|Specify the LLM to use Specify the LLM to use
+`--model MODEL`|Specify the LLM to use
 `--light-mode`|Use colors suitable for a light terminal background (default: False), env var: `AIDER_LIGHT_MODE`
 `--auto-commits`, `--no-auto-commits`|Enable/disable auto commit of LLM changes (default: True) env var: `AIDER_AUTO_COMMITS`
 
 ## Running & Basic Usage
-
-
 
 ### Launching aider
 
@@ -61,22 +61,22 @@ command|description
 `/add`|Add files to the chat so aider can edit them or review them in detail.
 `/tokens`|Report on the number of tokens used by the current chat context
 
-> 💡 **Tip:** Use `/add` to tell Aider a file exists and is available for modification. This way aider knows this file exists and will write to it. Otherwise, aider might write the changes to an existing file; [source](https://aider.chat/docs/usage/tips.html)
+> 💡 **Tip:** Use `/add` to tell Aider a file exists and is available for modification. This way aider knows this file exists and **will write to it**. Otherwise, aider might write the changes to an existing file; [source](https://aider.chat/docs/usage/tips.html)
 
 ### Using the Repository Map
 
-| Flag | Description |
+command|description
 | :--- | :--- |
 | `--map-tokens NUM` | **Limit the size** of the Repository Map in tokens (e.g., `aider --map-tokens 500`). |
 | `/map` | **Display** the current Repository Map summary. |
 
-The **Repository Map** provides a file/function overview of your project, helping the AI understand context without loading all code, but it consumes tokens. Use `--map-tokens` to manage this resource.
+The **Repository Map** provides a structural overview (file/function) of your project, helping the AI understand context without loading the entire codebase, thus saving tokens. Use `--map-tokens` to manage this resource (default is 1024 tokens).
 
 ## In-Chat Commands
 
-| Command | Description |
+command|description
 | :--- | :--- |
-| `/help` | Ask questions about Aider's features and usage. |
+| `/help` | Ask questions about Aider's features and usage. Aider's help is context-aware, i.e. it can answer questions about itself.|
 | `/clear` | **Clear the chat history** (saves tokens). |
 | `/run COMMAND` | Run an **arbitrary shell command** and share the output with the LLM. |
 | `/undo` | **Undo the last Git commit** (only works for Aider's auto-commits). |
@@ -86,7 +86,7 @@ The **Repository Map** provides a file/function overview of your project, helpin
 | `/exit` or `/quit` | Exit Aider. |
 
 ## Upgrading
-| Command | Description |
+command|description
 | :--- | :--- |
-`aider --install-main-branch`|Install the latest version from the main branch; env var: `AIDER_INSTALL_MAIN_BRANCH`
+`aider --install-main-branch`|Install the latest version from the main branch; env var: `AIDER_INSTALL_MAIN_BRANCH`. Use for beta features only.
 `aider --upgrade, --update`|Upgrade aider to the latest version from PyPI; env var: `AIDER_UPGRADE`

@@ -3,7 +3,7 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.0  
+Version: 0.2.1  
 Birth: 17.11.2025  
 Modified: 18.11.2025
 
@@ -21,7 +21,7 @@ This guide focuses on integrating **Ollama** as your local model host with the *
 | `gergap/vim-ollama` | Vim Plugin | **Chat, Edit.** Interacts directly with the current buffer. | Single-file refactoring, opening chat buffers, and providing context for selected code. | GitHub Copilot / Inline Chat |
 | `Aider` | CLI Agent | **Multi-file Refactoring & Committing.** Reads Git context and makes atomic changes. | Complex refactors, generating new files, fixing tests across the codebase. | Agentic AI (Continue/Cline) |
 
-> It is highly advised not to use llama.vim and vim-ollama together, as they both use FIM. If you decided you need llama.vim for FIM, be sure to disable vim-ollama's FIM (llama.vim configuration is not covered in this handbook). 
+> > It is highly advised not to use `llama.vim` and `vim-ollama` simultaneously if you enable FIM in both. The reason is that both plugins aggressively try to intercept the same keystrokes and display logic for inline completion, leading to unpredictable behavior and resource conflicts. If you must use `llama.vim` for its optimized FIM, ensure you explicitly disable FIM completion within your `vim-ollama` configuration (`llama.vim` configuration is not covered in this handbook).
 
 # 2. Setting Up the Foundation (Ollama and Aider)
 
@@ -30,9 +30,9 @@ This guide focuses on integrating **Ollama** as your local model host with the *
 1.  **Install Ollama:** Follow the official guide to install Ollama on your operating system and start the server.
 2.  **Pull Models:** Pull high-quality, code-specific models.
     ```bash
-    ollama pull qwen2.5-coder:3b   # Good for quick FIM completion
-    ollama pull qwen2.5-coder:14B # Good for single-file editing
-    ollama pull gemma3n:e4b      # Good for chat
+    ollama pull qwen2.5-coder:3b   # fast enough for low-latency FIM/completion
+    ollama pull qwen2.5-coder:14B  # better instruction following for complex editing and agentic tasks
+    ollama pull gemma3n:e4b        # good for chat
     ```
 
 ## B. Install Aider
@@ -54,6 +54,15 @@ This guide focuses on integrating **Ollama** as your local model host with the *
     aider --model ollama_chat/qwen2.5-coder:14B
     ```
     This will launch the Aider chat interface, allowing you to ask it to change files in the current repository. When Aider makes changes, Vim will detect the file modification and prompt you to reload the buffer.
+    
+    > You can also run aider in an experimental web browser form: 
+    ```bash
+    # install aider for browser
+    uv tool install aider-chat[browser]
+    
+    # launch aider
+    aider --gui --model ollama_chat/qwen2.5-coder:14B
+    ```
 
 # 3. Configuring `gergap/vim-ollama`
 
@@ -78,7 +87,7 @@ After installation, run in VIM:
 :Ollama setup
 ```
 
-and follow instructions.
+This command creates the dedicated configuration file at `~/.vim/config/ollama.vim`. All additional configurations (like, lines of context, or if you want to change the models) should be placed in this file, not in your main `~/.vimrc`.
 
 ## B. Essential Configuration and Key Mappings
 
@@ -166,49 +175,3 @@ The key to the Vim AI workflow is knowing when to use the plugin and when to use
 5.  **Vim Reload:** Aider modifies the files on disk. Vim detects the change and prompts you to **reload** the buffers. You approve, and the changes appear instantly.
 
 This hybrid approach gives you the **stability and speed of native Vim** and the **agentic power of modern AI tools**.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

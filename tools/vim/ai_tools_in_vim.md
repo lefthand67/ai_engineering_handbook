@@ -3,7 +3,7 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.0  
+Version: 0.3.1  
 Birth: 17.11.2025  
 Modified: 19.11.2025
 
@@ -143,9 +143,9 @@ nnoremap <Leader>t :Ollama toggle<CR>
 
 " VVVVVVisual Mode
 " Use for refactoring selected code (Mapped to default key)
-vnoremap <Leader>e :<C-u>OllamaEdit
+vnoremap <Leader>e :OllamaEdit
 " Use for reviewing selected code
-vnoremap <Leader>or :<C-u>OllamaReview
+vnoremap <Leader>or :OllamaReview
 ```
 
 #### Suggestion Mappings (Insert Mode)
@@ -191,8 +191,8 @@ The key to the Vim AI workflow is knowing when to use the plugin and when to use
 ### 5.1 In-Vim Task (Plugin): Refactoring a Function
 
 1.  **Visual Select:** Use **`V`** or **`v`** to select the function block you want to change.
-2.  **Execute Edit:** Press **`<Space>oe`**.
-3.  **Prompt:** A prompt appears. Type your instruction, e.g., `"Rewrite this function to use list comprehension for performance."`
+2.  **Execute Edit:** Press **`<Space>e`**.
+3.  **Prompt:** A prompt appears. Type your instruction, e.g., `"Rewrite this function to use list comprehension for performance."` Press `<CR>' (`Enter`).
 4.  **Diff Review:** The plugin opens a split with the AI's proposed changes, allowing you to use `vimdiff` commands to accept or reject line-by-line.
 
 ## 5.2 Terminal Task (Aider): Multi-File Feature Implementation

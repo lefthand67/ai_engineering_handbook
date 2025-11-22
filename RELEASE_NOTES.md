@@ -10,13 +10,13 @@ This release introduces several new articles and directories to enhance the docu
 #### MLOps Workflows
 - **Directory**: `mlops/workflows`
 - **Articles**:
-  - `git_three_major_workflows.md`: Provides a detailed comparison of three major Git workflows.
+  - `git_three_major_workflows.md`: Provides a detailed comparison of three major Git workflows: Integration Manager, Gitflow, and GitHub Flow.
 
 #### AI Tools for Vim
 - **Directory**: `tools/vim`
 - **Articles**:
-  - `ai_tools_in_vim.md`: Guide on configuring Vim for AI-driven tasks.
-  - `handout_aider.md`: Handout with essential Aider commands.
+  - `ai_tools_in_vim.md`: Describes how to set up Vim for AI-driven tasks using plugins like `gergap/vim-ollama` and CLI tools like Aider.
+  - `handout_aider.md`: Provides a handout of essential Aider commands and usage instructions.
 
 ### Articles Moved
 

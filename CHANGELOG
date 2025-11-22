@@ -1,4 +1,4 @@
-release next
+release 1.3.0
 * Articles added:
   - mlops/workflows/git_three_major_workflows.md
   - tools/vim/ai_tools_in_vim.md

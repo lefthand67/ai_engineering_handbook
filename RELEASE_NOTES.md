@@ -1,6 +1,9 @@
 # Release Notes
 
-## Version 1.3.0
+## release v1.3.0
+
+### Summary of Changes
+This release introduces several new articles and directories to enhance the documentation on MLOps workflows and Vim tools for AI-driven tasks. Additionally, it moves several existing articles to more appropriate locations.
 
 ### New Features and Articles Added
 
@@ -34,9 +37,10 @@
 - **New Release Entry**: Added an entry for release 1.3.0 detailing the new articles, moved articles, and directory additions.
 
 
-## Version 1.2.0
+## release v1.2.0
 
 ### Summary of Changes
+This release introduces several new articles and directories to enhance the documentation on general AI systems, introductory materials, and orchestration patterns.
 
 ### New Features and Articles Added
 
@@ -60,7 +64,7 @@
 - **New Release Entry**: Added an entry for release 1.2.0 detailing the new articles, moved articles, and directory additions.
 
 
-## Version 1.1.0
+## release v1.1.0
 
 ### New Features and Articles Added
 
@@ -72,7 +76,7 @@
   - `right_tool_for_right_layer.md`: Provides guidance on choosing the right tools for different layers in AI stack.
   - `python314_parallelism_game_changer.md`: Highlights the improvements in Python 3.14 for parallelism.
 
-## Version 1.0.0
+## release v1.0.0
 
 ### Initial Release
 - **Tree Structure Prepared**: The repository structure was prepared to accommodate new articles.

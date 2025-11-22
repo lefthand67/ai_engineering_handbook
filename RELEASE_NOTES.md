@@ -2,24 +2,6 @@
 
 ## Version 1.3.0
 
-### Summary of Changes
-
-This release introduces several new features, articles, and organizational improvements to enhance the documentation and tools available in the repository. The key changes include:
-
-- **New Articles and Directories:**
-  - Added `git_three_major_workflows.md` under `mlops/workflows`.
-  - Added `ai_tools_in_vim.md` and `handout_aider.md` under `tools/vim`.
-
-- **Articles Moved:**
-  - Moved `python314_parallelism_game_changer.md` from `2_model/training` to `tools/python314_parallelism_game_changer.md`.
-  - Moved `right_tool_for_right_layer.md` from `2_model/training` to `tools/right_tool_for_right_layer.md`.
-  - Moved `why_rust_for_tokenizers.md` from `2_model/training` to `tools/why_rust_for_tokenizers.md`.
-  - Renamed and moved `llm_usage_patterns_p1.md` from `4_orchestration/patterns` to `4_orchestration/patterns/llm_usage_patterns.md`.
-  - Moved `llm_usage_patterns_p2.md` from `4_orchestration/patterns` to `2_model/selection/choosing_model_size.md`.
-
-- **README Updates:**
-  - Updated the README to reflect the new articles and directories added in version 1.3.0.
-
 ### New Features and Articles Added
 
 #### MLOps Workflows
@@ -27,7 +9,7 @@ This release introduces several new features, articles, and organizational impro
 - **Articles**:
   - `git_three_major_workflows.md`: Provides a detailed comparison of three major Git workflows.
 
-#### Tools for Vim
+#### AI Tools for Vim
 - **Directory**: `tools/vim`
 - **Articles**:
   - `ai_tools_in_vim.md`: Guide on configuring Vim for AI-driven tasks.
@@ -55,18 +37,6 @@ This release introduces several new features, articles, and organizational impro
 ## Version 1.2.0
 
 ### Summary of Changes
-
-This release introduces several new features, articles, and organizational improvements to enhance the documentation and tools available in the repository. The key changes include:
-
-- **New Articles and Directories:**
-  - Added `ai_systems_multilayer_approach.md` under `0_intro`.
-  - Added `llm_usage_patterns_p1.md` and `llm_usage_patterns_p2.md` under `4_orchestration/patterns`.
-
-- **Articles Moved:**
-  - Moved `ai_further_reading.md` from the root to `0_intro/ai_further_reading.md`.
-
-- **README Updates:**
-  - Updated the README to reflect the new articles and directories added in version 1.2.0.
 
 ### New Features and Articles Added
 
@@ -109,6 +79,3 @@ This release introduces several new features, articles, and organizational impro
 - **Articles Added**:
   - `nvidia_gpu_optimization.md` under `1_execution`.
   - `embeddings_for_small_llms.md` under `2_model`.
-
----
-This release enhances the documentation with more comprehensive guides on AI systems architecture and orchestration patterns, providing valuable insights for developers working with large language models (LLMs).

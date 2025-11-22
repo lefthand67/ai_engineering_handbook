@@ -2,6 +2,24 @@
 
 ## Version 1.3.0
 
+### Summary of Changes
+
+This release introduces several new features, articles, and organizational improvements to enhance the documentation and tools available in the repository. The key changes include:
+
+- **New Articles and Directories:**
+  - Added `git_three_major_workflows.md` under `mlops/workflows`.
+  - Added `ai_tools_in_vim.md` and `handout_aider.md` under `tools/vim`.
+
+- **Articles Moved:**
+  - Moved `python314_parallelism_game_changer.md` from `2_model/training` to `tools/python314_parallelism_game_changer.md`.
+  - Moved `right_tool_for_right_layer.md` from `2_model/training` to `tools/right_tool_for_right_layer.md`.
+  - Moved `why_rust_for_tokenizers.md` from `2_model/training` to `tools/why_rust_for_tokenizers.md`.
+  - Renamed and moved `llm_usage_patterns_p1.md` from `4_orchestration/patterns` to `4_orchestration/patterns/llm_usage_patterns.md`.
+  - Moved `llm_usage_patterns_p2.md` from `4_orchestration/patterns` to `2_model/selection/choosing_model_size.md`.
+
+- **README Updates:**
+  - Updated the README to reflect the new articles and directories added in version 1.3.0.
+
 ### New Features and Articles Added
 
 #### MLOps Workflows
@@ -36,7 +54,21 @@
 
 ## Version 1.2.0
 
-### New Articles Added
+### Summary of Changes
+
+This release introduces several new features, articles, and organizational improvements to enhance the documentation and tools available in the repository. The key changes include:
+
+- **New Articles and Directories:**
+  - Added `ai_systems_multilayer_approach.md` under `0_intro`.
+  - Added `llm_usage_patterns_p1.md` and `llm_usage_patterns_p2.md` under `4_orchestration/patterns`.
+
+- **Articles Moved:**
+  - Moved `ai_further_reading.md` from the root to `0_intro/ai_further_reading.md`.
+
+- **README Updates:**
+  - Updated the README to reflect the new articles and directories added in version 1.2.0.
+
+### New Features and Articles Added
 
 #### General and Introductory Materials
 - **Directory**: `0_intro`
@@ -51,9 +83,32 @@
 
 ### Changes to Existing Files
 
-#### `ai_further_reading.md`
-  - moved to a new directory `0_intro`: Provides a list of resources for further reading on AI.
+#### README.md
+- **Updated Structure**: The repository structure has been updated to reflect the new articles and directories added in version 1.2.0.
+
+#### CHANGELOG
+- **New Release Entry**: Added an entry for release 1.2.0 detailing the new articles, moved articles, and directory additions.
+
+
+## Version 1.1.0
+
+### New Features and Articles Added
+
+#### Model Training
+- **Directory**: `2_model/training`
+- **Articles**:
+  - `custom_tokenizer_and_embedding.md`: Guide on creating custom tokenizers and embeddings.
+  - `why_rust_for_tokenizers.md`: Discusses the benefits of using Rust for tokenizers.
+  - `right_tool_for_right_layer.md`: Provides guidance on choosing the right tools for different layers in AI stack.
+  - `python314_parallelism_game_changer.md`: Highlights the improvements in Python 3.14 for parallelism.
+
+## Version 1.0.0
+
+### Initial Release
+- **Tree Structure Prepared**: The repository structure was prepared to accommodate new articles.
+- **Articles Added**:
+  - `nvidia_gpu_optimization.md` under `1_execution`.
+  - `embeddings_for_small_llms.md` under `2_model`.
 
 ---
-
 This release enhances the documentation with more comprehensive guides on AI systems architecture and orchestration patterns, providing valuable insights for developers working with large language models (LLMs).

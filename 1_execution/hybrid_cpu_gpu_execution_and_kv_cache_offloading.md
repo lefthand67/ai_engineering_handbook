@@ -3,7 +3,7 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.6.0  
+Version: 0.6.1  
 Birth: 23.11.2025  
 Modified: 24.11.2025
 
@@ -338,10 +338,10 @@ The $83 \text{ TFLOPS}$ FP16 rating for an RTX 4090 is a *peak theoretical numbe
 
 ![Complete LLM Inference Pipeline Diagram](./images/complete_llm_inference_pipeline_diagram.png)
 
-### 1. KV Cache Growth & Offload Trigger Diagram
+### 2. KV Cache Growth & Offload Trigger Diagram
 
 ![KV Cache Growth & Offload Trigger](./images/vram_vs_ram_capacity.png)
 
-### 1. Memory Pressure Timeline
+### 3. Memory Pressure Timeline
 
 ![Memory Pressure Timeline](./images/memory_pressure_timeline.png)

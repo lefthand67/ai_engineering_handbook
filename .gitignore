@@ -281,3 +281,4 @@ _build
 myst.yml
 
 todo
+.aider*

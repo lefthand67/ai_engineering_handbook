@@ -3,7 +3,7 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.5.0  
+Version: 0.6.0  
 Birth: 23.11.2025  
 Modified: 24.11.2025
 
@@ -102,9 +102,9 @@ $\dagger$ *GPU compute (FLOPS) is rarely the true bottleneck. Real-world Prefill
 
 After the first token is generated, subsequent tokens are created one at a time referencing the expanding KV Cache. The loop is bandwidth-bound and measured by **Time Per Output Token (TPOT)**.
 
-  * **Goal:** Efficiently generate tokens referencing the conversation's entire history in the KV Cache.
-  * **Action:** GPU fetches weights and KV Cache repeatedly from VRAM as the cache grows linearly.
-  * **KV Cache Growth & Offload Trigger:**
+- **Goal:** Efficiently generate tokens referencing the conversation's entire history in the KV Cache.
+- **Action:** GPU fetches weights and KV Cache repeatedly from VRAM as the cache grows linearly.
+- **KV Cache Growth & Offload Trigger:**
 
 ```mermaid
 flowchart TB
@@ -330,3 +330,18 @@ The $83 \text{ TFLOPS}$ FP16 rating for an RTX 4090 is a *peak theoretical numbe
 **Real-world LLM inference** on an RTX 4090 typically achieves **$< 25 \text{ TFLOPS}$ effective throughput**—often much lower during decode due to memory-bound behavior.
 
 **Key Takeaway**: The Prefill phase is **memory-bound (VRAM bandwidth)**, *not* compute-bound. Optimizing TTFT requires maximizing VRAM bandwidth utilization and ensuring weights are pre-loaded.
+
+
+## Appendix B. Static Diagrams
+
+### 1. Complete LLM Inference Pipeline Diagram
+
+![Complete LLM Inference Pipeline Diagram](./images/complete_llm_inference_pipeline_diagram.png)
+
+### 1. KV Cache Growth & Offload Trigger Diagram
+
+![KV Cache Growth & Offload Trigger](./images/vram_vs_ram_capacity.png)
+
+### 1. Memory Pressure Timeline
+
+![Memory Pressure Timeline](./images/memory_pressure_timeline.png)

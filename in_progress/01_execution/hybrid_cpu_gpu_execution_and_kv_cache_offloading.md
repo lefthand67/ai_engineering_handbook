@@ -3,13 +3,13 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.0  
+Version: 0.4.0  
 Birth: 23.11.2025  
 Modified: 24.11.2025
 
 -----
 
-> INFO: *The handbook is optimized for environments supporting Mermaid.js diagrams.*
+> INFO: *The handbook is optimized for environments supporting Mermaid.js diagrams. For static export, rasterized versions are available in Appendix B.*
 
 When a user hits "enter" after typing a prompt, the system triggers a complex collaboration between the Central Processing Unit (**CPU**) and the Graphics Processing Unit (**GPU**). This is called **Hybrid Execution**.
 
@@ -33,7 +33,7 @@ Your job as an AI Engineer is to manage the trade-offs between CPU's vast memory
 | PagedAttention™ | vLLM's unified memory technique | Allows **non-contiguous KV cache blocks** to be stored efficiently, dramatically reducing memory fragmentation and maximizing throughput. (Requires datacenter GPUs) |
 | Q4\_K\_M | Quantization Format | 4-bit quantization with per-channel scaling and K-means clustering (GGUF). |
 
-## 0. Expanding Vocabulary: Throughput vs. Latency Metrics
+## 0. Key Metrics for Inference: Throughput vs. Latency Metrics
 
 Performance metrics are often confused, yet understanding their distinctions is critical to optimizing Local LLM inference. Let's clarify the key terms engineers use to measure model responsiveness and speed.
 
@@ -61,44 +61,8 @@ Optimizing local LLM inference is fundamentally a balancing act between **minimi
 - A **low TTFT** means the model starts responding quickly, which is crucial for user experience. But aggressively optimizing prompt loading (SSD/CPU) may waste GPU bandwidth later.
 - A **high TPS** means the model can churn through tokens fast during long outputs, key for scalability and throughput. However, this often requires ample VRAM bandwidth and efficient memory management.
 
-> **Insight for Engineers:**
+> **Insight for Engineers:**  
 > When colleagues say “optimize TPS,” they mean reducing bandwidth bottlenecks during token generation. This is often achieved by managing the **KV Cache** effectively or applying **quantization** to reduce data size.
-
-### Latency-Throughput Relationship Diagram
-
-This diagram illustrates how TTFT and TPOT relate to prompt length, KV cache growth, and hybrid CPU/GPU offloading trade-offs.
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant CPU
-    participant RAM
-    participant PCIeBus as PCI-E Bus
-    participant GPU
-    participant VRAM
-    participant KVCache as KV Cache Growth
-
-    User->>CPU: Submit prompt (increasing length)
-    CPU->>RAM: Process & tokenize prompt
-    RAM->>PCIeBus: Transfer weights & tokens
-    PCIeBus->>VRAM: Transfer data to GPU VRAM
-    GPU->>VRAM: Prefill compute (parallel)
-    GPU-->>User: First token generated (TTFT)
-
-    loop Decode tokens
-        GPU->>VRAM: Access KV Cache (growing with tokens)
-        VRAM-->>GPU: KV Cache hit
-        GPU-->>User: Output token (TPOT)
-    end
-
-    KVCache->>GPU: VRAM nearly full
-    GPU->>PCIeBus: Offload oldest KV blocks to CPU RAM
-    PCIeBus->>RAM: Transfer KV cache blocks
-    RAM->>PCIeBus: Respond to GPU requests (cache miss)
-    PCIeBus->>GPU: Transfer back offloaded KV blocks
-    GPU->>VRAM: Store offloaded KV blocks
-    GPU-->>User: Output token delayed (increased TPOT)
-```
 
 ### Practical Example
 
@@ -116,53 +80,18 @@ We will follow a typical prompt journey using the scenario: running a **Mistral 
 ### 1.1 Phase 1: The Prefill (Fast, Parallel Compute)
 
 The model processes the entire prompt in parallel during this phase, marked by high GPU utilization and measured as **Time To First Token (TTFT)**.
-
-  * **Goal:** Quickly process the input sequence to generate the first token and build the initial **Key-Value Cache (KV Cache)**.
-  * **Action:** The CPU tokenizes text and coordinates slow PCI-E transfers of weights/data to GPU. The GPU then executes parallel matrix multiplications.
-  * **Workflow Visualization:** Note the data transfer bottleneck across PCI-E and the computational dominance of the GPU cores.
-
-```mermaid
-sequenceDiagram
-    participant SSD
-    participant RAM
-    participant CPU
-    participant GPU
-    participant VRAM
-
-    SSD->>RAM: Load model weights (slow I/O)
-    CPU->>RAM: Tokenize prompt
-    CPU->>VRAM: Transfer tokens and weights (via PCI-E)
-    GPU->>VRAM: Compute attention (matrix mult)
-    GPU->>VRAM: Build KV Cache
-    GPU-->>CPU: First token ready
-```
-
-```mermaid
-flowchart LR
-    A[SSD]
-    B[CPU RAM - 32GB]
-    C[GPU VRAM - 8GB]
-    D[GPU Cores - Parallel Compute]
-    E[KV Cache Initialization]
-
-    A -->|Load model weights 500 MB/s| B
-    B -->|PCI-E Bottleneck, about 16 GB/s| C
-    C --> D
-    D --> E
-
-    style A stroke:#4CAF50,stroke-width:2px
-    style B stroke:#2196F3,stroke-width:2px
-    style C stroke:#FF5722,stroke-width:2px
-    style D stroke:#9C27B0,stroke-width:2px
-```
-
+  
+* **Goal:** Quickly process the input sequence to generate the first token and build the initial **Key-Value Cache (KV Cache)**.
+* **Action:** The CPU tokenizes text and coordinates slow PCI-E transfers of weights/data to GPU. The GPU then executes parallel matrix multiplications.
+* **Workflow Visualization:** Note the data transfer bottleneck across $\text{PCI-E}$ and the computational dominance of the $\text{GPU}$ cores. **(Refer to the detailed flow from SSD to VRAM in the Complete LLM Inference Pipeline Diagram in Section 3.)**
+  
 | Step | Device Dominant | Action | Primary Bottleneck |
 |:---|:---|:---|:---|
 | 1. Cold Start / I/O | **CPU** | Load weights from SSD to system RAM | SSD sequential read speed |
 | 2. Preprocessing | **CPU** | Tokenize prompt, prepare tensors, transfer | PCI-E bandwidth (Host$\rightarrow$GPU) |
 | 3. Compute & Cache | **GPU** | Matrix multiplies, builds KV Cache | VRAM bandwidth, GPU FLOPS $\dagger$ |
 
-$\dagger$ *GPU compute (FLOPS) is rarely the true bottleneck. Real-world Prefill is **memory-bound** by VRAM bandwidth feeding data to cores.*
+$\dagger$ *GPU compute (FLOPS) is rarely the true bottleneck. Real-world Prefill is **memory-bound** by VRAM bandwidth feeding data to cores. See Appendix A for more information.* 
 
 ### 1.2 Phase 2: The Decode (Sequential Memory Access)
 
@@ -242,21 +171,9 @@ Hybrid execution frameworks like `llama.cpp` offload KV Cache blocks to CPU RAM 
 
 **Offloading Event Workflow:**
 
-```mermaid
-sequenceDiagram
-    participant GPU
-    participant VRAM
-    participant CPU
-    participant RAM
+When the GPU needs an offloaded block (**cache miss**), the data must be retrieved from $\text{RAM}$, crossing the **PCI-E Bus** twice. This retrieval process adds significant latency.
 
-    GPU->>VRAM: Access KV Cache
-    VRAM-->>GPU: Cache miss (block absent)
-    GPU->>CPU: Request offloaded block
-    CPU->>RAM: Read offloaded block
-    CPU->>GPU: Transfer via PCI-E
-    GPU->>VRAM: Store block (evict LRU if needed)
-    GPU->>VRAM: Access block
-```
+*(For a step-by-step visualization of this PCI-E Latency Hit, refer to the conditional block in the **Complete LLM Inference Pipeline Diagram** in Section 3.)*
 
 | Bottleneck | Symptom/Error | Cause | **Actionable Troubleshooting** |
 |:---|:---|:---|:---|
@@ -271,7 +188,52 @@ sequenceDiagram
 > 2.  After 3 mins, TPS drops from 20 to 3.
 >     Can you identify the cause? (*Answer at the end.*)
 
-## 3. Frameworks: The Hybrid Execution Engines
+## 3. Complete LLM Inference Pipeline Diagram
+
+This sequence diagram illustrates the complete process of Large Language Model (LLM) inference on a single-GPU system, from model loading to iterative token generation, explicitly highlighting critical **performance bottlenecks** and the hybrid execution logic.
+
+```mermaid
+sequenceDiagram
+    participant SSD
+    participant RAM
+    participant CPU
+    participant PCIeBus as PCI-E Bus
+    participant GPU
+    participant VRAM
+
+    SSD->>RAM: Load model weights (I/O Bottleneck: ~500 MB/s)
+    CPU->>RAM: Process & tokenize prompt
+    RAM->>PCIeBus: Transfer tokens and weights
+    PCIeBus->>VRAM: Transfer data to GPU VRAM (Bandwidth Bottleneck: ~16 GB/s)
+    GPU->>VRAM: Prefill compute: Generate token logits and KV Cache
+    GPU-->>User: First token generated (TTFT)
+
+    loop Decode tokens (Memory-Bound)
+        GPU->>VRAM: Access KV Cache (growing with tokens)
+        VRAM-->>GPU: KV Cache hit
+        GPU->>GPU: Monitor VRAM usage
+        alt VRAM nearly full due to KV Cache
+            GPU->>PCIeBus: Offload oldest KV blocks to CPU RAM
+            PCIeBus->>RAM: Transfer KV cache blocks
+            RAM->>PCIeBus: Respond to GPU requests (cache miss)
+            PCIeBus->>GPU: Transfer back offloaded KV blocks (PCI-E Latency Hit)
+            GPU->>VRAM: Store retrieved KV blocks
+            GPU-->>User: Output token delayed (increased TPOT)
+        end
+        GPU-->>User: Output token (TPOT)
+    end
+```
+
+This structured analysis serves as the key to the diagram, explicitly linking each stage of the pipeline to its governing performance metric, hardware driver, and primary bottleneck.
+
+| Phase/Event | Driver | Performance Metric | Bottleneck & Implication |
+|:---|:---|:---|:---|
+| **Phase I: Prefill** | Model loading, Prompt processing, Initial KV Cache build. | **TTFT** (Time To First Token) | Primarily **I/O Bottlenecks**: SSD sequential read speed and the $\text{PCI-E}$ Bandwidth ($\text{RAM} \rightarrow \text{VRAM}$) during initial weight and prompt transfer. |
+| **Phase II: Decode (Steady State)** | Iterative token generation, $\text{KV Cache}$ read/write. | **TPOT** (Time Per Output Token) & **TPS** | **VRAM Bandwidth** saturation. The speed is limited by how quickly the GPU can access the growing $\text{KV Cache}$ in its local high-speed memory. |
+| **Conditional: Offloading** | $\text{KV Cache}$ size exceeds available $\text{VRAM}$ capacity (e.g., $>8\text{GB}$). | **Latency Spike** (High $\text{TPOT}$) | **PCI-E Latency Hit**: Offloaded blocks must be retrieved from slower $\text{CPU RAM}$ across the $\text{PCI-E}$ bus, adding a significant delay ($5\times$ to $10\times$ penalty) to the token generation loop. |
+| **Hybrid Benefit** | Utilizing vast $\text{CPU RAM}$ (e.g., $32\text{GB}$) to extend context. | **Maximum Context Length** | Enables context windows far exceeding $\text{VRAM}$ capacity (e.g., $16\text{K}$ tokens), trading sustained high $\text{TPS}$ for the ability to handle long conversations. |
+
+## 4. Frameworks: The Hybrid Execution Engines
 
 Real-world hybrid execution depends on **inference kernels** that optimize CPU/GPU coordination. Key players in 2025:
 
@@ -289,7 +251,7 @@ The most effective hybrid technique for `llama.cpp` on consumer hardware is **la
 
 For **local deployments** (our scenario), **llama.cpp** is the *only* framework that reliably handles KV cache offloading on consumer GPUs. Its **GGUF quantization support** (Q4\_K\_M) and **CUDA graph capture** make it the de facto standard for sub-24GB VRAM setups.
 
-## 4. Quantization: The Enabler for Local LLMs
+## 5. Quantization: The Enabler for Local LLMs
 
 Quantization is the process of reducing the precision of the model's weights (e.g., from 16-bit to 4-bit integers), which dramatically cuts the model's VRAM footprint and memory bandwidth requirement.
 

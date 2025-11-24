@@ -1,9 +1,9 @@
-# Local LLM Inference: A Practical Handbook for Hybrid CPU/GPU Execution and KV Cache Offloading
+# Local LLM Inference: A Practical Handbook for Hybrid Host/Device Execution and KV Cache Offloading
 
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.6.1  
+Version: 0.7.0  
 Birth: 23.11.2025  
 Modified: 24.11.2025
 
@@ -11,7 +11,7 @@ Modified: 24.11.2025
 
 > INFO: *The handbook is optimized for environments supporting Mermaid.js diagrams. For static export, rasterized versions are available in Appendix B.*
 
-When a user hits "enter" after typing a prompt, the system triggers a complex collaboration between the Central Processing Unit (**CPU**) and the Graphics Processing Unit (**GPU**). This is called **Hybrid Execution**.
+When a user hits "enter" after typing a prompt, the system triggers a complex collaboration between the **Host** (Central Processing Unit, **CPU**) and the **Device** (Graphics Processing Unit, **GPU**). This architecture is called **Hybrid Execution**.
 
 Your job as an AI Engineer is to manage the trade-offs between CPU's vast memory capacity and GPU's raw speed. Where should your precious data live and be processed?
 
@@ -23,6 +23,8 @@ Your job as an AI Engineer is to manage the trade-offs between CPU's vast memory
 | GPU | Graphics Processing Unit | Executes parallel matrix compute operations. |
 | VRAM | Video RAM | High-speed memory on GPU; major capacity limit. |
 | RAM | Random Access Memory | CPU system memory used for offloading. |
+| Host | n/a | **Main system processor**, which is almost always the **CPU**, along with its associated system memory (RAM). It is the component that manages the entire system, initiates tasks, and handles the flow of data to and from the accelerator cards. |
+| Device | n/a | A **parallel processing unit** or an **accelerator** used to offload computationally intensive tasks from the host.  It can be **GPUs**, **TPUs** (Tensor Processing Units), **FPGAs** (Field-Programmable Gate Arrays), or other custom AI chips. |
 | KV Cache| Key-Value Cache | Stores attention **Key** and **Value** vectors for past tokens, eliminating re-computation in the **Self-Attention** layer. |
 | FLOPS | Floating Point Operations Per Second | Theoretical peak compute throughput of a GPU. Rarely achieved in LLM inference due to memory bottlenecks. |
 | TTFT | Time To First Token | Latency metric for Prefill phase, measures how long after supplying a prompt the first output token appears. |
@@ -88,11 +90,11 @@ The model processes the entire prompt in parallel during this phase, marked by h
 - **Action:** The CPU tokenizes text and coordinates slow PCI-E transfers of weights/data to GPU. The GPU then executes parallel matrix multiplications.
 - **Workflow Visualization:** Note the data transfer bottleneck across $\text{PCI-E}$ and the computational dominance of the $\text{GPU}$ cores. **(Refer to the detailed flow from SSD to VRAM in the Complete LLM Inference Pipeline Diagram in Section 3.)**
 
-| Step | Device Dominant | Action | Primary Bottleneck |
+| Step | Dominant Role | Action | Primary Bottleneck |
 |:---|:---|:---|:---|
-| 1. Cold Start / I/O | **CPU** | Load weights from SSD to system RAM | SSD sequential read speed |
-| 2. Preprocessing | **CPU** | Tokenize prompt, prepare tensors, transfer | PCI-E bandwidth (Host$\rightarrow$GPU) |
-| 3. Compute & Cache | **GPU** | Matrix multiplies, builds KV Cache | VRAM bandwidth, GPU FLOPS $\dagger$ |
+| 1. Cold Start / I/O | **Host (CPU)** | Load weights from SSD to system RAM | SSD sequential read speed |
+| 2. Preprocessing | **Host (CPU)** | Tokenize prompt, prepare tensors, transfer | PCI-E bandwidth (Host$\rightarrow$Device) |
+| 3. Compute & Cache | **Device (GPU)** | Matrix multiplies, builds KV Cache | VRAM bandwidth, Device FLOPS $\dagger$ |
 
 $\dagger$ *GPU compute (FLOPS) is rarely the true bottleneck. Real-world Prefill is **memory-bound** by VRAM bandwidth feeding data to cores. See Appendix A for more information.*
 
@@ -108,23 +110,23 @@ After the first token is generated, subsequent tokens are created one at a time 
 
 ```mermaid
 flowchart TB
-    subgraph GPU_VRAM["GPU VRAM (8GB)"]
+    subgraph DEVICE_VRAM["DEVICE (GPU) VRAM (8GB)"]
         KV_Cache["KV Cache (grows with tokens)"]
         Weights["Model Weights (static)"]
     end
 
-    GPU_VRAM -->|Linear growth| MemoryAlert{"VRAM > 95% full?"}
-    MemoryAlert -->|Yes| Offload["Offload oldest KV blocks → CPU RAM"]
+    DEVICE_VRAM -->|Linear growth| MemoryAlert{"VRAM > 95% full?"}
+    MemoryAlert -->|Yes| Offload["Offload oldest KV blocks → HOST RAM"]
     MemoryAlert -->|No| Continue["Continue in VRAM"]
 
-    subgraph CPU_RAM["CPU RAM (32GB)"]
+    subgraph HOST_RAM["HOST (CPU) RAM (32GB)"]
         OffloadedBlocks["Offloaded KV Blocks (compressed)"]
     end
 
-    Offload --> CPU_RAM
+    Offload --> HOST_RAM
 
-    style GPU_VRAM stroke:#FF5722,stroke-width:2px
-    style CPU_RAM stroke:#2196F3,stroke-width:2px
+    style DEVICE_VRAM stroke:#FF5722,stroke-width:2px
+    style HOST_RAM stroke:#2196F3,stroke-width:2px
 ```
 
 #### Throughput: Tokens Per Second (TPS)
@@ -133,16 +135,16 @@ flowchart TB
 
 -----
 
-## 2. The VRAM/RAM Trap: Bottlenecks and Hybrid Execution
+## 2. Memory Pressure: The KV Cache and Hybrid Execution Bottlenecks
 
 ### 2.1 The Key-Value (KV) Cache: The VRAM Killer
 
-The KV Cache stores attention vectors for past tokens, significantly reducing computations but consuming high-speed GPU VRAM.
+The KV Cache stores attention vectors for past tokens, significantly reducing computations but consuming high-speed Device VRAM.
 
 | KV Cache Characteristic | Engineering Challenge |
 |:---|:---|
 | **Linear Growth** | Cache size grows linearly with conversation length. |
-| **VRAM Limit** | Cache saturation (e.g., 8GB VRAM) causes stalls or crashes. |
+| **VRAM Limit** | Cache saturation (e.g., 8GB VRAM) causes stalls or crashes. (Saturation means **VRAM is fully allocated**, forcing data eviction or page faults.) |
 
 **Memory Pressure Timeline:**
 
@@ -167,16 +169,46 @@ graph LR
 
 > **🔥 Critical Pitfall:** Exceeding 4,000 tokens on 8GB VRAM stalls or crashes inference without aggressive memory management.
 
-### 2.2 KV Cache Offloading: The Hybrid Solution
+### 2.2 Why the KV Cache Grows Linearly
 
-Hybrid execution frameworks like `llama.cpp` offload KV Cache blocks to CPU RAM when VRAM fills.
+The Key-Value (KV) Cache is a critical optimization for **Transformer-based models** (like Large Language Models).
 
-- **The Solution:** Page older KV Cache parts from GPU VRAM to CPU RAM (32GB).
-- **Trade-off:** Access latency increases due to PCI-E transfers causing **$5\times - 10\times$ slower TPOT**.
+#### The Need for Caching
+
+- **Without the KV Cache:** When a model generates a new token (say, the 100th token), the **self-attention** mechanism needs to look at *all* previous 99 tokens to maintain context. To do this efficiently, it calculates **Key (K) and Value (V) vectors** for every token. Without caching, to generate the 101st token, the model would have to re-calculate the K and V vectors for all 100 preceding tokens, which is a massive waste of computation.
+- The original computational cost for generating a sequence grows **quadratically** ($O(N^2)$) with the sequence length ($N$), making long-form generation prohibitively slow.
+
+#### How Caching Causes Growth
+
+- **With the KV Cache:** When the model generates a new token, it calculates its K and V vectors *only once* and then **stores (caches) them** in the Device's VRAM.
+- To generate the next token, the model simply **retrieves** all the previously cached K and V pairs and **concatenates** the new K and V pairs to the existing cache.
+- Crucially, the model needs to store the K and V pairs for **every single token** in the sequence (both the input prompt and the generated output) to accurately compute the attention for the next token.
+- Because a new set of K and V vectors is added for every new token, the total size of the cache grows **linearly** ($O(N)$) with the length of the conversation (sequence length, $N$).
+
+#### The VRAM Bottleneck
+
+The issue arises because VRAM is a **finite, expensive resource**.
+
+- The KV Cache must be stored in **VRAM** (high-speed GPU memory) to ensure the model can access the data quickly enough for real-time generation.
+- The total memory consumed by the cache is proportional to:
+    $$\text{Cache Size} \propto \text{Number of Layers} \times \text{Sequence Length} \times \text{Head Dimension}^2$$
+- As the diagram illustrates:
+    1.  **Initial Phase (e.g., 0 to 4000 tokens):** The cache size is manageable, and the model maintains high TPS (25 to 20 TPS).
+    2.  **Memory Pressure (e.g., 4500 tokens):** As the cache consumes more VRAM, the system approaches the memory limit. This triggers **aggressive memory management**, often requiring the GPU to move data around, which is slower, leading to a drop in TPS (20 to 10 TPS).
+    3.  **VRAM Saturation (e.g., 5000+ tokens):** The Device runs out of VRAM. This can lead to **swapping** (moving data to slower Host RAM) or, in the worst case, **stalls** (where the Device is waiting for memory access) or **crashes** (if the system cannot handle the memory allocation requests), causing the TPS to plummet (10 to 3 TPS).
+
+In short, the problem is a **fundamental trade-off**: the **linear growth** of the cache (essential for fast $O(N)$ generation) eventually clashes with the **fixed limit** of the Device's VRAM (which is required for high-speed operation).
+
+### 2.3 KV Cache Offloading: The Hybrid Solution
+
+Hybrid execution frameworks like `llama.cpp` offload KV Cache blocks to Host RAM when VRAM fills.
+
+- **The Solution:** Page older KV Cache parts from Device VRAM to Host RAM (32GB).
+- **Trade-off:** Access latency increases due to PCI-E transfers causing **$5\times - 10\times$ decrease in decoding speed (TPS)**.
 
 **Offloading Event Workflow:**
 
-When the GPU needs an offloaded block (**cache miss**), the data must be retrieved from $\text{RAM}$, crossing the **PCI-E Bus** twice. This retrieval process adds significant latency.
+When the Device needs an offloaded block (**cache miss**), the data must be retrieved from $\text{RAM}$, crossing the **PCI-E Bus** twice. This retrieval process adds significant latency.
 
 *(For a step-by-step visualization of this PCI-E Latency Hit, refer to the conditional block in the **Complete LLM Inference Pipeline Diagram** in Section 3.)*
 
@@ -201,67 +233,67 @@ This sequence diagram illustrates the complete process of Large Language Model (
 
 ```mermaid
 sequenceDiagram
-    participant SSD
-    participant RAM
-    participant CPU
-    participant PCIeBus as PCI-E Bus
-    participant GPU
-    participant VRAM
+  participant SSD
+  participant HostRAM as RAM (Host)
+  participant HostCPU as CPU (Host)
+  participant PCIeBus as PCI-E Bus
+  participant DeviceGPU as GPU (Device)
+  participant DeviceVRAM as VRAM (Device)
 
-    SSD->>RAM: Load model weights (I/O Bottleneck: ~500 MB/s)
-    CPU->>RAM: Process & tokenize prompt
-    RAM->>PCIeBus: Transfer tokens and weights
-    PCIeBus->>VRAM: Transfer data to GPU VRAM (Bandwidth Bottleneck: ~16 GB/s)
-    GPU->>VRAM: Prefill compute: Generate token logits and KV Cache
-    GPU-->>User: First token generated (TTFT)
+  SSD->>HostRAM: Load model weights (I/O Bottleneck: ~500 MB/s)
+  HostCPU->>HostRAM: Process & tokenize prompt
+  HostRAM->>PCIeBus: Transfer tokens and weights
+  PCIeBus->>DeviceVRAM: Transfer data to VRAM (Bandwidth Bottleneck: ~16 GB/s)
+  DeviceGPU->>DeviceVRAM: Prefill compute: Generate token logits and KV Cache
+  DeviceGPU-->>User: First token generated (TTFT)
 
-    loop Decode tokens (Memory-Bound)
-        GPU->>VRAM: Access KV Cache (growing with tokens)
-        VRAM-->>GPU: KV Cache hit
-        GPU->>GPU: Monitor VRAM usage
-        alt VRAM nearly full due to KV Cache
-            GPU->>PCIeBus: Offload oldest KV blocks to CPU RAM
-            PCIeBus->>RAM: Transfer KV cache blocks
-            RAM->>PCIeBus: Respond to GPU requests (cache miss)
-            PCIeBus->>GPU: Transfer back offloaded KV blocks (PCI-E Latency Hit)
-            GPU->>VRAM: Store retrieved KV blocks
-            GPU-->>User: Output token delayed (increased TPOT)
-        end
-        GPU-->>User: Output token (TPOT)
+  loop Decode tokens (Memory-Bound)
+    DeviceGPU->>DeviceVRAM: Access KV Cache (growing with tokens)
+    DeviceVRAM-->>DeviceGPU: KV Cache hit
+    DeviceGPU->>DeviceGPU: Monitor VRAM usage
+    alt VRAM nearly full due to KV Cache
+      DeviceGPU->>PCIeBus: Offload oldest KV blocks to Host RAM
+      PCIeBus->>HostRAM: Transfer KV cache blocks
+      HostRAM->>PCIeBus: Respond to GPU requests (cache miss)
+      PCIeBus->>DeviceGPU: Transfer back offloaded KV blocks (PCI-E Latency Hit)
+      DeviceGPU->>DeviceVRAM: Store retrieved KV blocks
+      DeviceGPU-->>User: Output token delayed (increased TPOT)
     end
+    DeviceGPU-->>User: Output token (TPOT)
+  end
 ```
 
 This structured analysis serves as the key to the diagram, explicitly linking each stage of the pipeline to its governing performance metric, hardware driver, and primary bottleneck.
 
 | Phase/Event | Driver | Performance Metric | Bottleneck & Implication |
 |:---|:---|:---|:---|
-| **Phase I: Prefill** | Model loading, Prompt processing, Initial KV Cache build. | **TTFT** (Time To First Token) | Primarily **I/O Bottlenecks**: SSD sequential read speed and the $\text{PCI-E}$ Bandwidth ($\text{RAM} \rightarrow \text{VRAM}$) during initial weight and prompt transfer. |
-| **Phase II: Decode (Steady State)** | Iterative token generation, $\text{KV Cache}$ read/write. | **TPOT** (Time Per Output Token) & **TPS** | **VRAM Bandwidth** saturation. The speed is limited by how quickly the GPU can access the growing $\text{KV Cache}$ in its local high-speed memory. |
-| **Conditional: Offloading** | $\text{KV Cache}$ size exceeds available $\text{VRAM}$ capacity (e.g., $>8\text{GB}$). | **Latency Spike** (High $\text{TPOT}$) | **PCI-E Latency Hit**: Offloaded blocks must be retrieved from slower $\text{CPU RAM}$ across the $\text{PCI-E}$ bus, adding a significant delay ($5\times$ to $10\times$ penalty) to the token generation loop. |
-| **Hybrid Benefit** | Utilizing vast $\text{CPU RAM}$ (e.g., $32\text{GB}$) to extend context. | **Maximum Context Length** | Enables context windows far exceeding $\text{VRAM}$ capacity (e.g., $16\text{K}$ tokens), trading sustained high $\text{TPS}$ for the ability to handle long conversations. |
+| **Phase I: Prefill** | Model loading, Prompt processing, Initial KV Cache build. | **TTFT** (Time To First Token) | Primarily **I/O Bottlenecks**: SSD sequential read speed and the **PCI-E Bandwidth** (**Host RAM** $\rightarrow$ **Device VRAM**) during initial weight and prompt transfer. |
+| **Phase II: Decode (Steady State)** | Iterative token generation, $\text{KV Cache}$ read/write. | **TPOT** (Time Per Output Token) & **TPS** | **VRAM Bandwidth** saturation. The speed is limited by how quickly the **Device** can access the growing $\text{KV Cache}$ in its local high-speed memory. |
+| **Conditional: Offloading** | $\text{KV Cache}$ size exceeds available $\text{VRAM}$ capacity (e.g., $>8\text{GB}$). | **Latency Spike** (High $\text{TPOT}$) | **PCI-E Latency Hit**: Offloaded blocks must be retrieved from slower **Host RAM** across the $\text{PCI-E}$ bus, adding a significant delay ($5\times$ to $10\times$ penalty) to the token generation loop. |
+| **Hybrid Benefit** | Utilizing vast **Host RAM** (e.g., $32\text{GB}$) to extend context. | **Maximum Context Length** | Enables context windows far exceeding $\text{VRAM}$ capacity (e.g., $16\text{K}$ tokens), trading sustained high $\text{TPS}$ for the ability to handle long conversations. |
 
 -----
 
 ## 4. Frameworks: The Hybrid Execution Engines
 
-Real-world hybrid execution depends on **inference kernels** that optimize CPU/GPU coordination. Key players in 2025:
+Real-world hybrid execution depends on **inference kernels** that optimize Host/Device coordination. Key players in 2025:
 
 | Framework | Hybrid Execution Superpower | Critical Limitation | Mistral-7B (8GB VRAM) Tip |
 |:---|:---|:---|:---|
-| **llama.cpp** | **KV cache offloading** + CPU/GPU layer splitting | High CPU overhead during paging | `n_gpu_layers=40` + `--split-mode row` |
-| **vLLM** | PagedAttention™ (unified VRAM/RAM cache) | Requires NVIDIA datacenter GPUs | ❌ Not consumer-GPU compatible |
-| **HuggingFace TGI** | Speculative decoding + pipeline parallelism | No CPU offload support | Use only with 16GB+ VRAM GPUs |
+| **llama.cpp** | **KV cache offloading** + Host/Device layer splitting | High Host (CPU) overhead during paging | `n_gpu_layers=40` + `--split-mode row` |
+| **vLLM** | PagedAttention™ (unified Device VRAM / Host RAM cache) | Requires NVIDIA datacenter Devices | ❌ Not consumer-Device compatible |
+| **HuggingFace TGI** | Speculative decoding + pipeline parallelism | No Host offload support | Use only with 16GB+ Device VRAM |
 
 **llama.cpp Hybrid Methods Explained**
 
 For local deployments, `llama.cpp` uses two distinct methods for hybrid execution:
 
-1. **KV Cache Offloading:** The process of moving the conversation state (the growing **KV Cache**) from **VRAM** to **CPU RAM** to extend the maximum context length beyond the GPU's memory limit. This primarily manages *memory capacity*.
-2. **Layer Splitting:** The most effective hybrid technique for load balancing, which assigns the computation for the model's **lower layers** (compute-heavy) to the **GPU**, while the **upper layers** (memory-intensive) are strategically placed on the **CPU** (using RAM). This manages *computational load* and *VRAM capacity* simultaneously.
+1. **KV Cache Offloading:** The process of moving the conversation state (the growing KV Cache) from Device VRAM to Host RAM to extend the maximum context length beyond the Device's memory limit. This primarily manages *memory capacity*.
+2. **Layer Splitting:** The most effective hybrid technique for load balancing, which assigns the computation for the model's **lower layers** (compute-heavy) to the Device (GPU), while the **upper layers** (memory-intensive) are strategically placed on the Host (CPU) (using Host RAM). This manages *computational load* and *Device VRAM capacity* simultaneously.
 
 **💡 Battle-Tested Insight**:
 
-For **local deployments** (our scenario), **llama.cpp** is the *only* framework that reliably handles KV cache offloading on consumer GPUs. Its **GGUF quantization support** (Q4\_K\_M) and **CUDA graph capture** make it the de facto standard for sub-24GB VRAM setups.
+For **local deployments** (our scenario), **llama.cpp** is the *only* framework that reliably handles KV cache offloading on consumer Devices (GPUs). Its **GGUF quantization support** (Q4\_K\_M) and **CUDA graph capture** make it the de facto standard for sub-24GB Device VRAM setups.
 
 -----
 

@@ -1,4 +1,4 @@
-## REAL-WORLD CASE STUDIES
+## Hybrid CPU/GPU Execution and KV Cache Offloading Case Studies
 
 #### **🛠️ War Stories: When Theory Meets Reality**  
 > **Introductory Note**  

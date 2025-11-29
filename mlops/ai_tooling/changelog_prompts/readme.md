@@ -4,8 +4,8 @@
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
 Version: 0.1.0  
-Birth: 29.11.2025
-Last Modified: 29.11.2025
+Birth: 29.11.2025  
+Last Modified: 29.11.2025  
 
 ---
 
@@ -50,7 +50,7 @@ Lload the prompt and supply the raw `git diff` output.
 
 ```
 /add CHANGELOG.md changelog_prompt.json
-/run git diff "{$COMMIT_RANGE}"
+/run git log -p commit1..commit2
 ```
 
 ### Step 3: Trigger Generation and Inject Traceability

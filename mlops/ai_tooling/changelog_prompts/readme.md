@@ -36,17 +36,17 @@ This workflow requires you to first determine the exact commit range (e.g., from
 Before starting the agent session, define the commit range in your shell environment.
 
 ```bash
-# 1. Determine the range (e.g., from the last tag to the current state)
-# get the las tag name as start and HEAD as end commit
-COMMIT_RANGE="$(git describe --tags --abbrev=0)..HEAD"
-
-# 2. Start the aider session
+# 1. Start the aider session
 aider
+
+# 2. Inside the `aider` session determine the range (e.g., from the last tag to the current state)
+# get the last tag name as start and HEAD as end commit
+/run export COMMIT_RANGE="$(git describe --tags --abbrev=0)..HEAD" && echo "${COMMIT_RANGE}"
 ```
 
 ### Step 2: Load the Prompt and Provide Input
 
-Inside the `aider` session, load the prompt and supply the raw `git diff` output.
+Lload the prompt and supply the raw `git diff` output.
 
 ```
 /add CHANGELOG.md changelog_prompt.json
@@ -55,7 +55,7 @@ Inside the `aider` session, load the prompt and supply the raw `git diff` output
 
 ### Step 3: Trigger Generation and Inject Traceability
 
-Crucially, you must explicitly tell the agent the commit range so it can substitute the `$COMMIT\_RANGE$` placeholder defined in the prompt's instructions.
+Crucially, you must explicitly tell the agent the commit range so it can substitute the `$COMMIT_RANGE$` placeholder defined in the prompt's instructions.
 
 ```
 /ask The commit range is $COMMIT_RANGE. Now, generate a changelog record using the changelog_prompt.json instructions.

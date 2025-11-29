@@ -3,15 +3,15 @@
 ---
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
+Version: 0.2.0  
 Birth: 29.11.2025  
-Last Modified: 29.11.2025  
+Last Modified: 30.11.2025  
 
 ---
 
 This directory contains a highly structured JSON prompt designed for AI agents (specifically tested with `aider`) to generate concise, technically detailed, and traceable changelog entries from raw `git diff` output.
 
-## 🎯 Purpose
+## Purpose
 
 The primary goal of this prompt is to synthesize complex code changes into a **structured, consistent, and traceable Markdown format** suitable for internal development teams.
 
@@ -31,37 +31,27 @@ It enforces strict adherence to:
 
 This workflow requires you to first determine the exact commit range (e.g., from the last tag `v1.0.0` to `HEAD`) and then pass that range to the AI agent explicitly for substitution.
 
-### Step 1: Initialize and Define the Range
-
-Before starting the agent session, define the commit range in your shell environment.
+### Step 1: Start aider
 
 ```bash
 # 1. Start the aider session
 aider
-
-# 2. Inside the `aider` session determine the range (e.g., from the last tag to the current state)
-# get the last tag name as start and HEAD as end commit
-/run export COMMIT_RANGE="$(git describe --tags --abbrev=0)..HEAD" && echo "${COMMIT_RANGE}"
 ```
 
 ### Step 2: Load the Prompt and Provide Input
 
-Lload the prompt and supply the raw `git diff` output.
+Load the prompt and supply the raw `git log -p commit1..commit2` output.
 
 ```
 /add CHANGELOG.md changelog_prompt.json
-/run git log -p commit1..commit2
+/run git log -p $(git describe --tags --abbrev=0)..HEAD
 ```
 
-### Step 3: Trigger Generation and Inject Traceability
-
-Crucially, you must explicitly tell the agent the commit range so it can substitute the `$COMMIT_RANGE$` placeholder defined in the prompt's instructions.
+### Step 3: Trigger Generation
 
 ```
-/ask The commit range is $COMMIT_RANGE. Now, generate a changelog record using the changelog_prompt.json instructions.
+/ask Generate a changelog record using the changelog_prompt.json instructions
 ```
-
-*(Replace `$COMMIT\_RANGE` with the actual range from Step 1, e.g., `v1.0.0..HEAD`)*
 
 ### Step 4: Apply and Commit Changes
 
@@ -71,7 +61,7 @@ Use `aider`'s powerful `/code` command to automatically insert the generated Mar
 /code add the generated changelog record to CHANGELOG.md and commit the changes
 ```
 
-## 📄 Output Schema and Constraints
+## Output Schema and Constraints
 
 The prompt strictly enforces the following structure. Failure to adhere to these constraints should be treated as a bug in the AI's execution.
 

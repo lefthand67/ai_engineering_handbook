@@ -1,11 +1,11 @@
-# 🚀 Production Git Workflow Standards
+# 🚀 Production Git Workflow: Standards
 
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.0  
-Birth: 29.11.2025  
-Last Modified: 30.11.2025
+Version: 0.4.0  
+Birth: 2025-11-29  
+Last Modified: 2025-12-01
 
 -----
 
@@ -81,6 +81,24 @@ refactor: simplify model loading logic
 
 ArchTag:TECHDEBT-PAYMENT
 Reduced cyclomatic complexity from 15 to 8, improving maintainability.
+```
+
+```mermaid
+---
+config:
+  layout: dagre
+  theme: redux
+---
+flowchart TB
+    A["Commit w/ Tag"] --> B["ArchTag:"]
+    B -- PERF-OPTIMIZATION --> C["Perf Tests"]
+    B -- REFACTOR-MIGRATION --> D["Architect Review"]
+    B -- DEPRECATION-PLANNED --> E["API Docs Update"]
+    B -- TECHDEBT-PAYMENT --> F["Debt Score Δ"]
+    C --> G["Changelog Section"]
+    D --> G
+    E --> G
+    F --> G
 ```
 
 -----
@@ -174,57 +192,3 @@ This disciplined approach ensures that your contributions are professionally str
 | Forgetting the **Ticket ID** in the branch name. | No automatic issue linking; traceability loss. | Use templates; set branch protection rules. |
 | Commit titles exceeding **50 characters**. | Poor changelog readability; automation tools truncate. | Use pre-commit hooks to check length. |
 | Invalid or missing **ArchTag** on required commit types. | **CI BLOCK** (Failure to pass the Architectural Review Gate). | Check the tag list and ensure it's the first line in the commit body. |
-
------
-
-## Appendix A: Detailed ArchTag Commit Examples
-
-These examples illustrate the correct structure for commits that require Tier 3 architectural justification, using the $\text{ArchTag:TAG-NAME}$ format.
-
-### 1\. ArchTag: $\text{DEPRECATION-PLANNED}$
-
-*Goal: Remove a function slated for sunsetting.*
-
-```
-remove: delete legacy user analytics module
-
-ArchTag:DEPRECATION-PLANNED
-This module has been replaced by the new Kafka-based logging system (see JIRA-255).
-All calls to `legacy_analytics_log()` have been removed from the frontend service.
-```
-
-### 2\. ArchTag: $\text{TECHDEBT-PAYMENT}$
-
-*Goal: Restructure code to improve maintainability and adherence to modern Python standards.*
-
-```
-refactor: standardize all model config loading via Pydantic
-
-ArchTag:TECHDEBT-PAYMENT
-Replaced outdated dict-based config parsing with Pydantic schemas across 12 files.
-This significantly reduces validation error handling boilerplate and improves type safety.
-```
-
-### 3\. ArchTag: $\text{REFACTOR-MIGRATION}$
-
-*Goal: Implement a fundamental shift in how the system handles a core component.*
-
-```
-refactor: migrate database connection pool to SQLAlchemy 2.0 async
-
-ArchTag:REFACTOR-MIGRATION
-Upgraded the core data layer to use the new asyncio ORM style.
-This is a breaking change and requires updating all repository methods to use `await`.
-```
-
-### 4\. ArchTag: $\text{PERF-OPTIMIZATION}$
-
-*Goal: Optimize a slow loop, requiring proof of performance gain.*
-
-```
-perf: optimize feature extraction by replacing list with numpy array
-
-ArchTag:PERF-OPTIMIZATION
-Profiling showed the bottleneck was array conversion in the main loop.
-Benchmark results show a 22% reduction in latency for large inputs (1000+ features).
-```

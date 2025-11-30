@@ -1,0 +1,3 @@
+- Role vs Freedom (Ivanov, critique of Schema Guided Reasoning)
+- Tools, MCP, Structured Output, Functional Calling, 
+- LangChain (prototyping) vs DSPy (production level)

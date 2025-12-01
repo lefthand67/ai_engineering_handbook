@@ -1,109 +1,93 @@
-# About this repo
+# About
 
-Hello and welcome to the repository with methodological articles on AI Software Engineering. Here I post the materials I create with my AI helpers with the goal to understand how to build and maintain production level AI apps. 
+This repository provides a **systematized, AI-engineered knowledge base** for building production-grade AI systems using **Small Language Models (SLLMs)**. All content is **generated, validated, and versioned through a controlled LLM workflow**—treated as code, not prose.
 
-The repo is not about prompts, at least, not only about prompts, but about the entire infrastructure around the LLM that we have to build in order to get the reliable and long-term viable AI powered system.
+> **Mission**: Enable MLOps engineers and AI architects to construct **reliable, maintainable, and auditable** AI infrastructure by treating documentation as executable, testable artifacts.
 
-That is how a local qwen2.5-coder describes the repo:
-
----
-
-This repository is a collection of documentation, guides, and resources related to artificial intelligence (AI), machine learning (ML), and MLOps (Machine Learning Operations). It covers various aspects such as AI systems, execution optimization, model training,
-validation, orchestration, context management, security, and tools.
-
-Here's a brief overview of the different sections:
-
-1 `0_intro`: Contains introductory materials on AI further reading and systems with a multilayer approach.
-2 `1_execution`: Focuses on execution-related topics, including GPU optimization and security.
-3 `2_model`: Covers model selection, training configurations, custom tokenizers and embeddings, datasets, and validation techniques like bias mitigation.
-4 `3_prompts`: Contains materials related to prompts in AI systems.
-5 `4_orchestration`: Discusses orchestration frameworks, patterns (like chain of thought and RAG), security, and workflows.
-6 `5_context`: Focuses on knowledge bases, retrieval methods, security, and vector stores.
-7 mlops: Contains MLOps-related materials, including CI/CD validation tests, workflows, and security aspects like access control.
-8 `pr/tg_channel_ai_learning`: A collection of posts or articles related to AI learning.
-9 `prompt_consultant.md`: Likely a guide or document on prompt consulting.
-10 `security`: Contains general security-related materials.
-11 `tools`: Discusses various tools, including those for Python 3.14 parallelism, the right tool for the right layer, and AI tools in Vim.
+This is not a prompt repository. It addresses the **full stack** required to deploy and sustain LLM-powered systems: execution, model, prompt, orchestration, context, and security layers.
 
 ---
 
-> There are many draft articles that need to be reviewed and published. Such articles are in the `docs/exp` branch, `in_progress` directory. Once the article is ready, it is moved to `main` branch to the dedicated directory.
+## Authorship & Licensing
 
-## Structure
+This is a **practitioner-focused engineering repository**, not academic literature. Therefore:
 
-```
-.
-├── 0_intro
-│   ├── ai_further_reading.md
-│   └── ai_systems_multilayer_approach.md
-├── 1_execution
-│   ├── nvidia_gpu_optimization.md
-│   └── security
-├── 2_model
-│   ├── security
-│   ├── selection
-│   │   └── model_cards
-│   ├── training
-│   │   ├── configurations
-│   │   ├── custom_tokenizer_and_embedding.md
-│   │   ├── datasets
-│   │   ├── embeddings_for_small_llms.md
-│   │   ├── python314_parallelism_game_changer.md
-│   │   ├── right_tool_for_right_layer.md
-│   │   └── why_rust_for_tokenizers.md
-│   └── validation
-│       └── bias_mitigation
-├── 3_prompts
-│   └── security
-├── 4_orchestration
-│   ├── frameworks
-│   ├── patterns
-│   │   ├── chain_of_thought
-│   │   ├── llm_usage_patterns_p1.md
-│   │   ├── llm_usage_patterns_p2.md
-│   │   └── rag
-│   ├── security
-│   └── workflows
-├── 5_context
-│   ├── knowledge_bases
-│   ├── retrieval
-│   ├── security
-│   └── vector_stores
-├── CHANGELOG
-├── LICENSE
-├── mlops
-│   ├── ci_cd
-│   │   ├── validation_tests
-│   │   └── workflows
-│   └── security
-│       └── access_control
-├── prompt_consultant.md
-├── README.md
-└── security
+- **No bibliographic references** are included.
+- **Provenance is encoded** in system prompts (e.g., `sllm_system_consultant.json`), which capture reasoning patterns used during generation. These prompts are open for inspection and serve as traceable “concept lineage” artifacts.
+- **I do not claim originality of ideas**—only of the **generation methodology**, **validation protocol**, and **structural design**.
 
-34 directories, 14 files
+> I am the architect of the knowledge-generation system. The ideas flow from public technical discourse; the synthesis, cross-validation, and organization are my engineered contribution.
+
+The repository is licensed under **GPLv3** because its core assets—**directory structure, system prompts, validation rules, and generation pipelines**—are **software artifacts**, not static documents. This enforces the *documentation-as-code* principle.
+
+---
+
+## Coverage
+
+Content is organized around the six layers of LLM systems:
+
+1. **Execution & Optimization**: CPU/GPU hybrid pipelines, memory (VRAM/RAM) management, NVIDIA tuning  
+1. **Model Development**: SLLM selection, tokenization, embedding, security hardening  
+1. **Prompt Engineering**: Modular design, XML schemas, template lifecycle  
+1. **Orchestration**: RAG, workflow chaining, structured output control  
+1. **Context Management**: Vector stores, hybrid retrieval, indexing strategies  
+1. **Security & Quality**: Bias detection, access control, validation templates  (spread across all other layers)
+
+All materials are **LLM-generated**, then **cross-validated by multiple models**, and deeply **reviewed before promotion** from draft to final by me. The production of one handbook may take tens of manual and AI-backed iterations before I am ready to put it into the main branch, but I understand it can still have problems, so feel free to leave issues. 
+
+---
+
+## Repository Structure
+
+```text
+ai-systems-engineering/
+├── 0_intro/               # Foundational principles & communication styles
+├── 1_execution/          # Execution strategies and hardware-aware tuning
+├── 2_model/              # Model lifecycle: selection, security, embedding
+├── 3_prompts/            # Prompt modularity, templates, and management
+├── 4_orchestration/      # Workflow engines, chaining, RAG patterns
+├── 5_context/            # Retrieval, vector DBs, knowledge grounding
+├── mlops/                # Versioning, CI/CD, deployment guardrails
+├── tools/                # Tooling stack: local LLM runners, validators
+└── in_progress/          # Drafts undergoing LLM cross-validation
 ```
 
-## Authorship
+Articles begin in `in_progress/` and are moved only after **human-in-the-loop verification**.
 
-This is a practical repo, not scientific, so I do not provide sources, you can find them using the helper - `./prompt_consultant.md` monolithic prompt. The lack of sources does not mean I claim that I am the author of ideas I state. I am the owner of files, not the author neither of articles, nor of ideas. I am just an engineer who stands on the shoulders of the giants, i.e. the collective consciousness.
+---
 
-Nevertheless, I put a lot of time and effort to systemize this knowledge and clarify blurred questions, so I have a right to put GPLv3 license on the information gathered and ordered as my intellectual effort result. So, please, respect it.
+## Generation Workflow
 
-## My motivation
+All content follows a **reproducible LLM pipeline**, mirroring software CI/CD:
 
-Why do I create so many files and structure them in such a sophisticated way? My final goal is to build AI solutions that I can maintain as ordinary software, like calculator. This goal - if achievable - can be achieved only with the strong methodology behind it. MLOps, Devsecops, models fine-tuning, context management, and so on and so on. You can easily prototype almost anything with the little help from AI, but the question is whther you can build a reliable, production level system. 
+1. **Idea elaboration**: `sllm_system_consultant.json` explores and stress-tests concepts  
+2. **Draft generation**: `handbook_consultant.json` produces articles, diagrams, and code  
+3. **Cross-validation**: Multiple models critique and refine outputs  
+4. **Version control**: Every file is tracked, diffed, and tested like source code  
+5. **Human review**: Final sanity check before promotion to published directories  
 
-All the problems I call out in this repo I have to learn on my own, so any critique and suggestions are highly welcomed.
+> In this paradigm: **prompts = source code**, **articles = build artifacts**, **reviews = QA gates**.
 
-My main colleague in this endevour is the Language AI models of any size and any descent, that is why I share my files here, on public for human review, in hope to get feedback on where I am getting wrong in my AI systems understanding. Also, I hope, my articles will be helpful to anybody who thinks the same way as I do.
+---
 
-## My other public methodological repositories
+## Motivation
 
-1. [llm_from_scratch_practice](https://github.com/lefthand67/llm_from_scratch_practice) - learning LLMs under the hood by writing them from scratch
+My final goal is to build AI solutions that I can maintain as ordinary software, like a calculator. This goal - if achievable - can be achieved only with the strong methodology behind it. MLOps, Devsecops, models fine-tuning, context management, and so on. You can easily prototype almost anything with the little help from AI, but the question is whether you can build a reliable, production level system. 
 
-## About myself
+Every problem documented here is one I’ve confronted while developing **local SLLM stacks under resource constraints**. Since I learn by doing—and my primary collaborator is the AI itself—I share this repository publicly to:
 
-I am 37, I live in Russia, Yekaterinburg. I am only three years in IT - I started with Machine Learning in 2022, then I worked with relational databases (PostgreSQL, Oracle), and now I am a Tech Lead Linux Engineer in the Russian bigtech. I do my AI research (if one can call such activity like this) in my free time after work between family and sleeping hours. 
+- Invite **technical critique** on my understanding of AI systems  
+- Offer a **methodologically consistent** alternative to ad-hoc prompt hacking  
+- Demonstrate that **documentation can be engineered**, not just written  
 
-Salute!
+Feedback is welcome via issues or PRs. All contributions will undergo the same validation pipeline.
+
+---
+
+## Related Work
+
+- [**llm_from_scratch_practice**](https://github.com/lefthand67/llm_from_scratch_practice): Companion repo where I build a ~100M-parameter LLM from first principles—guided by an LLM mentor.
+
+---
+
+*Salute!*

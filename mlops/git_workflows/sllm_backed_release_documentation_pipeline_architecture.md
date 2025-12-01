@@ -3,9 +3,9 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.0  
+Version: 0.3.0  
 Birth: 2025-12-01  
-Last Modified: 2025-12-01
+Last Modified: 2025-12-02
 
 -----
 
@@ -47,7 +47,7 @@ flowchart TB
     
     B["**Stage 1: Commit and Format Enforcement**
     - *Input*: Code Diff
-    - *Actor*: **Developer** (with optional SLLM 1B–3B assist and `gitlint`)
+    - *Actor*: **Developer** (with optional SLLM assistance and `gitlint`)
     - *Output*: Structured Commit (Conventional Commits, Tier 2/3)
     - *Gate*: `pre-commit` hook + `gitlint` (enforces type/scope/subject)"]
     
@@ -86,7 +86,7 @@ flowchart TB
 
 This diagram illustrates the end-to-end workflow for generating auditable, audience-appropriate release documentation in resource-constrained SLLM environments. It enforces separation of concerns by assigning each stage to the most appropriate actor:
 
-- **Stage 1 (Blue – Developer)**: Developers structure commits using Conventional Commits (Tier 2/3), optionally assisted by tiny SLLMs (1B–3B) or tools like `commitizen`. Enforcement occurs via pre-commit hooks.
+- **Stage 1 (Blue – Developer)**: Developers structure commits using Conventional Commits (Tier 2/3), optionally assisted by an SLLMs or tools like `gitlint`. Enforcement occurs via pre-commit hooks.
 - **Stage 2 (Orange – Deterministic Tooling)**: A standards-compliant, non-LLM tool (`git-chglog`) aggregates commits into a machine-readable `CHANGELOG.md`. Validated by CI and engineers.
 - **Stage 3 (Green – SLLM)**: A capable SLLM (7B–14B), guided by engineered prompts, transforms raw changelog entries into tailored release notes (e.g., for users vs. internal teams). Requires architect or peer approval.
 - **I/O Stages (Light Blue)**: Represent workflow boundaries—branch creation (input trigger) and final publication (output artifact).

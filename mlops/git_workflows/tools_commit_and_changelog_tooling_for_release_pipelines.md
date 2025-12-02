@@ -1,9 +1,9 @@
-# Commit & Changelog Tooling for Release Pipelines
+# Tools: Commit & Changelog Tooling for Release Pipelines
 
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
+Version: 0.1.1  
 Birth: 2025-12-02  
 Last Modified: 2025-12-02
 

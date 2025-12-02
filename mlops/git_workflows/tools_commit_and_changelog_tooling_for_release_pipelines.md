@@ -22,8 +22,6 @@ Instead, we enforce a **two-tool standard** that is:
 - **Fully compatible with `pre-commit` and CI**
 - **Deterministic and reproducible**
 
----
-
 ## 2. The Tooling Standard
 
 | Stage | Tool | Type | Why It’s Chosen |
@@ -31,9 +29,7 @@ Instead, we enforce a **two-tool standard** that is:
 | **Stage 1: Commit Message Enforcement** | [`gitlint`](https://jorisroovers.com/gitlint/) | Python CLI | Validates Conventional Commits **at commit time** via `pre-commit`. No interactivity. No Node.js. |
 | **Stage 2: Changelog Generation** | [`git-chglog`](https://github.com/git-chglog/git-chglog) | Go binary | Parses structured commits into `CHANGELOG.md` **without parsing code, diffs, or configs**. Fast, idempotent, templatable. |
 
-> ✅ **This is the only approved stack.** Deviations require Architecture Review Board (ARB) approval.
-
----
+> **This is the only approved stack.** Deviations require Architecture Review Board (ARB) approval.
 
 ## 3. Why We Reject the JavaScript Ecosystem
 

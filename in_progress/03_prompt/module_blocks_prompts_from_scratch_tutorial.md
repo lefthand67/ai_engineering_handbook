@@ -1,15 +1,21 @@
-# Создаем модульные промпты с нуля
+# Creating Modular Prompts from Scratch
 
-> Владелец: Вадим Рудаков, lefthand67@gmail.com
-> Версия: 0.1.0
+-----
 
-Архитектура и гайдлайны нужны, но без рук на клавиатуре всё быстро забудется. Представим, что мы создаём новый кодовый проект, только вместо Python-функций у нас будут *модульные промпты*.
+Owner: Vadim Rudakov, lefthand67@gmail.com  
+Version: 0.1.0  
+Birth: 2025-11-23  
+Modified: 2025-12-05
 
-> Внимание! Данное руководство не является промышленным стандартом и не соответствует стандартам нашей организации. Но оно способствует быстрому вхождению в тему создания модульных промптов и на начальных этапах изложенные методы желательно отработать всем.
+-----
 
-## План шаг за шагом (с реальными примерами)
+Architecture and guidelines are necessary, but without hands on the keyboard, everything will quickly be forgotten. Let's imagine that we are creating a new code project, only instead of Python functions, we will have **modular prompts**.
 
-### Шаг 1. Создать репозиторий
+> Attention\! This guide is not an industry standard and does not comply with our organization's standards. But it contributes to a quick immersion into the topic of creating modular prompts, and at the initial stages, it is advisable for everyone to practice the methods outlined.
+
+## Step-by-Step Plan (with real examples)
+
+### Step 1. Create a Repository
 
 ```bash
 mkdir prompt-lab
@@ -18,93 +24,92 @@ git init
 git switch -c main
 ```
 
-Добавьте `.gitignore` (например, для временных файлов `.DS_Store`, `__pycache__`, и т.д.).
+Add a `.gitignore` (for example, for temporary files like `.DS_Store`, `__pycache__`, etc.).
 
-> Совет: Используйте готовые шаблоны https://www.toptal.com/developers/gitignore
+> Tip: Use ready-made templates from [https://www.toptal.com/developers/gitignore](https://www.toptal.com/developers/gitignore)
 
-### Шаг 2. Структура папок
+### Step 2. Folder Structure
 
 ```bash
 mkdir -p prompts/{system,user,context,docs}
 ```
 
-* `prompts/system/` — инструкции, роли, формат ответа.
-* `prompts/user/` — шаблоны пользовательских запросов.
-* `prompts/context/` — блоки с дополнительным знанием.
-* `prompts/docs/` — сами гайды о том, *как писать и версионировать промпты*.
+  * `prompts/system/` — instructions, roles, response format.
+  * `prompts/user/` — user request templates.
+  * `prompts/context/` — blocks with additional knowledge.
+  * `prompts/docs/` — the guides themselves on *how to write and version prompts*.
 
-### Шаг 3. Первый промпт
+### Step 3. First Prompt
 
-Создадим system prompt для обучения:
+Let's create a system prompt for training:
 
-```yaml
-# prompts/system/system_guide_v1.yaml
-id: system_guide_v1
-content: |
-  Ты — AI-наставник, который помогает моей команде учиться писать и версионировать промпты.
-  Всегда отвечай структурировано: шаги, примеры, подводные камни.
-  Форматируй ответы в markdown.
+```json
+// prompts/system/system_guide_v1.json
+{
+  "id": "system_guide_v1",
+  "content": "You are an AI mentor who helps my team learn how to write and version prompts.\nAlways respond in a structured manner: steps, examples, pitfalls.\nFormat your answers in markdown."
+}
 ```
 
-### Шаг 4. Простой user prompt
+### Step 4. Simple User Prompt
 
-```yaml
-# prompts/user/ask_about_prompts_v1.yaml
-id: ask_about_prompts_v1
-template: |
-  Объясни, как организовать хранение и версионирование промптов в Git.
-parameters:
-  temperature: 0.2
+```json
+// prompts/user/ask_about_prompts_v1.json
+{
+  "id": "ask_about_prompts_v1",
+  "template": "Explain how to organize the storage and versioning of prompts in Git.",
+  "parameters": {
+    "temperature": 0.2
+  }
+}
 ```
 
-### Шаг 5. Первое комбинирование
+### Step 5. First Combination
 
-Пишем скрипт для сборки финального промпта:
+Write a script to assemble the final prompt:
 
-> Внимание! Данный способ не является целевым в нашей организации, но очень полезен для понимания, как собираются модульные промпты. Код ниже не тестировался в реальных условиях, поэтому сообщайте о результатах, кто решится испробовать.
+> Attention\! This method is not the intended one in our organization, but it is very useful for understanding how modular prompts are assembled. The code below has not been tested in real-world conditions, so please report the results if you decide to try it out.
 
 ```python
 # build_prompt.py
-import yaml, sys
+import json, sys
 
 def load(file):
     with open(file, "r") as f:
-        return yaml.safe_load(f)
+        return json.load(f)
 
-system = load("prompts/system/system_guide_v1.yaml")["content"]
-user = load("prompts/user/ask_about_prompts_v1.yaml")["template"]
+system = load("prompts/system/system_guide_v1.json")["content"]
+user = load("prompts/user/ask_about_prompts_v1.json")["template"]
 
 final_prompt = f"{system}\n\n{user}"
 print(final_prompt)
 ```
 
-### Шаг 6. Версионирование и коммиты
+### Step 6. Versioning and Commits
 
 ```bash
 git add .
 git commit -m "feat: add first modular prompts for guide use-case"
 ```
 
-Дальше вы будете делать `git switch -c feature/new-block`, менять/добавлять блоки, а потом через Pull Request обсуждать их в команде.
+Next, you will do `git switch -c feature/new-block`, change/add blocks, and then discuss them with the team via a Pull Request.
 
-## Сравнение рабочих стилей
+## Comparison of Work Styles
 
-| Подход                         | Что даёт                     | Риски                         |
-| ------------------------------ | ---------------------------- | ----------------------------- |
-| Всё в одном файле              | Быстрый старт                | Бардак, сложно версионировать |
-| Модульные YAML-блоки           | Гибкость, тестируемость      | Нужно писать сборщик          |
-| Документы + код (docs + build) | Чёткая методология и примеры | Более высокая кривая входа    |
+| Approach | What it gives | Risks |
+| --- | --- | --- |
+| Everything in one file | Fast start | Clutter, difficult to version |
+| Modular JSON blocks | Flexibility, testability | Need to write an assembler |
+| Documents + code (docs + build) | Clear methodology and examples | Higher entry barrier |
 
-## Источники для старта
+## Resources for Starting
 
-См. `culture/ai/ai_further_reading.md`.
+See `culture/ai/ai_further_reading.md`.
 
-## Почему не годится для прома
+## Why it is not suitable for production
 
-* **Слишком быстрый рост блоков** → без правил нейминга (`id`, `v1`, `v2`) вы запутаетесь.
-* **Нет автотестов** → ошибка в параметрах (`{text}` без подстановки) всплывёт уже на проде.
-* **Ручное комбинирование** → лучше сразу писать скрипты сборки.
-* **Нет ревью процессов** → без PR дисциплина быстро рушится.
-* **Документы забывают обновлять** → версионируйте сами гайды рядом с промптами.
-
-Подготовлено с помощью ChatGPT.
+  * **Too rapid block growth** → without naming rules (`id`, `v1`, `v2`) you will get confused.
+  * **No automated tests** → an error in parameters (`{text}` without substitution) will surface only in production.
+  * **Manual combination** → it's better to write assembly scripts right away.
+  * **No review processes** → without a PR, discipline quickly collapses.
+  * **Documents are forgotten to be updated** → version the guides themselves alongside the prompts.

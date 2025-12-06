@@ -3,7 +3,7 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.1  
+Version: 0.1.0  
 Birth: 2025-12-01  
 Last Modified: 2025-12-05
 

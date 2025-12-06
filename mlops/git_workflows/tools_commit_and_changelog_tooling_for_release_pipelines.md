@@ -3,15 +3,15 @@
 -----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
+Version: 0.1.2  
 Birth: 2025-12-02  
-Last Modified: 2025-12-02
+Last Modified: 2025-12-06
 
 -----
 
 ## 1. Purpose
 
-This handbook **eliminates confusion** around the sprawling ecosystem of Git commit and changelog tooling by prescribing a **minimal, deterministic, and maintainable stack** that aligns with the **Small Language Model (SLLM)-based release documentation pipeline**.
+This handbook **eliminates confusion** around the sprawling ecosystem of Git commit and changelog tooling by prescribing a **minimal, deterministic, and maintainable stack** that aligns with the **Small Language Model (SLM)-based release documentation pipeline**.
 
 We **do not adopt** the JavaScript/Node.js tooling ecosystem (e.g., `commitizen`, `semantic-release`) due to its complexity, fragility, and mismatch with the Linux-first, containerized, resource-constrained MLOps environment.
 
@@ -39,7 +39,7 @@ Instead, we enforce a **two-tool standard** that is:
 | `conventional-changelog` | Requires `package.json`, `conventional-changelog-cli`, parsers | Couples changelog logic to JS project structure—even in Python/C repos |
 | `semantic-release` | Auto-publishes to npm/GitHub; assumes CI owns versioning | Over-automates; violates the **human-in-the-loop audit gates**; not idempotent |
 
-> 🚫 **These tools assume a frontend/JS monorepo workflow.** They are **incompatible** with the bare-metal, multi-language, SLLM-constrained pipeline.
+> 🚫 **These tools assume a frontend/JS monorepo workflow.** They are **incompatible** with the bare-metal, multi-language, SLM-constrained pipeline.
 
 ---
 
@@ -153,11 +153,11 @@ git-chglog --next-tag v1.2.0 vX.Y.Z
 
 | Principle | How This Stack Complies |
 |---------|--------------------------|
-| **Decoupling** | Commit linting (dev) ≠ changelog gen (tool) ≠ release notes (SLLM) |
+| **Decoupling** | Commit linting (dev) ≠ changelog gen (tool) ≠ release notes (SLM) |
 | **Determinism** | `gitlint` and `git-chglog` produce identical output across runs |
 | **Low Overhead** | No interpreters, no lockfiles, no network calls |
 | **Auditability** | Every commit is validated; every changelog entry maps to a real commit |
-| **SLLM Efficiency** | Stage 2 output is clean, structured Markdown → minimal SLLM context |
+| **SLM Efficiency** | Stage 2 output is clean, structured Markdown → minimal SLM context |
 
 ---
 
@@ -167,7 +167,7 @@ git-chglog --next-tag v1.2.0 vX.Y.Z
 |-------------|-------------|
 | Using `commitizen` in CI | Interactive prompts hang CI; non-idempotent |
 | Generating changelogs from `git log --oneline` + regex | Fragile parsing; misses scope/type structure |
-| Feeding raw `git diff` to SLLM for changelog | VRAM explosion; OOM; non-reproducible output |
+| Feeding raw `git diff` to SLM for changelog | VRAM explosion; OOM; non-reproducible output |
 | Custom Python changelog scripts | Reinventing the wheel; introduces drift and bugs |
 
 ---
@@ -177,10 +177,10 @@ git-chglog --next-tag v1.2.0 vX.Y.Z
 1. **Developer writes code** → stages changes.
 2. **`git commit`** → `pre-commit` runs `gitlint` → enforces Conventional Commits.
 3. **On release prep**, CI runs `git-chglog` → produces `CHANGELOG.md`.
-4. **SLLM (7B–14B)** consumes **only the relevant `CHANGELOG.md` section** → generates audience-tailored release notes.
-5. **Engineer reviews** both changelog and SLLM output before publish.
+4. **SLM (7B–14B)** consumes **only the relevant `CHANGELOG.md` section** → generates audience-tailored release notes.
+5. **Engineer reviews** both changelog and SLM output before publish.
 
-> ✅ **This is the only supported workflow.** Keep it simple. Keep it deterministic. Keep SLLMs where they add unique value—**not for parsing Git history**.
+> ✅ **This is the only supported workflow.** Keep it simple. Keep it deterministic. Keep SLMs where they add unique value—**not for parsing Git history**.
 
 ---  
 **Appendix**:  

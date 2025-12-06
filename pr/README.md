@@ -1,3 +1,4 @@
-Раздел "Public Relations". 
+"Public Relations" section 
 
-https://t.me/ai_learning_vr (Russian)
+Telegram Channel:  
+https://t.me/build_to_understand (Russian)

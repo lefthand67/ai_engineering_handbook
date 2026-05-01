@@ -10,7 +10,7 @@ This release delivers a systematic comparative analysis of 7 open-source agent c
 
 Four strategic themes define v3.0.0:
 
-1. **Context Engineering Across 7 Agents** — The first cross-agent empirical guide: [ai_agents/context_management/](/ai_agents/architecture/context_management/overview.md) covers how every major open-source coding agent handles conversation history, compaction, and state management. The central insight: every agent uses a fundamentally different strategy — sliding windows, reactive compaction, async background summarization, multi-tier systems — and understanding these differences is essential for choosing the right tool. The comparison tables and decision guide help practitioners navigate this fragmented landscape without trial-and-error.
+1. **Context Engineering Across 7 Agents** — The first cross-agent empirical guide: [ai_agents/context_management/](/ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md) covers how every major open-source coding agent handles conversation history, compaction, and state management. The central insight: every agent uses a fundamentally different strategy — sliding windows, reactive compaction, async background summarization, multi-tier systems — and understanding these differences is essential for choosing the right tool. The comparison tables and decision guide help practitioners navigate this fragmented landscape without trial-and-error.
 
 2. **Agent Architecture Demystified** — Three articles answer questions every practitioner has: How do subagents actually work? (Spoiler: not OS fork/exec — three real patterns: separate API calls, prompt role orchestration, HTTP process management.) What keeps agents stable when LLM outputs drift? (Hard guarantees like tool denial and circuit breakers, not soft techniques like tag conventions.) Why does Qwen Code use TypeScript, not Python? (Async I/O dominance and shell command architecture.) These are not opinions — they are extracted from source code evidence.
 
@@ -59,9 +59,9 @@ Carry-over proposed ADRs (open for review and comment):
 
     The core deliverable — a systematic study of how open-source AI coding agents manage context, discover skills, and maintain stability:
 
-    - [Context Management Overview](/ai_agents/architecture/context_management/overview.md) — pattern taxonomy: full history, sliding window, reactive compaction, async summarization, tiered systems
-    - [Context Management Comparison](/ai_agents/architecture/context_management/comparison.md) — side-by-side tables across 7 agents: trigger mechanisms, compaction strategies, state preservation, decision guide
-    - [Individual agent deep dives](/ai_agents/architecture/context_management/overview.md): Qwen Code (autocompact buffer + /compress), Claude Code (5-tier system), OpenCode (reactive compaction), OpenClaude (5-tier system), Aider (async background summarization), KiloCode (OpenCode fork)
+    - [Context Management Overview](/ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md) — pattern taxonomy: full history, sliding window, reactive compaction, async summarization, tiered systems
+    - [Context Management Comparison](/ai_agents/architecture/context_management/context_management_agent_comparison.md) — side-by-side tables across 7 agents: trigger mechanisms, compaction strategies, state preservation, decision guide
+    - [Individual agent deep dives](/ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md): Qwen Code (autocompact buffer + /compress), Claude Code (5-tier system), OpenCode (reactive compaction), OpenClaude (5-tier system), Aider (async background summarization), KiloCode (OpenCode fork)
     - [How Subagents Work](/ai_agents/architecture/orchestration/how_subagents_actually_work_myth_of_process_spawning.md) — debunks OS fork/exec myth, documents three real patterns
     - [Stability Against LLM Drift](/ai_agents/architecture/skills/stability_in_a_probabilistic_substrate_how_agents_fight_llm_drift.md) — hard guarantees vs soft techniques
     - [Skill Discovery Across Platforms](/ai_agents/architecture/skills/skill_discovery_across_ai_coding_platforms.md) — Superpowers v5.0.7 analysis across 5 platforms

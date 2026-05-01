@@ -100,7 +100,7 @@ To ensure technical accuracy and avoid speculative descriptions, all architectur
 
 ### Session History / Context Management
 
-- **All agents** send the full conversation history on every API call — no chunking, no delta updates. Context grows unboundedly until compaction kicks in. See [context_management/overview.md](/ai_agents/architecture/context_management/overview.md) for the full analysis.
+- **All agents** send the full conversation history on every API call — no chunking, no delta updates. Context grows unboundedly until compaction kicks in. See [context_management/overview.md](/ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md) for the full analysis.
 - **Qwen Code** uses append-only JSONL event logs (`{sessionId}.jsonl`) with tree-structured `uuid`/`parentUuid` links — crash-safe by design, supports `/compress` without mutating history.
 - **Claude Code** has the most sophisticated system: 5-tier compaction from microcompact (server-side cache editing) through session memory (background agent maintaining a markdown summary file) to full compaction with PTL retry.
 - **Aider** relies on git history as the session record — every change is a commit, making the codebase itself the memory. Async background summarization doesn't block the main loop.

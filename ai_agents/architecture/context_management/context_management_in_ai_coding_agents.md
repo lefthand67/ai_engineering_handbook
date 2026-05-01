@@ -3,7 +3,7 @@ title: Context Management in AI Coding Agents
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-08'
+date: '2026-05-01'
 description: "Overview of the universal 'full history' pattern \u2014 why agents accumulate\
   \ millions of tokens despite bounded context windows, and the compaction taxonomy\
   \ used across 7 agents."
@@ -11,10 +11,10 @@ tags:
 - architecture
 - agents
 options:
-  version: 1.1.0
+  version: 1.1.1
   birth: '2026-04-05'
   type: guide
-  token_size: 1181
+  token_size: 1223
 ---
 
 # Context Management in AI Coding Agents
@@ -80,7 +80,7 @@ Before compaction:  [Turn 1] [Turn 2] ... [Turn 50]  = 100K tokens
 After compaction:   [Summary of 1..40] [Turn 41..50]  = 15K tokens
 ```
 
-Agents trigger compaction at varying thresholds — from 70% of the context window (Qwen-Code) down to a 13K-token buffer (Claude Code). See [comparison.md](comparison.md#compaction-strategy-comparison) for the full agent-by-agent breakdown.
+Agents trigger compaction at varying thresholds — from 70% of the context window (Qwen-Code) down to a 13K-token buffer (Claude Code). See [/ai_agents/architecture/context_management/context_management_agent_comparison.md](/ai_agents/architecture/context_management/context_management_agent_comparison.md#compaction-strategy-comparison) for the full agent-by-agent breakdown.
 
 ## Key Takeaway
 
@@ -90,13 +90,13 @@ The "context window" is the **per-call limit**. The "cumulative tokens" is the *
 
 This guide covers context management across 7 agents:
 
-- [comparison.md](comparison.md) — Side-by-side comparison of all agents
+- [/ai_agents/architecture/context_management/context_management_agent_comparison.md](/ai_agents/architecture/context_management/context_management_agent_comparison.md) — Side-by-side comparison of all agents
 - [aider.md](aider.md) — Aider's async background summarization
 - [claude_code.md](claude_code.md) — Claude Code's 5-tier system
 - [openclaude.md](openclaude.md) — OpenClaude's multi-provider 5-tier system
 - [openclaw.md](openclaw.md) — OpenClaw's sliding window + auto-compaction
 - [opencode.md](opencode.md) — OpenCode's reactive compaction agent
 - [kilocode.md](kilocode.md) — KiloCode's compaction agent
-- [qwen_code.md](qwen_code.md) — Qwen-Code's autocompact buffer + /compress
+- [context_management_qwen_code.md](context_management_qwen_code.md) — Qwen-Code's autocompact buffer + /compress
 
 All analyses are based on source code inspection. Version and commit hash are recorded in each file for traceability.

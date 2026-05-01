@@ -3,7 +3,7 @@ title: "Context Management \u2014 Agent Comparison"
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-08'
+date: '2026-05-01'
 description: "Side-by-side comparison of context management across 7 coding agents\
   \ \u2014 history transmission, detection methods, compaction strategies, and unique\
   \ innovations."
@@ -11,7 +11,7 @@ tags:
 - architecture
 - agents
 options:
-  version: 1.1.0
+  version: 1.1.1
   birth: '2026-04-05'
   type: guide
   token_size: 2036
@@ -43,7 +43,7 @@ options:
 | [OpenClaw](openclaw.md) | v2026.4.2 | `2781897d` |
 | [OpenCode](opencode.md) | v1.3.15 | `280eb16e` |
 | [KiloCode](kilocode.md) | v7.1.20 | `cb0c58c0` |
-| [Qwen-Code](qwen_code.md) | v0.14.0 | `e8552294` |
+| [Qwen-Code](context_management_qwen_code.md) | v0.14.0 | `e8552294` |
 
 ## Universal Pattern: Full History Every Call
 

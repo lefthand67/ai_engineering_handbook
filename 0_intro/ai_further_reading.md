@@ -4,24 +4,31 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
-  name: python3
   display_name: Python 3 (ipykernel)
   language: python
+  name: python3
 ---
 
+---
+title: What to read?
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Curated list of foundational and state-of-the-art reading materials for
+  AI systems engineering, from model building to requirements engineering.
+tags:
+- documentation
+- development
+date: '2026-05-01'
+options:
+  type: guide
+  version: 0.3.3
+  birth: '2025-10-01'
+  token_size: 1623
+---
 # What to read?
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.2  
-Birth: 2025-10-01  
-Modified: 2025-12-31
-
----
-
 ## Language Models
 
 ### Building LMs

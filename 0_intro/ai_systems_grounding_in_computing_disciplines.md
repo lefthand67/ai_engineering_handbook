@@ -11,18 +11,23 @@ kernelspec:
   language: python
 ---
 
+---
+title: AI Systems Grounding in Computing Disciplines
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Mapping the AI System Lifecycle to foundational computing disciplines.
+tags:
+- architecture
+- development
+options:
+  type: tutorial
+  version: 0.2.3
+  birth: '2025-12-05'
+  token_size: 2184
+---
 # AI Systems Grounding in Computing Disciplines
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.3  
-Birth: 2025-12-05  
-Last Modified: 2026-01-11
-
----
 
 +++
 
@@ -56,10 +61,11 @@ The table below maintains the official ACM/IEEE Computing Curricula structure bu
 The diagram shows AI Systems not as a separate branch, but as the **convergent product** of the foundational disciplines.
 
 ```mermaid
----
+
 config:
   theme: redux
   layout: elk
+options: {}
 ---
 flowchart TB
  subgraph Foundation["The Core Foundation (ACM Curricula Roots)"]

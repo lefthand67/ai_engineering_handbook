@@ -11,18 +11,23 @@ kernelspec:
   language: python
 ---
 
+---
+title: A Multi-Layered AI System Architecture
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-05-02"
+description: High-level overview of the five-layer AI system architecture.
+tags:
+- architecture
+- agents
+options:
+  type: tutorial
+  version: "0.2.2"
+  birth: "2025-09-10"
+  token_size: 3649
+---
 # A Multi-Layered AI System Architecture
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.2  
-Birth: 2025-09-10  
-Modified: 2026-10-12
-
----
 
 +++
 

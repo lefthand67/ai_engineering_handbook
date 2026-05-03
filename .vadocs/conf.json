@@ -227,6 +227,17 @@
   "governed_extensions": [".md", ".ipynb"],
   "governance_excludes": {
     "dirs": ["misc", ".github", "tests"],
-    "files": ["README.md", "CONTRIBUTING.md", "AGENTS.md", "RELEASE_NOTES.md"]
-  }
+    "files": [
+      "README.md",
+      "CONTRIBUTING.md",
+      "AGENTS.md",
+      "RELEASE_NOTES.md",
+      ".aider.chat.history.md",
+      "CLAUDE.md",
+      "CONVENTIONS.md",
+      "LICENSE.md",
+      "QWEN.md"
+    ]
+  },
+  "token_size_exclusions": [".ipynb"]
 }

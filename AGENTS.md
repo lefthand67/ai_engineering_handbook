@@ -106,6 +106,7 @@ Track intentional tech debt in `misc/plan/techdebt.md` with date, location, and 
 - Script structure order: data classes → configuration → main → validation → discovery → helpers → `if __name__`
 
 **Content Frontmatter (ADR-26042, supersedes ADR-26023):**
+- **Structural SSoT:** All structural requirements, including the mandatory **Dual-Block pattern** for Jupytext-paired files, are defined in the `tools/scripts/check_frontmatter.py` specification. Run `uv run python -m tools.scripts.check_frontmatter --help` for the authoritative spec.
 - Composable blocks: identity (`title`, `type`, `authors`), discovery (`description`, `tags`, `token_size`), lifecycle (`date`, `birth`, `version`)
 - MyST-native fields (top-level): `title`, `authors`, `date`, `description`, `tags` — verified against https://mystmd.org/guide/frontmatter
 - All other fields under `options.*` (ecosystem fields invisible to MyST)
@@ -260,13 +261,24 @@ Package manager: `uv` (never use pip directly)
 **Safe Editing:**
 - When doing bulk `replace_all` on artifact IDs (e.g., `S-26007` → `A-26009`), review each match for semantic correctness — some occurrences may be examples or format illustrations where the original prefix is intentional
 
+**Precise Targeting Protocol (Anti-Extrapolation Rule):**
+When resolving validation errors (e.g., from `check-link-format.py` or `check_frontmatter.py`):
+1. **No Global Cleanups:** Never assume a few errors in one file imply a systemic issue in a directory. Do NOT run "fix-all" scripts followed by global `git add` commands (e.g., `git add path/**/*.md`) to resolve point-errors.
+2. **Mandatory Error-to-Pair Mapping:** Before staging any fix, the agent MUST explicitly list the mapping:
+   `Error in [File A]` $\rightarrow$ `Fix [File A]` $\rightarrow$ `Stage [File A] AND [Paired File A.ipynb]`.
+3. **Minimum Viable Stage:** Stage ONLY the files explicitly mentioned in the error logs and their mandatory Jupytext pairs. 
+4. **Forbidden Globs:** The use of glob patterns in `git add` to fix specific validation errors is strictly prohibited unless the error log explicitly lists every file in that glob as broken.
+
+
 **Safe Git Commands:**
 - Use `git restore <file>` to discard changes, never `git checkout -- <file>` (ambiguous between branch and file operations)
 - Use `git restore --staged <file>` to unstage files, never `git reset HEAD <file>`
+- **NEVER use `git reset` for any operation; use `git restore` or `git switch` as appropriate**
 - Use `rm` (not `git rm`) for untracked files — `git rm` fails on files not in the index
 - Use `git switch <branch>` to change branches, never `git checkout <branch>`
 - Never use `git reset --hard`, `git push --force`, or `git clean -f` without explicit user request
-- **NEVER use the `--no-verify` flag when committing unless explicitly instructed by the user.**
+- **NEVER use the `sed` command for file modifications.** Use the provided `edit` or `write_file` tools. `sed` is prohibited due to risk of corruption and lack of precise targeting.
+- **NEVER use the `--no-verify` flag when committing.** This is strictly prohibited as it bypasses essential pre-commit hooks and validation scripts, leading to failures in the remote CI/CD pipeline. Resolve all hook failures locally before attempting to commit.
 - **Never use `git add -A`** — always stage files explicitly with `git add <specific-paths>` to avoid accidentally adding unrelated or untracked files
 
 **Symlinks:**

@@ -1,3 +1,4 @@
+
 ---
 title: OpenCode Agent Guide
 authors:
@@ -12,9 +13,8 @@ options:
   type: guide
   birth: 2026-04-26
   version: 1.0.0
-  token_size: 815
+  token_size: 816
 ---
-
 # OpenCode Agent Guide
 
 OpenCode is an open-source AI coding agent designed to provide a high-performance, provider-agnostic alternative to proprietary coding assistants. It emphasizes terminal-centric workflows, flexibility in model selection, and a robust client-server architecture.

@@ -9,34 +9,27 @@ kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
-title: "Connect to Capable LLMs Using API Keys"
+---
+
+---
+title: Connect to Capable LLMs Using API Keys
 authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "Guide on connecting tools like Aider and Open WebUI to capable cloud LLMs using API keys, including security and privacy best practices."
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-05-02"
+description: Guide on connecting AI agents to high-capability LLMs via API keys while
+  maintaining security and privacy.
 tags:
-- "agents"
-- "documentation"
+- agents
+- workflow
+- security
 options:
-  type: "guide"
+  type: guide
   birth: "2026-01-14"
-  version: "0.1.0"
-  token_size: 3225
+  version: "1.0.2"
+  token_size: 3168
 ---
-
 # Connect to Capable LLMs Using API Keys
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
-Birth: 2026-01-14  
-Last Modified: 2026-01-14
-
----
 
 +++
 

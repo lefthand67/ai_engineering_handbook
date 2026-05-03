@@ -9,41 +9,30 @@ kernelspec:
   display_name: Bash
   language: bash
   name: bash
-title: "Aider Commands Handout"
-authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "Comprehensive reference for Aider CLI commands, proxy configuration, and basic usage patterns."
-tags:
-- "agents"
-- "documentation"
-options:
-  type: "guide"
-  birth: "2025-11-18"
-  version: "0.2.0"
-  token_size: 1601
 ---
 
+---
+title: Aider Commands Handout
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Quick reference guide for Aider CLI commands, configuration, and usage
+  patterns.
+tags:
+- agents
+- development
+options:
+  type: guide
+  birth: '2025-11-18'
+  version: 0.2.1
+  token_size: 1549
+---
 # Aider Commands Handout
 
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.0  
-Birth: 2025-11-18  
-Last Modified: 2026-01-13
-
----
-
-+++
-
 Aider is an AI pair programmer that uses your code as context.
-
 :::{seealso} How to set up aider
-> [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.md) (to be created — general hybrid strategy and Ollama setup)
+> [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.ipynb) (to be created — general hybrid strategy and Ollama setup)
 
 +++
 

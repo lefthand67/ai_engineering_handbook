@@ -13,11 +13,20 @@ kernelspec:
 
 ---
 title: Onboarding
-author: Vadim Rudakov, rudakow.wadim@gmail.com
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-02-08
+description: Onboarding guide for the AI Engineering Book repository, covering setup
+  and key materials.
+tags:
+- documentation
+- development
 options:
+  type: guide
   version: 0.4.1
   birth: 2026-01-03
+  token_size: 923
 ---
 
 +++
@@ -85,7 +94,7 @@ Every content article must include a **YAML frontmatter** block with MyST-native
 
 1. ["Multi-Phase AI Pipeline"](/ai_system_layers/4_orchestration/workflows/multi_phase_ai_pipeline.ipynb) - the Research-Apply pipeline for AI-assisted engineering.
 1. ["General Purpose (Abstract Synthesis) vs Agentic (Instruction Adherence) Models"](/ai_system_layers/2_model/selection/general_purpose_vs_agentic_models.ipynb) - what models to use for different types of tasks.
-1. [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.md) (to be created — hybrid strategy and Ollama setup)
+1. [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.ipynb) (to be created — hybrid strategy and Ollama setup)
 
 +++
 

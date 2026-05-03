@@ -692,7 +692,7 @@ All less important stuff like drafts and public relations materials moved to `mi
 
 #### Developer Experience
 
-* **Aider Handout Expanded:** "Aider Integration with LLMs Using API Keys" workflow introduced in [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.md).
+* **Aider Handout Expanded:** "Aider Integration with LLMs Using API Keys" workflow introduced in [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.ipynb).
 * **Aider Configuration**: New `.aider.conf.yml` to automate Jupytext synchronization during AI-assisted coding sessions .
 * **Deps updates**: New environment dependency added - `tiktoken` for analyzing token efficiency of our system prompts. 
 
@@ -944,7 +944,7 @@ All less important stuff like drafts and public relations materials moved to `mi
 
 #### Developer Experience
 
-* **Aider Handout Expanded:** "Aider Integration with LLMs Using API Keys" workflow introduced in [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.md).
+* **Aider Handout Expanded:** "Aider Integration with LLMs Using API Keys" workflow introduced in [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.ipynb).
 * **Aider Configuration**: New `.aider.conf.yml` to automate Jupytext synchronization during AI-assisted coding sessions .
 * **Deps updates**: New environment dependency added - `tiktoken` for analyzing token efficiency of our system prompts. 
 

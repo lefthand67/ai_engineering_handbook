@@ -9,41 +9,30 @@ kernelspec:
   display_name: Python 3 (ipykernel)
   language: python
   name: python3
-title: "vim-ollama: LLM Tab Completion Nuances"
-authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "Detailed explanation of FIM (Fill-In-the-Middle) mechanics and configuration for vim-ollama tab completion."
-tags:
-- "agents"
-- "documentation"
-options:
-  type: "guide"
-  birth: "2026-01-13"
-  version: "0.1.0"
-  token_size: 1149
 ---
 
+---
+title: 'vim-ollama: LLM Tab Completion Nuances'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Detailed technical explanation of Fill-In-the-Middle (FIM) mechanics
+  and configuration for vim-ollama tab completion.
+tags:
+- agents
+- development
+options:
+  type: guide
+  birth: '2026-01-13'
+  version: 0.1.1
+  token_size: 1101
+---
 # vim-ollama: LLM Tab Completion Nuances
 
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.0  
-Birth: 2026-01-13  
-Last Modified: 2026-01-13
-
----
-
-+++
-
 This handbook explains the mechanics of LLM-based tab completion within Vim specifically for the `vim-ollama` plugin and why specific model-config alignment is required for it to function correctly.
-
 :::{seealso}
-> Setup vim-ollama: [vim-ollama Plugin Setup](/ai_agents/guides/vim_ollama/vim_ollama_plugin_setup.md)
+> Setup vim-ollama: [vim-ollama Plugin Setup](/ai_agents/guides/vim_ollama/vim_ollama_plugin_setup.ipynb)
 :::
 
 +++

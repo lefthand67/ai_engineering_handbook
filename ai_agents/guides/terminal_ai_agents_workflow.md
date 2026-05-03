@@ -9,22 +9,26 @@ kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
-title: "Terminal AI Agents Workflow"
-authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "General philosophy and workflow patterns for using a hybrid of editor plugins and CLI agents."
-tags:
-- "agents"
-- "documentation"
-options:
-  type: "guide"
-  birth: "2026-01-15"
-  version: "1.0.0"
-  token_size: 1061
 ---
 
+---
+title: Terminal AI Agents Workflow
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: A guide to the hybrid development workflow combining editor plugins and
+  CLI agents for maximum efficiency.
+tags:
+- agents
+- workflow
+- development
+options:
+  type: guide
+  birth: '2026-01-01'
+  version: 1.0.0
+  token_size: 1076
+---
 # Terminal AI Agents Workflow
 
 +++
@@ -87,8 +91,8 @@ For large-context planning tasks, use a capable cloud LLM (Gemini, Grok) via API
 - **Editor model:** Local SLM for coding, testing, and fixing
 
 :::{seealso}
-> - [Connect to Cloud LLMs via API](/ai_agents/guides/connect_to_capable_llms_api_keys.md) — API key setup and model orchestration
-> - [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.md) — CLI agent reference
+> - [Connect to Cloud LLMs via API](/ai_agents/guides/connect_to_capable_llms_api_keys.ipynb) — API key setup and model orchestration
+> - [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.ipynb) — CLI agent reference
 :::
 
 +++
@@ -97,8 +101,8 @@ For large-context planning tasks, use a capable cloud LLM (Gemini, Grok) via API
 
 +++
 
-- [vim-ollama Plugin Setup](/ai_agents/guides/vim_ollama/vim_ollama_plugin_setup.md) — Vim installation, key mappings, troubleshooting
-- [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.md) — CLI agent setup, commands, proxy configuration
+- [vim-ollama Plugin Setup](/ai_agents/guides/vim_ollama/vim_ollama_plugin_setup.ipynb) — Vim installation, key mappings, troubleshooting
+- [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.ipynb) — CLI agent setup, commands, proxy configuration
 - [Claude Code Memory](/ai_agents/guides/claude/claude_code_memory_vs_claude_md.md) — Claude Code project memory and `.claude/` conventions
-- [Kilo Code CLI Setup](/ai_agents/guides/kilocode/kilocode_cli_setup.md) — Kilo Code installation and configuration
-- [Connect to Cloud LLMs via API](/ai_agents/guides/connect_to_capable_llms_api_keys.md) — API keys, free-tier limits, data privacy
+- [Kilo Code CLI Setup](/ai_agents/guides/kilocode/kilocode_cli_setup.ipynb) — Kilo Code installation and configuration
+- [Connect to Cloud LLMs via API](/ai_agents/guides/connect_to_capable_llms_api_keys.ipynb) — API keys, free-tier limits, data privacy

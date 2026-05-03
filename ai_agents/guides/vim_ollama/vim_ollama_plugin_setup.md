@@ -9,28 +9,31 @@ kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
-title: "vim-ollama Plugin Setup"
-authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "Step-by-step installation and configuration guide for the vim-ollama plugin on Fedora/Linux."
-tags:
-- "agents"
-- "documentation"
-options:
-  type: "guide"
-  birth: "2026-01-15"
-  version: "1.0.0"
-  token_size: 1799
 ---
 
+---
+title: vim-ollama Plugin Setup
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Installation and configuration guide for the vim-ollama plugin, focusing
+  on in-editor AI completion and refactoring.
+tags:
+- agents
+- development
+options:
+  type: guide
+  birth: '2026-01-01'
+  version: 1.0.0
+  token_size: 1808
+---
 # vim-ollama Plugin Setup
 
 +++
 
 :::{seealso}
-See [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.md) for the general hybrid strategy, workflow patterns, and when to use editor plugins vs CLI agents.
+See [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.ipynb) for the general hybrid strategy, workflow patterns, and when to use editor plugins vs CLI agents.
 :::
 
 +++
@@ -196,8 +199,8 @@ The typical vim-ollama workflow for single-file tasks:
 For multi-file refactoring and git-aware commits, use a CLI agent like Aider instead.
 
 :::{seealso}
-> - [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.md) — general hybrid strategy
-> - [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.md) — CLI agent reference
+> - [Terminal AI Agents Workflow](/ai_agents/guides/terminal_ai_agents_workflow.ipynb) — general hybrid strategy
+> - [Aider Commands Handout](/ai_agents/guides/aider/aider_commands_handout.ipynb) — CLI agent reference
 :::
 
 +++

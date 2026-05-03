@@ -1,20 +1,21 @@
+
 ---
-title: "Creating Consultant Skills for Claude Code"
+title: Creating Consultant Skills for Claude Code
 authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-description: "Recipe for wrapping JSON consultant prompts as Claude Code skills with symlink-to-source pattern and namespace conventions."
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Recipe for wrapping JSON consultant prompts as Claude Code skills with
+  symlink-to-source pattern and namespace conventions.
 tags:
-- "agents"
-- "prompts"
-date: "2026-04-11"
+- agents
+- prompts
+date: '2026-04-11'
 options:
-  type: "guide"
-  birth: "2026-03-25"
-  version: "1.0.1"
+  type: guide
+  birth: '2026-03-25'
+  version: 1.0.1
   token_size: 1151
 ---
-
 # Creating Consultant Skills for Claude Code
 
 ## Problem
@@ -55,10 +56,13 @@ automatically updates the corresponding skill.
 Every `SKILL.md` follows the same pattern:
 
 ```yaml
----
+
 name: sv-<skill-name>
 description: <one-line description — Claude uses this to decide when to load the skill>
-argument-hint: [<hint for autocomplete>]
+argument-hint:
+- <hint for autocomplete>
+options:
+  type: guide
 ---
 
 You are now operating as the consultant defined in the following JSON prompt.

@@ -9,22 +9,25 @@ kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
-title: "Kilo Code CLI: Installation and Setup"
-authors:
-- name: "Vadim Rudakov"
-  email: "rudakow.wadim@gmail.com"
-date: "2026-04-27"
-description: "Step-by-step setup guide for Kilo Code CLI (Kilo platform gateway, 500+ cloud models): npm install, authentication, free-tier models, and MCP server setup."
-tags:
-- "agents"
-- "documentation"
-options:
-  type: "guide"
-  birth: "2026-03-15"
-  version: "1.1.0"
-  token_size: 1798
 ---
 
+---
+title: 'Kilo Code CLI: Installation and Setup'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-05-02"
+description: Installation and configuration guide for Kilo Code CLI, including proxy
+  setup and authentication.
+tags:
+- agents
+- development
+options:
+  type: guide
+  birth: "2026-03-01"
+  version: "1.0.0"
+  token_size: 1775
+---
 # Kilo Code CLI: Installation and Setup
 
 +++

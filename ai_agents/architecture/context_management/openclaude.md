@@ -1,12 +1,12 @@
+
 ---
-title: "Context Management \u2014 OpenClaude"
+title: Context Management — OpenClaude
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 date: '2026-04-08'
-description: "Deep dive into OpenClaude's context management \u2014 5-tier system\
-  \ inherited from Claude Code with multi-provider support, session memory, and cache-aware\
-  \ compaction."
+description: Deep dive into OpenClaude's context management — 5-tier system inherited
+  from Claude Code with multi-provider support, session memory, and cache-aware compaction.
 tags:
 - architecture
 - agents
@@ -14,9 +14,8 @@ options:
   version: 1.0.0
   birth: '2026-04-08'
   type: guide
-  token_size: 2833
+  token_size: 2822
 ---
-
 # Context Management — OpenClaude
 
 **Agent version:** 0.1.8

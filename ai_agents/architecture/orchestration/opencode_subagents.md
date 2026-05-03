@@ -1,3 +1,4 @@
+
 ---
 title: OpenCode/KiloCode Subagent Orchestration Analysis
 authors:
@@ -6,14 +7,15 @@ authors:
 date: 2026-04-26
 description: Technical analysis of the subagent delegation and session isolation mechanism
   in OpenCode (and its fork KiloCode)
-tags: [architecture, agents]
+tags:
+- architecture
+- agents
 options:
   type: guide
   birth: 2026-04-26
   version: 1.1.0
-  token_size: 1283
+  token_size: 1285
 ---
-
 # OpenCode/KiloCode Subagent Orchestration Analysis
 
 OpenCode implements a hierarchical agent delegation system where a primary agent can spawn specialized subagents via the `Task` tool. This creates a recursive session model where subagents operate in isolated contexts but share the same physical workspace.

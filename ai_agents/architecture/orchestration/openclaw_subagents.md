@@ -1,3 +1,4 @@
+
 ---
 title: OpenClaw Subagent Orchestration Analysis
 authors:
@@ -5,14 +6,15 @@ authors:
   email: rudakow.wadim@gmail.com
 date: 2026-04-26
 description: Technical analysis of the session-key routed subagent system in OpenClaw
-tags: [architecture, agents]
+tags:
+- architecture
+- agents
 options:
   type: guide
   birth: 2026-04-26
   version: 1.0.0
-  token_size: 1348
+  token_size: 1350
 ---
-
 # OpenClaw Subagent Orchestration Analysis
 
 OpenClaw implements a highly structured subagent system based on **Session Key Routing**. Rather than using object-oriented parent-child links, it encodes the agent hierarchy directly into the session keys.

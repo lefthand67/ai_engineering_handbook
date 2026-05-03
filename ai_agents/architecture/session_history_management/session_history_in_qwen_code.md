@@ -1,17 +1,21 @@
----
-title: "Session History in Qwen Code"
-type: guide
-authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: Technical reference on Qwen Code's JSONL-based session history format — data structures, write mechanisms, compression, and session management.
-tags: [workflow, architecture]
-date: 2026-04-03
-options:
-  version: 0.1.0
-  birth: 2026-04-03
----
 
+---
+title: Session History in Qwen Code
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Technical reference on Qwen Code's JSONL-based session history format
+  — data structures, write mechanisms, compression, and session management.
+tags:
+- workflow
+- architecture
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.1.1
+  birth: '2026-04-03'
+  token_size: 5048
+---
 # Session History in Qwen Code
 
 **Version:** Qwen Code v0.14.1

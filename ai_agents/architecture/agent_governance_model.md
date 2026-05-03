@@ -1,21 +1,22 @@
+
 ---
 title: Agent Governance Model (L0-L5)
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 date: 2026-04-27
-description: "A conceptual framework for separating agent infrastructure from policy enforcement (L0-L5)."
+description: A conceptual framework for separating agent infrastructure from policy
+  enforcement (L0-L5).
 tags:
 - architecture
 - agents
 - security
 options:
-  token_size: 698
   version: 1.0.0
   birth: 2026-04-27
   type: guide
+  token_size: 706
 ---
-
 # Agent Governance Model (L0-L5)
 
 To analyze and implement security in AI agents, we distinguish between the **Infrastructure Layers** (the plumbing) and the **Governance Layers** (the rules). This separation ensures that we can change security policies without modifying the underlying execution engine.

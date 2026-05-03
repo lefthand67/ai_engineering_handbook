@@ -1,19 +1,21 @@
+
 ---
 title: Subagents Realization Report
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-26
+date: '2026-05-02'
 description: A technical synthesis of how various AI agent frameworks implement subagent
   delegation, context isolation, and orchestration.
-tags: [architecture, agents]
+tags:
+- architecture
+- agents
 options:
   type: guide
-  birth: 2026-04-26
-  version: 1.0.0
-  token_size: 2877
+  birth: '2026-04-26'
+  version: 1.0.1
+  token_size: 2872
 ---
-
 # Subagents Realization Report
 
 ## Methodological Note: Defining "Subagent" Realization

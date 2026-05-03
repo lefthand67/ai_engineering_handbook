@@ -1,19 +1,21 @@
+
 ---
 title: Gemini CLI Subagents Analysis
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-26
+date: '2026-05-02'
 description: Technical analysis of the subagent orchestration and activity streaming
   in Gemini CLI
-tags: [architecture, agents]
+tags:
+- architecture
+- agents
 options:
   type: guide
-  birth: 2026-04-26
-  version: 1.0.0
-  token_size: 1283
+  birth: '2026-04-26'
+  version: 1.0.1
+  token_size: 1277
 ---
-
 # Gemini CLI Subagents Analysis
 
 Gemini CLI implements a **Supervisor-Worker** pattern where the primary agent orchestrates sub-tasks via a unified `AgentTool`. The system emphasizes real-time observability through a structured activity bridge.

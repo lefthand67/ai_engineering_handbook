@@ -1,11 +1,12 @@
+
 ---
-title: "Context Management \u2014 Qwen-Code"
+title: Context Management — Qwen-Code
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 date: '2026-05-01'
-description: "Deep dive into Qwen-Code's context management \u2014 autocompact buffer,\
-  \ /compress command, token limits registry, and JSONL-backed session history reconstruction."
+description: Deep dive into Qwen-Code's context management — autocompact buffer, /compress
+  command, token limits registry, and JSONL-backed session history reconstruction.
 tags:
 - architecture
 - agents
@@ -13,9 +14,8 @@ options:
   version: 1.1.0
   birth: '2026-04-05'
   type: guide
-  token_size: 2579
+  token_size: 2572
 ---
-
 # Context Management — Qwen-Code
 
 **Agent version:** v0.14.0 (commit `e8552294`)

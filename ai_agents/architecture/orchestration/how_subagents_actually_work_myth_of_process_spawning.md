@@ -1,3 +1,4 @@
+
 ---
 title: 'How Subagents Actually Work: The Myth of Process Spawning'
 authors:
@@ -14,9 +15,8 @@ options:
   version: 1.1.0
   birth: '2026-04-08'
   type: guide
-  token_size: 1316
+  token_size: 1317
 ---
-
 # How Subagents Actually Work: The Myth of Process Spawning
 
 ## The Misconception

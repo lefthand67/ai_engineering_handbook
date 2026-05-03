@@ -1,18 +1,21 @@
+
 ---
-title: "Skill Discovery Across AI Coding Platforms"
+title: Skill Discovery Across AI Coding Platforms
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-date: 2026-04-10
-description: "How AI coding platforms discover, index, and load skills — mechanisms, directory layouts, and setup instructions"
-tags: [context_management, architecture]
-token_size: ~800
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: How AI coding platforms discover, index, and load skills — mechanisms,
+  directory layouts, and setup instructions
+tags:
+- context_management
+- architecture
 options:
   type: guide
-  birth: 2026-04-10
-  version: 1.0.0
+  birth: '2026-04-10'
+  version: 1.0.1
+  token_size: 1625
 ---
-
 # Skill Discovery Across AI Coding Platforms
 
 ## Source and Reproducibility

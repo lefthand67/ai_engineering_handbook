@@ -1,18 +1,20 @@
+
 ---
 title: Why Qwen Code Uses TypeScript, Not Python
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-04
-description: "Technical rationale for Qwen Code's TypeScript implementation over Python"
-tags: [development, architecture]
-token_size: ~800
+description: Technical rationale for Qwen Code's TypeScript implementation over Python
+tags:
+- development
+- architecture
 options:
   type: guide
   birth: 2026-04-04
   version: 1.0.0
+  token_size: 1059
 ---
-
 # Why Qwen Code Uses TypeScript, Not Python
 
 ## Implementation Language Decision

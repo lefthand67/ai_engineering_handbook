@@ -1,3 +1,4 @@
+
 ---
 title: OpenClaude Subagent Orchestration Analysis
 authors:
@@ -6,14 +7,15 @@ authors:
 date: 2026-04-26
 description: Technical analysis of the Coordinator pattern and asynchronous task management
   in OpenClaude
-tags: [architecture, agents]
+tags:
+- architecture
+- agents
 options:
   type: guide
   birth: 2026-04-26
   version: 1.1.0
-  token_size: 1264
+  token_size: 1266
 ---
-
 # OpenClaude Subagent Orchestration Analysis
 
 OpenClaude utilizes a **Coordinator Pattern**, where a central application state manages a registry of asynchronous tasks. Subagents are implemented as `local_agent` tasks that can run either in the foreground (blocking/interactive) or the background.

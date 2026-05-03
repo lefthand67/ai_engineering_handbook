@@ -1,12 +1,13 @@
+
 ---
-title: "Context Management \u2014 OpenClaw"
+title: Context Management — OpenClaw
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 date: '2026-04-05'
-description: "Deep dive into OpenClaw's sliding window approach and auto-compaction\
-  \ \u2014 how it limits history turns, sizes context budgets, and delegates to the\
-  \ pi-coding-agent library."
+description: Deep dive into OpenClaw's sliding window approach and auto-compaction
+  — how it limits history turns, sizes context budgets, and delegates to the pi-coding-agent
+  library.
 tags:
 - architecture
 - agents
@@ -14,9 +15,8 @@ options:
   version: 1.0.0
   birth: '2026-04-05'
   type: guide
-  token_size: 2011
+  token_size: 2002
 ---
-
 # Context Management — OpenClaw
 
 **Agent version:** v2026.4.2 (commit `2781897d`)

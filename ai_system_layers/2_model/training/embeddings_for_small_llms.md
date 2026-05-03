@@ -1,15 +1,35 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.19.1
+kernelspec:
+  name: python3
+  display_name: Python 3 (ipykernel)
+  language: python
+---
+---
+title: 'The Embedded Truth: A Practical Handbook for Engineers'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: A practical handbook explaining why embeddings are critical for small
+  LLMs, how they work, and how to optimize them for production-grade AI systems.
+tags:
+- model
+options:
+  type: guide
+  birth: '2025-10-20'
+  version: 1.0.2
+  token_size: 2680
+---
 # The Embedded Truth: A Practical Handbook for Engineers
 
----
 
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.0.2  
-Birth: 2025-10-2025  
-Modified: 2025-12-18
-
----
-
-If you're working with small LLMs (1B-14B parameters), embeddings aren't just another technical detail — they're the **foundation of your model's intelligence**. This handbook explains why embeddings matter, when to focus on them, and how to avoid common pitfalls.
+This handbook explains why embeddings matter, when to focus on them, and how to avoid common pitfalls.
 
 ## **1. What Are Embeddings Really?**
 
@@ -86,18 +106,18 @@ A 7B model with optimized embeddings can outperform a generic 13B model on domai
 
 ### **High-Priority Scenarios**
 
-✅ **You're building RAG systems** - Retrieval quality depends entirely on embedding similarity  
-✅ **Your domain has specialized vocabulary** - Medical, legal, technical terms  
-✅ **You're deploying to edge devices** - Memory and compute constraints  
-✅ **Inference costs matter** - Better embeddings = smaller/faster models  
-✅ **You're fine-tuning base models** - Embedding layers significantly impact adaptation  
+✅ **You're building RAG systems** - Retrieval quality depends entirely on embedding similarity
+✅ **Your domain has specialized vocabulary** - Medical, legal, technical terms
+✅ **You're deploying to edge devices** - Memory and compute constraints
+✅ **Inference costs matter** - Better embeddings = smaller/faster models
+✅ **You're fine-tuning base models** - Embedding layers significantly impact adaptation
 
 ### **Lower-Priority Scenarios**
 
-❌ **You're only using API-based LLMs** - The provider handles optimizations  
-❌ **You're working with general-purpose chat** - Base models may be sufficient  
-❌ **You're in early prototyping** - Premature optimization waste  
-❌ **Performance differences are negligible** - If it works, don't fix it  
+❌ **You're only using API-based LLMs** - The provider handles optimizations
+❌ **You're working with general-purpose chat** - Base models may be sufficient
+❌ **You're in early prototyping** - Premature optimization waste
+❌ **Performance differences are negligible** - If it works, don't fix it
 
 ## **4. The Embedding Diagnostic Checklist**
 
@@ -116,7 +136,7 @@ Ask these questions about your model:
 
 4. **Are similar concepts clustered?**
    - Test: "programming" and "coding" should have similar representations
-   
+
 Use cosine distance algorithms to compare the vectors for words in different context:
 - polysemy for the same word form,
 - synonymy for the same meaning of different word forms.

@@ -12,17 +12,23 @@ kernelspec:
   language: python
 ---
 
-# Model Sizing, Quantization, and VRAM Budgeting for Local Deployment
-
-+++
-
 ---
-
-Owner: Vadim Rudakov, rudakow.wadim@gmail.com
-Version: 1.0.0
-Birth: 2025-10-19
-Last Modified: 2026-02-05
-
+title: Model Sizing, Quantization, and VRAM Budgeting for Local Deployment
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Technical guide for sizing local language models, budgeting VRAM for
+  weights and KV caches, and choosing appropriate quantization levels for production
+  deployment.
+tags:
+- model
+- hardware
+date: '2026-05-02'
+options:
+  type: guide
+  version: 1.0.2
+  birth: '2025-10-19'
+  token_size: 1936
 ---
 
 +++

@@ -11,16 +11,25 @@ kernelspec:
   name: python3
 ---
 
+---
+title: Models list
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: A categorized index of Large and Small Language Models currently in use
+  or monitored for suitability within the AI engineering stack.
+tags:
+- model
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.1.3
+  birth: '2025-12-20'
+  token_size: 485
+---
 # Models list
 
------
-
-Owner: Vadim Rudakov, lefthand67@gmail.com
-Version: 0.1.1
-Birth: 2025-12-20
-Last Modified: 2025-12-31
-
------
++++
 
 ## In use
 

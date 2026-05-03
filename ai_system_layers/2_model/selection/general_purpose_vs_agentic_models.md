@@ -11,21 +11,25 @@ kernelspec:
   language: python
 ---
 
+---
+title: General Purpose (Abstract Synthesis) vs Agentic (Instruction Adherence) Models
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Explores the bifurcation of LLM utility between General Purpose models
+  (optimized for abstract synthesis) and Agentic models (optimized for strict instruction
+  adherence).
+tags:
+- model
+- architecture
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.1.3
+  birth: '2026-01-16'
+  token_size: 1170
+---
 # General Purpose (Abstract Synthesis) vs Agentic (Instruction Adherence) Models
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
-Birth: 2026-01-16  
-Last Modified: 2026-01-17
-
----
-
-+++
-
 ## **1. The Core Divergence: Synthesis vs. Adherence**
 
 +++

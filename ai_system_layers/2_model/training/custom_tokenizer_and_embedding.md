@@ -1,13 +1,35 @@
+---
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.19.1
+kernelspec:
+  name: python3
+  display_name: Python 3 (ipykernel)
+  language: python
+---
+---
+title: Custom Domain Embeddings and Tokenization for Local LLMs
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: This guide outlines the critical steps and architectural considerations
+  for creating a robust, domain-specific embedding model and its associated custom
+  vocabulary (tokenizer) for use with small, local Language Models (1B-14B) in a production
+  setting.
+tags:
+- model
+options:
+  type: guide
+  birth: '2025-10-27'
+  version: 1.0.2
+  token_size: 2024
+---
 # Custom Domain Embeddings and Tokenization for Local LLMs
 
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.0.2  
-Birth: 2025-10-27  
-Modified: 2025-12-18
-
----
 
 This guide outlines the critical steps and architectural considerations for creating a robust, domain-specific embedding model and its associated custom vocabulary (tokenizer) for use with small, local Language Models (1B-14B) in a production setting.
 
@@ -106,7 +128,7 @@ Contextual embeddings require comparative data, not just raw text.
     from torch.utils.data import DataLoader
 
     # 1. Load an efficient base model
-    model = SentenceTransformer('all-MiniLM-L6-v2') 
+    model = SentenceTransformer('all-MiniLM-L6-v2')
 
     # 2. Prepare your labeled data (examples) into a DataLoader
     train_dataloader = DataLoader(train_examples, shuffle=True, batch_size=32)

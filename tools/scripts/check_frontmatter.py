@@ -6,7 +6,67 @@ Validates YAML frontmatter in governed markdown files against the hub+spoke
 config chain defined in .vadocs/. Enforces ADR-26042 (Common Frontmatter
 Standard): block composition, field presence, format, and allowed values.
 
-Scope:
+STRUCTURAL SPECIFICATION (S-S-o-T):
+----------------------------------
+Governed files must follow one of two structural patterns based on their pairing:
+
+1. The Dual-Block Pattern (For Jupytext-Paired Files):
+   Required for any .md file that has a paired .ipynb file.
+   Merging these blocks breaks Jupytext synchronization and the validation pipeline.
+
+   Structure:
+   ---
+   # Block 1: Jupytext/Kernel Metadata
+   jupytext:
+     text_representation:
+       extension: .md
+       ...
+   kernelspec:
+     name: python3
+     ...
+   ---
+
+   ---
+   # Block 2: Project Identity, Discovery, and Lifecycle
+   title: "Document Title"
+   authors:
+     - name: Vadim Rudakov
+       email: rudakow.wadim@gmail.com
+   date: "2026-05-01"
+   description: "Elevator pitch"
+   tags: [tag1, tag2]
+   options:
+     type: guide  # Mandatory: determines the validation spoke config
+     birth: "2026-01-01"
+     version: 1.0.0
+   ---
+
+2. The Single-Block Pattern (For Standard Governed Files):
+   Used for files without a .ipynb pair (e.g., most ADRs, configs, guides).
+
+   Structure:
+   ---
+   title: "Document Title"
+   authors:
+     - name: Vadim Rudakov
+       email: rudakow.wadim@gmail.com
+   date: "2026-05-01"
+   description: "Elevator pitch"
+   tags: [tag1, tag2]
+   options:
+     type: adr
+     ...
+   ---
+
+Maintenance Rules:
+-------------------
+- date: Must be updated to today's date on every modification.
+- options.version: Must be incremented according to SemVer:
+    - Patch (1.0.0 -> 1.0.1): Simple edits, typos, or minor corrections.
+    - Minor (1.0.0 -> 1.1.0): New functionality or content additions.
+    - Major (1.0.0 -> 2.0.0): Significant architectural or decision changes.
+
+Validation Scope:
     - ALL frontmatter validation: field presence, format, allowed values
     - Hub-level rules (blocks, field registry, tags, date format)
     - Spoke-level rules (type-specific required fields, statuses, severity)
@@ -104,6 +164,7 @@ class FrontmatterError:
 # We use a non-greedy match for the content and ensure the closing delimiter
 # is followed by a newline to confirm it's on its own line.
 FRONTMATTER_PATTERN = re.compile(r"^---\s*\n([\s\S]*?)---\s*\n", re.DOTALL)
+DEFAULT_TOKEN_ENCODING = "cl100k_base"
 
 # Config cache — keyed by doc_type string (or None for hub-only).
 # Populated on first load_config_chain() call per type, cleared in tests
@@ -120,6 +181,7 @@ _config_cache: dict[str | None, tuple[dict, dict | None]] = {}
 # ---------------------------------------------------------------------------
 REPO_ROOT: Path = detect_repo_root()
 HUB_CONFIG_PATH: Path = get_config_path(REPO_ROOT)
+HUB_CONFIG_REL: str = str(HUB_CONFIG_PATH.relative_to(REPO_ROOT))
 HUB_CONFIG: dict = json.loads(HUB_CONFIG_PATH.read_text(encoding="utf-8"))
 
 # Tags in hub are dict with descriptions — extract keys for validation set
@@ -155,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     """
     # -- Argument parsing ------------------------------------------------
     parser = argparse.ArgumentParser(
-        description="Validate frontmatter against .vadocs/ config chain (ADR-26042).",
+        description="Validate frontmatter against .vadocs/ config chain (ADR-26042). Refer to the module docstring (accessible via --help) for the structural Dual-Block specification.",
     )
     parser.add_argument(
         "paths",
@@ -222,7 +284,7 @@ def main(argv: list[str] | None = None) -> int:
                         error_type="missing_frontmatter",
                         field=None,
                         message="file has governed extension but no YAML frontmatter present — all governed files must have frontmatter to be subject to validation",
-                        config_source=".vadocs/conf.json → governed_extensions",
+                        config_source=f"{HUB_CONFIG_REL} → governed_extensions",
                     )
                 )
             continue
@@ -233,13 +295,14 @@ def main(argv: list[str] | None = None) -> int:
         # rules cannot be enforced — this is a validation gap that must be closed.
         doc_type = resolve_type(frontmatter)
         if doc_type is None:
+            logger.debug(f"Missing type for {file_path}: parsed frontmatter was {frontmatter}")
             all_errors.append(
                 FrontmatterError(
                     file_path=file_path,
                     error_type="missing_type",
                     field="options.type",
                     message="frontmatter present but missing required 'options.type' — type determines which validation rules apply and is required for governance",
-                    config_source=".vadocs/conf.json → field_registry.type",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry.type",
                 )
             )
             continue
@@ -253,7 +316,15 @@ def main(argv: list[str] | None = None) -> int:
         # Agent-friendly: file path for navigation, field for quick fix,
         # config_source for rule lookup.
         field_part = f":{e.field}" if e.field else ""
-        print(f"{e.file_path}{field_part} — {e.message} [{e.config_source}]")
+        logger.error(f"{e.file_path}{field_part} — {e.message} [{e.config_source}]")
+
+    if all_errors:
+        logger.info(f"{'-'*80}")
+        logger.info("DIAGNOSTIC TIP: If the error above seems misleading (e.g., 'missing type' "
+                    "when the field is present), there may be a YAML syntax error in the "
+                    "frontmatter block. Run the following command for detailed debug logs:")
+        logger.info(f"  uv run python -m tools.scripts.check_frontmatter <file_path> -v")
+        logger.info(f"{'-'*80}")
 
     # -- Exit code: 0 if no real errors, 1 otherwise ----------------------
     return 1 if all_errors else 0
@@ -353,7 +424,7 @@ def validate_parsed_frontmatter(
                 error_type="unknown_type",
                 field="options.type",
                 message=f"unknown type '{doc_type}', expected one of {sorted(VALID_TYPES)}",
-                config_source=".vadocs/conf.json → types",
+                config_source=f"{HUB_CONFIG_REL} → types",
             )
         ]
 
@@ -394,6 +465,11 @@ def validate_parsed_frontmatter(
     # Step 7: Check options.* namespace compliance (warnings only until Phase 1.15).
     errors.extend(_check_options_namespace(frontmatter, file_path, hub))
 
+    # Step 8: Reject duplicate governed fields across multiple blocks.
+    # Requires raw content to detect block separation.
+    if content is not None:
+        errors.extend(_check_duplicate_governed_fields(content, file_path, hub))
+
     return errors
 
 
@@ -402,9 +478,9 @@ def validate_parsed_frontmatter(
 # ======================
 
 
-def _calculate_tokens(text: str) -> int:
-    """Calculate token count using cl100k_base encoding (OpenAI standard)."""
-    encoding = tiktoken.get_encoding("cl100k_base")
+def calculate_tokens(text: str) -> int:
+    """Calculate token count using the project's default encoding."""
+    encoding = tiktoken.get_encoding(DEFAULT_TOKEN_ENCODING)
     return len(encoding.encode(text, disallowed_special=()))
 
 
@@ -448,11 +524,11 @@ def _find_field_block(field: str, doc_type: str, hub_config: dict) -> str:
     blocks = hub_config.get("blocks", {})
     for block_name, block_fields in blocks.items():
         if field in block_fields:
-            return f".vadocs/conf.json → blocks.{block_name}"
+            return f"{HUB_CONFIG_REL} → blocks.{block_name}"
     types = hub_config.get("types", {})
     type_def = types.get(doc_type, {})
     if field in type_def.get("required", []):
-        return f".vadocs/conf.json → types.{doc_type}.required"
+        return f"{HUB_CONFIG_REL} → types.{doc_type}.required"
     return f".vadocs/types/{doc_type}.conf.json → required_fields"
 
 
@@ -509,6 +585,12 @@ def _validate_field_value(
         if content is None:
             return None  # Cannot validate accuracy without content
 
+        # Check if the file extension is excluded from token_size validation via hub config.
+        # This prevents conflicts between .md and .ipynb pairs.
+        token_exclusions = HUB_CONFIG.get("token_size_exclusions", [])
+        if file_path.suffix in token_exclusions:
+            return None
+
         try:
             token_val = int(value)
         except (ValueError, TypeError):
@@ -517,10 +599,10 @@ def _validate_field_value(
                 error_type="invalid_format",
                 field="token_size",
                 message=f"token_size must be an integer, got '{value}'",
-                config_source=".vadocs/conf.json → field_registry.token_size",
+                config_source=f"{HUB_CONFIG_REL} → field_registry.token_size",
             )
 
-        actual_count = _calculate_tokens(content)
+        actual_count = calculate_tokens(content)
 
         # Contract: We allow a small margin (10 tokens) to account for minor
         # tokenizer version differences or insignificant whitespace changes
@@ -532,7 +614,7 @@ def _validate_field_value(
                 error_type="invalid_value",
                 field="token_size",
                 message=f"declared token_size '{value}' differs from actual count '{actual_count}' — To fix: run 'uv run tools/scripts/update_token_counts.py {file_path}' and commit again",
-                config_source=".vadocs/conf.json → field_registry.token_size",
+                config_source=f"{HUB_CONFIG_REL} → field_registry.token_size",
             )
 
     # Date format validation (date, birth) — regex from hub config
@@ -546,7 +628,7 @@ def _validate_field_value(
                 error_type="invalid_format",
                 field=field,
                 message=f"field '{field}' has value '{str_value}', expected format YYYY-MM-DD",
-                config_source=".vadocs/conf.json → date_format",
+                config_source=f"{HUB_CONFIG_REL} → date_format",
             )
 
     # Tags validation — each tag must exist in hub vocabulary (.vadocs/conf.json → tags)
@@ -560,7 +642,7 @@ def _validate_field_value(
                     error_type="invalid_value",
                     field="tags",
                     message=f"unknown tags {invalid}, expected from {sorted(valid_tags)}",
-                    config_source=".vadocs/conf.json → tags",
+                    config_source=f"{HUB_CONFIG_REL} → tags",
                 )
 
     # Status validation — allowed values defined per doc type in spoke config.
@@ -611,7 +693,7 @@ def _validate_field_value(
                 error_type="invalid_format",
                 field="authors",
                 message=f"field 'authors' must be a list of {{name, email}} objects, got {type(value).__name__}",
-                config_source=".vadocs/conf.json → field_registry.authors",
+                config_source=f"{HUB_CONFIG_REL} → field_registry.authors",
             )
         for i, author in enumerate(value):
             if not isinstance(author, dict):
@@ -620,7 +702,7 @@ def _validate_field_value(
                     error_type="invalid_format",
                     field="authors",
                     message=f"author[{i}] must be a {{name, email}} object, got {type(author).__name__}",
-                    config_source=".vadocs/conf.json → field_registry.authors",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry.authors",
                 )
             if "name" not in author or "email" not in author:
                 missing = [k for k in ("name", "email") if k not in author]
@@ -629,10 +711,86 @@ def _validate_field_value(
                     error_type="invalid_format",
                     field="authors",
                     message=f"author[{i}] missing required keys: {missing}",
-                    config_source=".vadocs/conf.json → field_registry.authors",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry.authors",
                 )
 
     return None
+
+
+def _check_duplicate_governed_fields(
+    content: str, file_path: Path, hub_config: dict
+) -> list[FrontmatterError]:
+    """Reject duplicate governed fields across multiple frontmatter blocks.
+
+    Governed fields (non-myst_native) must reside exclusively in the governed
+    block. If a governed field appears in more than one block, it's a duplication
+    error (blocking).
+
+    Example: 'token_size' appearing in both Jupytext and Governed blocks.
+    """
+    errors: list[FrontmatterError] = []
+    field_registry = hub_config.get("field_registry", {})
+    governed_fields = {f for f, meta in field_registry.items() if not meta.get("myst_native", True)}
+
+    # Find all YAML blocks at the start of the file using the same logic as parse_frontmatter
+    blocks_data: list[dict] = []
+    current_pos = 0
+    while True:
+        match = re.search(
+            r"^\s*---\s*\n(.*?)\n---\s*\n",
+            content[current_pos:],
+            re.DOTALL | re.MULTILINE,
+        )
+        if not match:
+            break
+
+        block_text = match.group(1)
+        current_pos += match.end()
+
+        try:
+            data = yaml.safe_load(block_text)
+            if isinstance(data, dict):
+                blocks_data.append(data)
+        except yaml.YAMLError:
+            pass
+
+        if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
+            break
+
+    if len(blocks_data) < 2:
+        return []
+
+    # Track which blocks provide which governed field
+    # field_name -> set of block_indices
+    field_providers: dict[str, set[int]] = {}
+
+    for idx, data in enumerate(blocks_data):
+        # Check top-level keys
+        for key in data:
+            if key in governed_fields:
+                field_providers.setdefault(key, set()).add(idx)
+
+        # Check keys inside 'options'
+        options = data.get("options")
+        if isinstance(options, dict):
+            for key in options:
+                if key in governed_fields:
+                    field_providers.setdefault(key, set()).add(idx)
+
+    # Any field provided by > 1 block is a duplicate
+    for field, providers in field_providers.items():
+        if len(providers) > 1:
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="duplicate_field",
+                    field=field,
+                    message=f"governed field '{field}' is duplicated across multiple frontmatter blocks — it must reside exclusively in the governed block",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry",
+                )
+            )
+
+    return errors
 
 
 def _check_options_namespace(
@@ -705,35 +863,51 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
         # Search for a block starting at current_pos (ignoring leading whitespace)
         match = re.search(r"^\s*---\s*\n(.*?)\n---\s*\n", content[current_pos:], re.DOTALL | re.MULTILINE)
         if not match:
+            logger.debug(f"No more frontmatter blocks found in {file_path}. Stopped at pos {current_pos}")
             break
 
         # Update position to the end of the match
         block_text = match.group(1)
         current_pos += match.end()
 
+        logger.debug(f"Found YAML block in {file_path} at pos {current_pos - match.end()} - {current_pos}")
+        logger.debug(f"Block content:\n---\n{block_text}---")
+
         try:
             data = yaml.safe_load(block_text)
             if isinstance(data, dict):
+                logger.debug(f"Successfully parsed block into dict: {data}")
                 merged_data.update(data)
                 found_any = True
-        except yaml.YAMLError:
-            pass
+            else:
+                logger.debug(f"Parsed block was not a dict (type: {type(data)}), skipping merge.")
+        except yaml.YAMLError as e:
+            logger.error(f"YAML parsing error in {file_path} at pos {current_pos - match.end()}: {e}")
 
         # If the remaining content doesn't start with a block (ignoring whitespace), stop.
         if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
+            logger.debug(f"No consecutive block found after pos {current_pos}. Stopping parse.")
             break
 
-    return merged_data if found_any else None
+    if found_any:
+        logger.debug(f"Final merged frontmatter for {file_path}: {merged_data}")
+        return merged_data
+    return None
 
 def resolve_type(frontmatter: dict) -> str | None:
     """Read options.type from parsed frontmatter.
 
     Returns type string, or None if not present.
     """
+    logger.debug(f"Resolving type from frontmatter: {frontmatter}")
     options = frontmatter.get("options")
     if not isinstance(options, dict):
+        logger.debug("Field 'options' is missing or not a dictionary")
         return None
-    return options.get("type")
+    doc_type = options.get("type")
+    if doc_type is None:
+        logger.debug("Field 'options.type' is missing")
+    return doc_type
 
 
 # ======================

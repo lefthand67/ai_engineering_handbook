@@ -43,6 +43,7 @@ import json
 import shutil
 from datetime import date
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 import yaml
@@ -491,14 +492,36 @@ class TestParseFrontmatter:
         assert result["title"] == "Governed Doc"
         assert result["options"]["type"] == "guide"
 
-    def test_merges_multiple_frontmatter_blocks(self):
-        """Files with multiple YAML blocks → merge all metadata into one dict."""
+    def test_unquoted_colon_in_title_fails_parsing(self):
+        """YAML with an unquoted colon in a value (e.g. title) should fail safe_load.
+        The parser should log an error and skip the block.
+        """
+        content = (
+            "---\n"
+            "title: The Truth: A Guide\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+        )
+        # The current implementation logs an error and returns None if only one block exists and it fails
+        result = _module.parse_frontmatter(content)
+        assert result is None
+
+    @pytest.mark.parametrize("separator", [
+        "\\n",      # Single newline (consecutive fences)
+        "\\n\\n",    # Double newline (empty line between fences)
+        "\\n  \\n",  # Line with whitespace between fences
+    ])
+    def test_merges_consecutive_blocks_with_various_spacing(self, separator):
+        """Files with consecutive YAML blocks separated by various whitespace → merge."""
+        # Use repr to handle the escaped newlines in parametrization
+        sep = separator.encode().decode('unicode_escape')
         content = (
             "---\n"
             "jupytext:\n"
             "  text_representation: {format_name: myst}\n"
             "---\n"
-            "\n"
+            f"{sep}"
             "---\n"
             "title: Governed Doc\n"
             "options:\n"
@@ -509,8 +532,8 @@ class TestParseFrontmatter:
         )
         result = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
-        assert "jupytext" in result, "Should preserve Jupytext metadata"
-        assert "title" in result, "Should preserve Governance metadata"
+        assert "jupytext" in result, f"Failed to merge with separator {repr(sep)}"
+        assert "title" in result, f"Failed to merge with separator {repr(sep)}"
         assert result["options"]["type"] == "guide"
 
 
@@ -627,7 +650,7 @@ class TestTokenCounting:
     def test_counts_normal_text(self):
         """Simple string returns expected count."""
         text = "Hello world"
-        count = _module._calculate_tokens(text)
+        count = _module.calculate_tokens(text)
         assert isinstance(count, int)
         assert count > 0
 
@@ -639,7 +662,7 @@ class TestTokenCounting:
         """
         text = "The FIM token <|fim_prefix|> is used for fill-in-the-middle."
         # This should not raise ValueError
-        count = _module._calculate_tokens(text)
+        count = _module.calculate_tokens(text)
         assert isinstance(count, int)
         assert count > 0
 
@@ -930,26 +953,24 @@ class TestMainExitCodes:
 class TestMissingTypeError:
     """Contract: files with frontmatter but no options.type cause exit 1."""
 
-    def test_main_exits_1_for_missing_type(self, frontmatter_env, capsys):
+    def test_main_exits_1_for_missing_type(self, frontmatter_env, caplog):
         """File without options.type → exit code 1, error on stdout."""
         content = "---\ntitle: Untyped Document\ndate: 2026-01-01\n---\n\n# Body\n"
         md_file = frontmatter_env / "untyped.md"
         md_file.write_text(content, encoding="utf-8")
         exit_code = _module.main([str(md_file)])
         assert exit_code == 1
-        captured = capsys.readouterr()
-        assert "options.type" in captured.out
-        assert "missing" in captured.out.lower()
+        assert "options.type" in caplog.text
+        assert "missing" in caplog.text.lower()
 
-    def test_error_printed_for_missing_type(self, frontmatter_env, capsys):
+    def test_error_printed_for_missing_type(self, frontmatter_env, caplog):
         """File with frontmatter but no options.type → error on stdout, exit 1."""
         content = "---\ntitle: Untyped Document\ndate: 2026-01-01\n---\n\n# Body\n"
         md_file = frontmatter_env / "untyped.md"
         md_file.write_text(content, encoding="utf-8")
         exit_code = _module.main([str(md_file)])
         assert exit_code == 1
-        captured = capsys.readouterr()
-        assert "options.type" in captured.out
+        assert "options.type" in caplog.text
 
 
 class TestErrorMessages:
@@ -1125,19 +1146,17 @@ class TestMandatoryGovernance:
     produce a blocking error.
     """
 
-    def test_file_without_frontmatter_produces_error(self, frontmatter_env, capsys):
+    def test_file_without_frontmatter_produces_error(self, frontmatter_env, caplog):
         """File with no frontmatter fences → blocking error (exit 1)."""
         md_file = frontmatter_env / "no_fm.md"
         md_file.write_text("# Just a heading\n\nNo frontmatter here.", encoding="utf-8")
-        
+
         # Run main on the specific file
         exit_code = _module.main([str(md_file)])
-        
-        captured = capsys.readouterr()
+
         assert exit_code == 1
         # Check for error message indicating missing frontmatter
-        assert "governed extension" in captured.out and "no YAML frontmatter present" in captured.out
-
+        assert "governed extension" in caplog.text and "no YAML frontmatter present" in caplog.text
     def test_excluded_directory_is_skipped(self, frontmatter_env, capsys):
         """File in an excluded directory → silently skipped (exit 0)."""
         # 'misc' is in our governed_excludes.dirs config
@@ -1175,52 +1194,47 @@ class TestMandatoryGovernance:
         assert exit_code == 0
         assert "no YAML frontmatter present" not in captured.out
 
-    def test_adversary_empty_fences(self, frontmatter_env, capsys):
+    def test_adversary_empty_fences(self, frontmatter_env, caplog):
         """File with empty YAML fences (--- \n ---) → treat as missing frontmatter (exit 1)."""
         md_file = frontmatter_env / "empty_fences.md"
         md_file.write_text("---\n---\n\n# Body", encoding="utf-8")
-        
+
         exit_code = _module.main([str(md_file)])
-        
-        captured = capsys.readouterr()
+
         # Since parse_frontmatter returns None for empty blocks or failed YAML
         assert exit_code == 1
-        assert "no YAML frontmatter present" in captured.out
+        assert "no YAML frontmatter present" in caplog.text
 
-    def test_adversary_misplaced_fences(self, frontmatter_env, capsys):
+    def test_adversary_misplaced_fences(self, frontmatter_env, caplog):
         """Fences not at start of file → not recognized as frontmatter (exit 1)."""
         md_file = frontmatter_env / "misplaced.md"
         md_file.write_text("# Header\n\n---\ntitle: Test\n---\n\nBody", encoding="utf-8")
-        
+
         exit_code = _module.main([str(md_file)])
-        
-        captured = capsys.readouterr()
+
         assert exit_code == 1
         # Either treated as missing frontmatter OR as frontmatter with missing type
-        assert "no YAML frontmatter present" in captured.out or "missing required 'options.type'" in captured.out
+        assert "no YAML frontmatter present" in caplog.text or "missing required 'options.type'" in caplog.text
 
-    def test_adversary_invalid_yaml(self, frontmatter_env, capsys):
+    def test_adversary_invalid_yaml(self, frontmatter_env, caplog):
         """Frontmatter with invalid YAML syntax → treated as missing/invalid (exit 1)."""
         md_file = frontmatter_env / "invalid_yaml.md"
         md_file.write_text("---\ntitle: [unclosed list\n---\n\n# Body", encoding="utf-8")
-        
-        exit_code = _module.main([str(md_file)])
-        
-        captured = capsys.readouterr()
-        assert exit_code == 1
-        assert "no YAML frontmatter present" in captured.out
 
-    def test_adversary_scalar_yaml(self, frontmatter_env, capsys):
+        exit_code = _module.main([str(md_file)])
+
+        assert exit_code == 1
+        assert "no YAML frontmatter present" in caplog.text
+
+    def test_adversary_scalar_yaml(self, frontmatter_env, caplog):
         """Frontmatter that is valid YAML but not a dict (e.g. just a string) → exit 1."""
         for val in ["Just a string", "123", "true", "null", "[]"]:
             md_file = frontmatter_env / f"scalar_{val}.md"
             md_file.write_text(f"---\n{val}\n---\n\n# Body", encoding="utf-8")
-            
+
             exit_code = _module.main([str(md_file)])
             assert exit_code == 1
-            captured = capsys.readouterr()
-            assert "no YAML frontmatter present" in captured.out
-
+            assert "no YAML frontmatter present" in caplog.text
     def test_adversary_notebook_edge_cases(self, frontmatter_env, capsys):
         """Notebook structural edge cases → exit 1 or skip based on governance."""
         # 1. Notebook with no cells
@@ -1338,3 +1352,136 @@ class TestTokenSizeAccuracy:
         token_errors = [e for e in errors if e.field == "token_size"]
         assert len(token_errors) == 1
         assert "must be an integer" in token_errors[0].message
+
+# ======================
+# Tests: Duplicate Governed Fields
+# ======================
+
+
+class TestDuplicateFields:
+    """Contract: Governed fields must not be duplicated across multiple blocks.
+
+    In Dual-Block files, fields like token_size must reside exclusively in
+    the governed block. Duplicate governed fields produce blocking errors.
+    """
+
+    def test_duplicate_token_size_rejected(self, frontmatter_env):
+        """token_size appearing in both blocks should produce duplicate_field error."""
+
+        # Build valid base frontmatter for a guide
+        fm = _build_valid_frontmatter("guide")
+        
+        # Jupytext block
+        jupytext_fm = {
+            "jupytext": {"text_representation": {"format_name": "myst"}},
+            "options": {"token_size": 100}
+        }
+        # Governed block
+        governed_fm = fm
+        governed_fm["options"]["token_size"] = 100
+
+        content = (
+            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
+            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            "# Body\n"
+        )
+        
+        file_path = frontmatter_env / "duplicate_tokens.md"
+        file_path.write_text(content, encoding="utf-8")
+        
+        import tools.scripts.update_token_counts as _utc
+        _utc.update_token_counts(frontmatter_env, [file_path], dry_run=False)
+
+        with patch("sys.argv", ["check_frontmatter", str(file_path)]):
+            exit_code = _module.main()
+
+        assert exit_code == 1
+
+    def test_single_token_size_accepted(self, frontmatter_env):
+        """token_size appearing only in governed block should pass."""
+    
+        fm = _build_valid_frontmatter("guide")
+        
+        jupytext_fm = {
+            "jupytext": {"text_representation": {"format_name": "myst"}}
+        }
+        governed_fm = fm
+    
+        # We generate the content first to know the actual token count
+        # Note: we use a placeholder for token_size to calculate the length of the rest of the file
+        content_template = (
+            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
+            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            "# Body\n"
+        )
+        
+        import tiktoken
+        from tools.scripts.check_frontmatter import DEFAULT_TOKEN_ENCODING
+        encoding = tiktoken.get_encoding(DEFAULT_TOKEN_ENCODING)
+        actual_tokens = len(encoding.encode(content_template, disallowed_special=()))
+        
+        # Now we set the actual count in the governed block
+        fm["options"]["token_size"] = actual_tokens
+        
+        # Re-generate content with the correct token size
+        content = (
+            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
+            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            "# Body\n"
+        )
+    
+        file_path = frontmatter_env / "single_token.md"
+        file_path.write_text(content, encoding="utf-8")
+    
+        with patch("sys.argv", ["check_frontmatter", str(file_path)]):
+            exit_code = _module.main()
+    
+        assert exit_code == 0
+
+class TestTokenSizeExclusions:
+    """Contract: token_size validation is skipped for extensions in hub config's token_size_exclusions.
+    
+    This prevents perpetual conflicts between .md and .ipynb pairs where the .md
+    remains the Single Source of Truth for token counts.
+    """
+
+    def test_md_file_still_validated(self, frontmatter_env, monkeypatch):
+        # Ensure .ipynb is excluded in config
+        hub = json.loads((frontmatter_env / ".vadocs" / "conf.json").read_text())
+        hub["token_size_exclusions"] = [".ipynb"]
+        (frontmatter_env / ".vadocs" / "conf.json").write_text(json.dumps(hub))
+        monkeypatch.setattr(_module, "HUB_CONFIG", hub)
+
+        # File with incorrect token_size
+        fm = _build_valid_frontmatter("guide")
+        fm["options"]["token_size"] = 999999 # Obviously wrong
+        
+        file_path = frontmatter_env / "test.md"
+        file_path.write_text(_frontmatter_to_md(fm))
+        
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        # Should find a token_size error
+        assert any(e.field == "token_size" for e in errors)
+
+    def test_ipynb_file_excluded_from_validation(self, frontmatter_env, monkeypatch):
+        # Ensure .ipynb is excluded in config
+        hub = json.loads((frontmatter_env / ".vadocs" / "conf.json").read_text())
+        hub["token_size_exclusions"] = [".ipynb"]
+        (frontmatter_env / ".vadocs" / "conf.json").write_text(json.dumps(hub))
+        monkeypatch.setattr(_module, "HUB_CONFIG", hub)
+
+        # File with incorrect token_size
+        fm = _build_valid_frontmatter("guide")
+        fm["options"]["token_size"] = 999999 # Obviously wrong
+        
+        # Create a dummy notebook JSON
+        notebook = {
+            "cells": [{"cell_type": "markdown", "source": [f"---\n{yaml.dump(fm)}---\n\n# Content\n"]}],
+            "metadata": {}, "nbformat": 4, "nbformat_minor": 5
+        }
+        file_path = frontmatter_env / "test.ipynb"
+        file_path.write_text(json.dumps(notebook))
+        
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        # Should NOT find a token_size error for .ipynb
+        assert not any(e.field == "token_size" for e in errors)

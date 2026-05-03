@@ -6,24 +6,30 @@ jupytext:
     format_version: 0.13
     jupytext_version: 1.19.1
 kernelspec:
-  name: python3
   display_name: Python 3 (ipykernel)
   language: python
+  name: python3
 ---
 
+---
+title: 'NVIDIA GPU Optimization: Accelerating AI with CUDA, Nsight, and Systems Thinking'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: A comprehensive guide to NVIDIA GPU optimization, covering CUDA, Nsight,
+  and the systems-thinking mindset required for production-grade AI engineering.
+tags:
+- hardware
+options:
+  type: guide
+  birth: '2025-11-20'
+  version: 1.0.4
+  token_size: 1908
+---
 # NVIDIA GPU Optimization: Accelerating AI with CUDA, Nsight, and Systems Thinking
 
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 1.0.3  
-Birth: 2025-11-20  
-Modified: 2025-12-31
-
----
-
 This handbook integrates the system-level mindset and hardware focus necessary for modern AI engineering. It follows a clear pedagogical path: Tool $\rightarrow$ Hardware $\rightarrow$ Systems Skills $\rightarrow$ Practice.
-
 ## Introduction: The Architect's Advantage
 
 Modern AI lives and dies by the **GPU**. Every large language model, every massive image generation system — they all depend on unlocking the raw, parallel power of NVIDIA hardware. As an AI engineer, you start as a tool user (PyTorch, TensorFlow), but the true career advantage lies in becoming a **Systems Architect**.

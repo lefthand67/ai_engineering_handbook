@@ -11,18 +11,25 @@ kernelspec:
   name: python3
 ---
 
+---
+title: 'GEMM: The Engineering Standard'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Defines GEMM (General Matrix-Matrix Multiplication) as the engineering
+  standard for HPC and Deep Learning, exploring arithmetic intensity, tiling, and
+  hardware acceleration.
+tags:
+- hardware
+- architecture
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.2.5
+  birth: '2025-12-27'
+  token_size: 8602
+---
 # GEMM: The Engineering Standard
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.3  
-Birth: 2025-12-27  
-Last Modified: 2026-01-11
-
----
 
 +++
 

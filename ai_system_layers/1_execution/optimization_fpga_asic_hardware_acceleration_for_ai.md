@@ -11,17 +11,23 @@ kernelspec:
   language: python
 ---
 
+---
+title: 'Hardware Acceleration for AI: FPGA vs. ASIC Trade-offs'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: A comparative analysis of FPGA vs ASIC trade-offs for AI hardware acceleration,
+  focusing on flexibility, performance, and NRE costs.
+tags:
+- hardware
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.2.3
+  birth: '2025-12-06'
+  token_size: 1813
+---
 # Hardware Acceleration for AI: FPGA vs. ASIC Trade-offs
-
------
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.1  
-Birth: 2025-12-06  
-Last Modified: 2025-12-31
-
------
-
 **Hardware Acceleration** using **Field-Programmable Gate Arrays (FPGAs)** and **Application-Specific Integrated Circuits (ASICs)** is a foundational practice in **Computer Engineering** and **Deep Systems Engineering**. It involves customizing the silicon-based hardware to execute specific, stable computational tasks—like the dense matrix operations at the core of Deep Learning—faster and with significantly greater **energy efficiency** than general-purpose processors (CPUs or GPUs) can achieve for that specific task.
 
 The decision to use custom silicon is a strategic trade-off between **Flexibility** (FPGA) and **Absolute Performance/Efficiency** (ASIC).

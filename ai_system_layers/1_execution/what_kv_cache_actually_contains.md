@@ -14,18 +14,20 @@ kernelspec:
 ---
 title: What the KV Cache Actually Contains
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-date: 2026-04-26
-description: Deep dive into KV cache internals — what tensors are stored, how attention uses them, prefix caching strategies, and why this is a hardware memory problem.
-tags: [hardware, model]
-token_size: "~1500"
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-04-26"
+description: Deep dive into KV cache internals — what tensors are stored, how attention
+  uses them, prefix caching strategies, and why this is a hardware memory problem.
+tags:
+- hardware
+- model
 options:
   type: guide
-  birth: 2026-04-04
-  version: 1.1.0
+  birth: "2026-04-04"
+  version: "1.1.0"
+  token_size: 16042
 ---
-
 :::{seealso}
 [Local LLM Inference: A Practical Handbook for Hybrid Host/Device Execution and KV Cache Offloading](/ai_system_layers/1_execution/hybrid_execution_and_kv_cache_offloading.ipynb) for the companion document on host/device scheduling and KV cache offloading.
 :::

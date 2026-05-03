@@ -14,18 +14,21 @@ kernelspec:
 ---
 title: Hybrid Execution and KV Cache Offloading
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-date: 2026-04-27
-description: Deep dive into KV cache internals — what tensors are stored, how attention uses them, prefix caching strategies, and why this is a hardware memory problem.
-tags: [hardware, model, documentation]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-04-27"
+description: Deep dive into KV cache internals — what tensors are stored, how attention
+  uses them, prefix caching strategies, and why this is a hardware memory problem.
+tags:
+- hardware
+- model
+- documentation
 options:
   type: guide
-  birth: 2025-11-23
-  version: 1.1.0
-  token_size: 6328
+  birth: "2025-11-23"
+  version: "1.1.0"
+  token_size: 6324
 ---
-
 |:---|:---|
 | CPU | Central Processing Unit | Orchestrates processing, I/O, and pre/post tasks. |
 | GPU | Graphics Processing Unit | Executes parallel matrix compute operations. |

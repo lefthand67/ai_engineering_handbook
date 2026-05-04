@@ -34,6 +34,13 @@ config_dir = ".vadocs"
 [tool.commit-convention]
 valid-types = ["feat", "fix", "docs", "adr", "ci", "refactor", "perf", "chore", "pr"]
 archtag-required-types = ["refactor", "perf"]
+archtag-valid-values = [
+    "TECHDEBT-PAYMENT",
+    "PERF-OPTIMIZATION",
+    "REFACTOR-MIGRATION",
+    "DEPRECATION-PLANNED",
+    "BREAKING-CHANGE"
+]
 changelog-exclude-patterns = ["CLAUDE.md", "AGENTS.md", "QWEN.md", ".aider", "misc/", "jupytext sync", "Jupytext"]
 
 [tool.commit-convention.changelog-sections]

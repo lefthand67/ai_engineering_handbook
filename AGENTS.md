@@ -211,6 +211,9 @@ The pipeline verifies that .md and .ipynb pairs are synchronized before allowing
 
 Jupytext sync runs as a pre-commit lint step. The `.aider.conf.yml` also configures auto-linting for Aider sessions.
 
+**Tooling & Quality Gates:**
+- When creating or modifying validation scripts or quality gates in `tools/scripts/`, strictly adhere to the standards defined in [validation_standards.md](./tools/scripts/validation_standards.md) and [testing_standards.md](./tools/scripts/testing_standards.md).
+
 Python version: 3.13+ (locked in `.python-version`)
 Package manager: `uv` (never use pip directly)
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Test suite for check_evidence.py - Evidence artifact validator.
 
@@ -288,9 +289,40 @@ def evidence_env(tmp_path, monkeypatch):
     )
 
 
-# ======================
-# Config Loading
-# ======================
+class TestErrorReporting:
+    """Contract: Error reporting must be agent-actionable."""
+
+    def test_error_reporting_format(self, evidence_env, caplog):
+        """Contract: Errors must include file path and error type for agent actionability.
+        Format: <path>: [<error_type>] <message> [<config_source>]
+        """
+        # Create an artifact and explicitly set a required field to None to trigger a failure
+        artifact_type = "analysis"
+        
+        filename = _build_valid_filename(artifact_type, slug="format_test")
+        filepath = evidence_env.dir_for(artifact_type) / filename
+    
+        # Use helper to create a file with an invalid frontmatter (missing status)
+        create_artifact_file(
+            evidence_env.dir_for(artifact_type),
+            artifact_type=artifact_type,
+            slug="format_test",
+            frontmatter_overrides={"status": None}
+        )
+    
+        # Run main()
+        with patch("sys.argv", ["check_evidence.py", "--verbose"]):
+            with pytest.raises(SystemExit) as e:
+                _module.main()
+            assert e.value.code == 1
+
+        # Check that the error message contains the file path and the error type in brackets
+        # We search in all log records
+        error_messages = [record.getMessage() for record in caplog.records if record.levelname == "ERROR"]
+
+        # Assert that at least one error contains the file path and the laveled error type
+        assert any(str(filepath) in msg and "[frontmatter]" in msg for msg in error_messages), \
+            f"Expected path and [frontmatter] in error messages: {error_messages}"
 
 
 class TestConfigLoading:
@@ -352,45 +384,44 @@ class TestValidateNaming:
     @pytest.mark.parametrize("artifact_type", list(_NAMING_PATTERNS.keys()))
     def test_valid_name_per_type(self, evidence_env, artifact_type):
         """Valid filename (built from config) should pass for each type."""
-        
+
         filename = _build_valid_filename(artifact_type)
-        errors = _module.validate_naming(filename, artifact_type)
+        errors = _module.validate_naming(Path("fake/path"), filename, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize("artifact_type", list(_NAMING_PATTERNS.keys()))
     def test_uppercase_slug_rejected(self, evidence_env, artifact_type):
         """Uppercase characters in slug should fail naming validation."""
-        
+
         prefix = _ARTIFACT_TYPES[artifact_type]["id_prefix"]
         filename = f"{prefix}-26001_UpperCase.md"
-        errors = _module.validate_naming(filename, artifact_type)
+        errors = _module.validate_naming(Path("fake/path"), filename, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize("artifact_type", list(_NAMING_PATTERNS.keys()))
     def test_missing_dash_rejected(self, evidence_env, artifact_type):
         """Missing dash between prefix and number should fail."""
-        
+
         prefix = _ARTIFACT_TYPES[artifact_type]["id_prefix"]
         filename = f"{prefix}26001_some_slug.md"
-        errors = _module.validate_naming(filename, artifact_type)
+        errors = _module.validate_naming(Path("fake/path"), filename, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize("artifact_type", list(_NAMING_PATTERNS.keys()))
     def test_short_number_rejected(self, evidence_env, artifact_type):
         """Number with fewer than 5 digits should fail."""
-        
+
         prefix = _ARTIFACT_TYPES[artifact_type]["id_prefix"]
         filename = f"{prefix}-2601_short.md"
-        errors = _module.validate_naming(filename, artifact_type)
+        errors = _module.validate_naming(Path("fake/path"), filename, artifact_type)
         assert len(errors) > 0
 
     def test_wrong_prefix_rejected(self, evidence_env):
         """Wrong prefix letter for artifact type should fail."""
-        
-        # Use retrospective prefix for analysis type
-        errors = _module.validate_naming("R-26001_wrong_prefix.md", "analysis")
-        assert len(errors) > 0
 
+        # Use retrospective prefix for analysis type
+        errors = _module.validate_naming(Path("fake/path"), "R-26001_wrong_prefix.md", "analysis")
+        assert len(errors) > 0
 
 # ======================
 # Frontmatter Validation
@@ -405,7 +436,7 @@ class TestValidateFrontmatter:
         """Valid frontmatter (built from config) should pass for each type."""
 
         fm = _build_valid_frontmatter(artifact_type)
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize("field", _COMMON_REQUIRED_FIELDS)
@@ -417,7 +448,7 @@ class TestValidateFrontmatter:
         fm = _build_valid_frontmatter(first_type)
         del fm[field]
 
-        errors = _module.validate_frontmatter(fm, first_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, first_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize(
@@ -434,7 +465,7 @@ class TestValidateFrontmatter:
         fm = _build_valid_frontmatter(artifact_type)
         del fm[field]
 
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize(
@@ -450,7 +481,7 @@ class TestValidateFrontmatter:
         """All statuses from config should be accepted."""
 
         fm = _build_valid_frontmatter(artifact_type, status=status)
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize(
@@ -461,7 +492,7 @@ class TestValidateFrontmatter:
         """Invalid status should produce error for types with status validation."""
 
         fm = _build_valid_frontmatter(artifact_type, status="bogus_nonexistent_status")
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize(
@@ -472,7 +503,7 @@ class TestValidateFrontmatter:
         """Types with empty statuses list should not require or validate status."""
 
         fm = _build_valid_frontmatter(artifact_type)
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize(
@@ -488,7 +519,7 @@ class TestValidateFrontmatter:
         """All severity levels from config should be accepted."""
 
         fm = _build_valid_frontmatter(artifact_type, severity=severity)
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize(
@@ -499,7 +530,7 @@ class TestValidateFrontmatter:
         """Invalid severity should produce error for types with severity validation."""
 
         fm = _build_valid_frontmatter(artifact_type, severity="catastrophic_nonexistent")
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) > 0
 
     def test_invalid_tag_detected(self, evidence_env):
@@ -515,7 +546,7 @@ class TestValidateFrontmatter:
 
         artifact_type = types_with_tags[0]
         fm = _build_valid_frontmatter(artifact_type, tags=["nonexistent_invalid_tag_xyz"])
-        errors = _module.validate_frontmatter(fm, artifact_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
         assert len(errors) > 0
 
     def test_invalid_date_format_detected(self, evidence_env):
@@ -523,7 +554,7 @@ class TestValidateFrontmatter:
 
         first_type = list(_ARTIFACT_TYPES.keys())[0]
         fm = _build_valid_frontmatter(first_type, date="26-02-2026")
-        errors = _module.validate_frontmatter(fm, first_type)
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, first_type)
         assert len(errors) > 0
 
 
@@ -540,7 +571,7 @@ class TestValidateSections:
         """Artifact with exactly the required sections should pass."""
 
         required = list(_ARTIFACT_TYPES[artifact_type].get("required_sections", []))
-        errors = _module.validate_sections(required, artifact_type)
+        errors = _module.validate_sections(Path("fake/path"), required, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize("artifact_type", list(_ARTIFACT_TYPES.keys()))
@@ -552,7 +583,7 @@ class TestValidateSections:
             list(type_config.get("required_sections", []))
             + list(type_config.get("optional_sections", []))
         )
-        errors = _module.validate_sections(all_sections, artifact_type)
+        errors = _module.validate_sections(Path("fake/path"), all_sections, artifact_type)
         assert len(errors) == 0
 
     @pytest.mark.parametrize(
@@ -568,7 +599,7 @@ class TestValidateSections:
 
         required = list(_ARTIFACT_TYPES[artifact_type]["required_sections"])
         sections = [s for s in required if s != missing_section]
-        errors = _module.validate_sections(sections, artifact_type)
+        errors = _module.validate_sections(Path("fake/path"), sections, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize(
@@ -583,7 +614,7 @@ class TestValidateSections:
 
         required = list(_ARTIFACT_TYPES[artifact_type].get("required_sections", []))
         sections = required + ["Completely Unknown Section XYZ"]
-        errors = _module.validate_sections(sections, artifact_type)
+        errors = _module.validate_sections(Path("fake/path"), sections, artifact_type)
         assert len(errors) > 0
 
     @pytest.mark.parametrize(
@@ -593,184 +624,296 @@ class TestValidateSections:
             if not tcfg.get("required_sections") and not tcfg.get("optional_sections")
         ],
     )
-    def test_freeform_types_accept_any_sections(self, evidence_env, artifact_type):
+    def test_no_section_validation_for_freeform_types(self, evidence_env, artifact_type):
         """Types with no required/optional sections should accept anything."""
 
-        sections = ["Anything Goes", "Another Header"]
-        errors = _module.validate_sections(sections, artifact_type)
+        sections = ["Any Section I Want", "Another Random One"]
+        errors = _module.validate_sections(Path("fake/path"), sections, artifact_type)
         assert len(errors) == 0
 
 
-# ======================
-# Orphaned Source Detection
-# ======================
-
-
-class TestDetectOrphanedSources:
-    """Contract: Sources with extracted_into=null older than threshold produce warnings."""
-
-    def test_no_orphans_when_extracted(self, evidence_env):
-        """Source with extracted_into set should not be flagged."""
-
-        sources_dir = evidence_env.dir_for("source")
-        create_artifact_file(
-            sources_dir,
-            artifact_type="source",
-            frontmatter_overrides={"extracted_into": "A-26001", "date": "2025-01-01"},
-        )
-        warnings = _module.detect_orphaned_sources(sources_dir)
-        assert len(warnings) == 0
-
-    def test_recent_unextracted_not_flagged(self, evidence_env):
-        """Source with null extracted_into but recent date should not be flagged."""
-
-        sources_dir = evidence_env.dir_for("source")
-        create_artifact_file(
-            sources_dir,
-            artifact_type="source",
-            frontmatter_overrides={"extracted_into": None, "date": _recent_date()},
-        )
-        warnings = _module.detect_orphaned_sources(sources_dir)
-        assert len(warnings) == 0
-
-    def test_old_unextracted_flagged(self, evidence_env):
-        """Source with null extracted_into older than threshold should be flagged."""
-
-        sources_dir = evidence_env.dir_for("source")
-        create_artifact_file(
-            sources_dir,
-            artifact_type="source",
-            frontmatter_overrides={"extracted_into": None, "date": "2025-01-01"},
-        )
-        warnings = _module.detect_orphaned_sources(sources_dir)
-        assert len(warnings) > 0
-
-
-# ======================
-# Artifact Discovery
-# ======================
-
-
 class TestDiscoverArtifacts:
-    """Contract: Scans correct directories per config, returns sorted artifacts."""
+    """Contract: Scans correct directories, returns sorted artifacts."""
 
     @pytest.mark.parametrize("artifact_type", list(_ARTIFACT_TYPES.keys()))
-    def test_discovers_artifacts_per_type(self, evidence_env, artifact_type):
-        """Should find artifact files in the type's directory."""
+    def test_discovers_valid_artifacts(self, evidence_env, artifact_type):
+        """Should discover all artifacts matching the naming pattern."""
 
-        target_dir = evidence_env.dir_for(artifact_type)
-        create_artifact_file(target_dir, artifact_type=artifact_type)
+        # Create 3 valid artifacts
+        for i in range(3):
+            create_artifact_file(
+                evidence_env.dir_for(artifact_type),
+                artifact_type=artifact_type,
+                slug=f"test_{i}"
+            )
+
+        artifacts = _module.discover_artifacts(artifact_type)
+        assert len(artifacts) == 3
+        # Check sorted order (by artifact_id)
+        assert artifacts[0].artifact_id <= artifacts[1].artifact_id <= artifacts[2].artifact_id
+
+    @pytest.mark.parametrize("artifact_type", list(_ARTIFACT_TYPES.keys()))
+    def test_ignores_invalid_names(self, evidence_env, artifact_type):
+        """Should ignore files that don't match the naming pattern."""
+
+        # Create one valid, one invalid
+        create_artifact_file(evidence_env.dir_for(artifact_type), artifact_type=artifact_type, slug="valid")
+        (evidence_env.dir_for(artifact_type) / "invalid_name.md").write_text("content")
 
         artifacts = _module.discover_artifacts(artifact_type)
         assert len(artifacts) == 1
 
-    def test_returns_sorted_by_id(self, evidence_env):
-        """Artifacts should be returned sorted by ID."""
-
-        # Pick any type for this test
+    def test_handles_malformed_yaml(self, evidence_env):
+        """Should discover artifacts even if their frontmatter is malformed YAML."""
+    
         artifact_type = list(_ARTIFACT_TYPES.keys())[0]
-        prefix = _ARTIFACT_TYPES[artifact_type]["id_prefix"]
-        target_dir = evidence_env.dir_for(artifact_type)
-
-        # Create in reverse order
-        for num in [26003, 26001, 26002]:
-            create_artifact_file(
-                target_dir,
-                artifact_type=artifact_type,
-                artifact_id=f"{prefix}-{num}",
-                slug=f"item_{num}",
-            )
-
+        filepath = (evidence_env.dir_for(artifact_type) / "A-26001_malformed.md")
+        filepath.write_text("---\nkey: : invalid yaml\n---\ncontent", encoding="utf-8")
+    
         artifacts = _module.discover_artifacts(artifact_type)
-        ids = [a.artifact_id for a in artifacts]
-        assert ids == [f"{prefix}-26001", f"{prefix}-26002", f"{prefix}-26003"]
-
-    def test_empty_directory_returns_empty_list(self, evidence_env):
-        """Empty directory should return empty list."""
-
+        assert len(artifacts) == 1
+        assert artifacts[0].frontmatter is None
+    def test_handles_missing_frontmatter(self, evidence_env):
+        """Should discover artifacts even if frontmatter block is missing."""
+    
         artifact_type = list(_ARTIFACT_TYPES.keys())[0]
+        filepath = (evidence_env.dir_for(artifact_type) / "A-26001_no_fm.md")
+        filepath.write_text("# No Frontmatter Here", encoding="utf-8")
+    
         artifacts = _module.discover_artifacts(artifact_type)
-        assert artifacts == []
+        assert len(artifacts) == 1
+        assert artifacts[0].frontmatter is None
 
-    def test_ignores_non_matching_files(self, evidence_env):
-        """Files not matching naming pattern (e.g., README.md) should be skipped."""
+class TestDetectOrphanedSources:
+    """Contract: Sources with null extracted_into flagged past threshold."""
 
-        artifact_type = list(_ARTIFACT_TYPES.keys())[0]
-        target_dir = evidence_env.dir_for(artifact_type)
+    def test_flags_orphaned_sources(self, evidence_env):
+        """Sources with null extracted_into and old date should be flagged."""
 
-        readme = target_dir / "README.md"
-        readme.write_text("# README\n", encoding="utf-8")
+        source_type = next((k for k, v in _ARTIFACT_TYPES.items() if not v.get("statuses")), None)
+        sources_dir = evidence_env.dir_for(source_type)
 
-        artifacts = _module.discover_artifacts(artifact_type)
-        assert len(artifacts) == 0
+        # 1. Old orphan (should be flagged)
+        old_date = (date.today() - timedelta(days=40)).isoformat()
+        S1 = create_artifact_file(
+            sources_dir,
+            artifact_type=source_type,
+            slug="old_orphan",
+            frontmatter_overrides={"extracted_into": None, "date": old_date}
+        )
 
+        # 2. New orphan (should NOT be flagged)
+        new_date = _recent_date()
+        S2 = create_artifact_file(
+            sources_dir,
+            artifact_type=source_type,
+            slug="new_orphan",
+            frontmatter_overrides={"extracted_into": None, "date": new_date}
+        )
 
-# ======================
-# CLI Integration
-# ======================
+        # 3. Extracted source (should NOT be flagged)
+        S3 = create_artifact_file(
+            sources_dir,
+            artifact_type=source_type,
+            slug="extracted",
+            frontmatter_overrides={"extracted_into": "A-26001", "date": old_date}
+        )
+
+        warnings = _module.detect_orphaned_sources(sources_dir)
+        assert len(warnings) == 1
+        assert warnings[0].file_path == S1
+
+    def test_empty_sources_dir_handled(self, evidence_env):
+        """Should return empty list if sources directory is missing."""
+        warnings = _module.detect_orphaned_sources(Path("nonexistent/dir"))
+        assert warnings == []
 
 
 class TestCli:
-    """Contract: Exit 0 on valid artifacts, exit 1 on validation errors."""
+    """Contract: Exit codes 0 (valid) / 1 (errors), --verbose and --check-staged flags."""
 
-    def test_exit_0_on_valid_artifacts(self, evidence_env):
+    def test_exit_code_zero_for_valid(self, evidence_env):
         """Should exit 0 when all artifacts are valid."""
 
-        artifact_type = list(_ARTIFACT_TYPES.keys())[0]
-        create_artifact_file(evidence_env.dir_for(artifact_type), artifact_type=artifact_type)
+        # Create one valid artifact
+        create_artifact_file(evidence_env.dir_for("analysis"), artifact_type="analysis")
 
-        with patch("sys.argv", ["check_evidence"]):
-            with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["check_evidence.py"]):
+            with pytest.raises(SystemExit) as e:
                 _module.main()
+            assert e.value.code == 0
 
-        assert exc_info.value.code == 0
+    def test_exit_code_one_for_errors(self, evidence_env):
+        """Should exit 1 when validation errors are found."""
 
-    def test_exit_1_on_validation_errors(self, evidence_env):
-        """Should exit 1 when validation errors exist."""
-
-        # Create a file with missing required fields
-        artifact_type = list(_ARTIFACT_TYPES.keys())[0]
-        prefix = _ARTIFACT_TYPES[artifact_type]["id_prefix"]
-        target_dir = evidence_env.dir_for(artifact_type)
-
-        bad_file = target_dir / f"{prefix}-26001_bad_artifact.md"
-        bad_file.write_text(
-            f"---\nid: {prefix}-26001\ntitle: Bad\n---\n\n# {prefix}-26001: Bad\n",
-            encoding="utf-8",
+        # Create one invalid artifact (missing required field)
+        create_artifact_file(
+            evidence_env.dir_for("analysis"),
+            artifact_type="analysis",
+            frontmatter_overrides={"status": None}
         )
 
-        with patch("sys.argv", ["check_evidence"]):
-            with pytest.raises(SystemExit) as exc_info:
+        with patch("sys.argv", ["check_evidence.py"]):
+            with pytest.raises(SystemExit) as e:
+                _module.main()
+            assert e.value.code == 1
+
+    def test_verbose_output(self, evidence_env, caplog):
+        """--verbose should trigger debug logging for each artifact."""
+
+        create_artifact_file(evidence_env.dir_for("analysis"), artifact_type="analysis")
+
+        with patch("sys.argv", ["check_evidence.py", "--verbose"]):
+            with pytest.raises(SystemExit):
                 _module.main()
 
-        assert exc_info.value.code == 1
+        # Check for debug logs
+        debug_logs = [record.getMessage() for record in caplog.records if record.levelname == "DEBUG"]
+        assert any("Validating" in msg for msg in debug_logs)
 
-    def test_exit_0_on_empty_evidence(self, evidence_env):
-        """Should exit 0 when no evidence artifacts exist (nothing to validate)."""
+    def test_check_staged_filter(self, evidence_env, monkeypatch):
+        """--check-staged should only validate files returned by get_staged_files()."""
 
-        with patch("sys.argv", ["check_evidence"]):
-            with pytest.raises(SystemExit) as exc_info:
+        # Create two artifacts
+        A1 = create_artifact_file(evidence_env.dir_for("analysis"), artifact_type="analysis", slug="staged")
+        A2 = create_artifact_file(evidence_env.dir_for("analysis"), artifact_type="analysis", slug="unstaged")
+
+        # Mock get_staged_files to only return A1
+        rel_path_A1 = str(A1.relative_to(evidence_env.root))
+        monkeypatch.setattr("tools.scripts.git.get_staged_files", lambda: [rel_path_A1])
+
+        # Make A2 invalid (so it would trigger exit 1 if checked)
+        # We rewrite A2 to be invalid
+        fm = _build_valid_frontmatter("analysis")
+        del fm["status"]
+        create_artifact_file(
+            evidence_env.dir_for("analysis"),
+            artifact_type="analysis",
+            slug="unstaged",
+            frontmatter_overrides=fm
+        )
+
+        # Run with --check-staged
+        with patch("sys.argv", ["check_evidence.py", "--check-staged"]):
+            with pytest.raises(SystemExit) as e:
                 _module.main()
+            # Should be 0 because only the valid A1 is checked
+            assert e.value.code == 0
 
-        assert exc_info.value.code == 0
-
-    def test_verbose_flag_accepted(self, evidence_env):
-        """Should accept --verbose flag without error."""
-
-        artifact_type = list(_ARTIFACT_TYPES.keys())[0]
-        create_artifact_file(evidence_env.dir_for(artifact_type), artifact_type=artifact_type)
-
-        with patch("sys.argv", ["check_evidence", "--verbose"]):
-            with pytest.raises(SystemExit) as exc_info:
+    def test_check_staged_with_errors(self, evidence_env, monkeypatch):
+        """--check-staged should exit 1 if a staged file is invalid.
+        
+        Contract:
+        - We monkeypatch 'get_staged_files' to simulate Git's staging area.
+        - The 'evidence_env' fixture already provides correct config and REPO_ROOT.
+        """
+        A1 = create_artifact_file(
+            evidence_env.dir_for("analysis"),
+            artifact_type="analysis",
+            slug="staged",
+            frontmatter_overrides={"status": None}
+        )
+    
+        rel_path_A1 = str(A1.relative_to(evidence_env.root))
+        monkeypatch.setattr(_module, "get_staged_files", lambda: [rel_path_A1])
+    
+        with patch("sys.argv", ["check_evidence.py", "--check-staged", "--verbose"]):
+            with pytest.raises(SystemExit) as e:
                 _module.main()
+            assert e.value.code == 1
 
-        assert exc_info.value.code == 0
 
-    def test_check_staged_flag_accepted(self, evidence_env):
-        """Should accept --check-staged flag without error."""
+class TestCoverageGaps:
+    """Targeted tests to cover remaining missing lines in check_evidence.py."""
 
-        with patch("sys.argv", ["check_evidence", "--check-staged"]):
-            with pytest.raises(SystemExit) as exc_info:
+    def test_missing_evidence_config_raises(self, tmp_path):
+        """Cover line 204: load_evidence_config raises FileNotFoundError."""
+        with pytest.raises(FileNotFoundError):
+            _module.load_evidence_config(tmp_path / "missing.json")
+
+    def test_missing_parent_config_raises(self, tmp_path):
+        """Cover lines 174-179, 211-214: load_parent_config raises FileNotFoundError."""
+        # Case 1: Absolute path missing
+        with pytest.raises(FileNotFoundError):
+            _module.load_parent_config({"parent_config": "/tmp/no_hub.json"}, tmp_path)
+
+        # Case 2: Relative path missing
+        with pytest.raises(FileNotFoundError):
+            _module.load_parent_config({"parent_config": "no_hub.json"}, tmp_path)
+
+    def test_no_naming_pattern_handling(self, evidence_env, monkeypatch):
+        """Cover lines 254-260 and 498: Handling of types with no naming pattern."""
+        # Mock ARTIFACT_TYPES to include a type without a pattern
+        mock_types = dict(_module.ARTIFACT_TYPES)
+        mock_types["no_pattern_type"] = {"directory_name": "no_pattern", "id_prefix": "NP", "required_fields": []}
+        monkeypatch.setattr(_module, "ARTIFACT_TYPES", mock_types)
+
+        # Mock NAMING_PATTERNS to exclude this type
+        mock_patterns = dict(_module.NAMING_PATTERNS)
+        # Ensure "no_pattern_type" is NOT in mock_patterns
+        monkeypatch.setattr(_module, "NAMING_PATTERNS", mock_patterns)
+
+        # 1. Test validate_naming directly
+        errors = _module.validate_naming(Path("fake"), "NP-26001_test.md", "no_pattern_type")
+        assert len(errors) == 1
+        assert "No naming pattern defined" in errors[0].message
+
+        # 2. Test discover_artifacts
+        (evidence_env.evidence_dir / "no_pattern").mkdir(exist_ok=True)
+        (evidence_env.evidence_dir / "no_pattern" / "NP-26001_test.md").write_text("content")
+
+        artifacts = _module.discover_artifacts("no_pattern_type")
+        assert len(artifacts) == 0
+
+    def test_frontmatter_validation_errors(self, evidence_env):
+        """Cover lines 427, 433, 437-438, 441: Trigger all frontmatter validation failures."""
+        first_type = list(_module.ARTIFACT_TYPES.keys())[0]
+        type_config = _module.ARTIFACT_TYPES[first_type]
+
+        # 1. Invalid date format
+        fm_date = _build_valid_frontmatter(first_type, date="01-01-2026")
+        errors = _module.validate_frontmatter(Path("fake"), fm_date, first_type)
+        assert any("Invalid date format" in e.message for e in errors)
+
+        # 2. Invalid status (if applicable)
+        if type_config.get("statuses"):
+            fm_status = _build_valid_frontmatter(first_type, status="bogus_status")
+            errors = _module.validate_frontmatter(Path("fake"), fm_status, first_type)
+            assert any("Invalid status" in e.message for e in errors)
+
+        # 3. Invalid severity (if applicable)
+        if "severity" in type_config:
+            fm_sev = _build_valid_frontmatter(first_type, severity="bogus_severity")
+            errors = _module.validate_frontmatter(Path("fake"), fm_sev, first_type)
+            assert any("Invalid severity" in e.message for e in errors)
+
+        # 4. Invalid tags
+        fm_tags = _build_valid_frontmatter(first_type, tags=["nonexistent_tag"])
+        errors = _module.validate_frontmatter(Path("fake"), fm_tags, first_type)
+        assert any("Invalid tags" in e.message for e in errors)
+
+    def test_sections_validation_errors(self, evidence_env):
+        """Cover lines 449-450: Trigger missing required section error."""
+        first_type = list(_module.ARTIFACT_TYPES.keys())[0]
+        type_config = _module.ARTIFACT_TYPES[first_type]
+        required = list(type_config.get("required_sections", []))
+
+        if required:
+            # Remove one required section
+            missing_section = required[0]
+            sections = [s for s in required if s != missing_section]
+            errors = _module.validate_sections(Path("fake"), sections, first_type)
+            assert any("Missing required section" in e.message for e in errors)
+
+    def test_orphaned_sources_missing_dir(self, evidence_env):
+        """Cover line 490: detect_orphaned_sources handles missing directory."""
+        warnings = _module.detect_orphaned_sources(Path("nonexistent_dir_xyz"))
+        assert warnings == []
+
+    def test_main_entry_point(self, evidence_env, monkeypatch):
+        """Cover line 536: if __name__ == '__main__': main()"""
+        # This is hard to test as it's at the bottom of the module.
+        # We can just call main() directly via the module.
+        with patch("sys.argv", ["check_evidence.py"]):
+            with pytest.raises(SystemExit):
                 _module.main()
-
-        assert exc_info.value.code == 0

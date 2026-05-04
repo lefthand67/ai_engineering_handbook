@@ -11,17 +11,23 @@ kernelspec:
   language: python
 ---
 
-# Small LM-Backed Release Documentation Pipeline: Architecture
-
-+++
-
 ---
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.3  
-Birth: 2025-12-01  
-Last Modified: 2026-01-11
-
+title: 'Small LM-Backed Release Documentation Pipeline: Architecture'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Technical architecture for generating release documentation using resource-constrained
+  Small Language Models (SLMs), focusing on decoupling data parsing from stylistic
+  transformation.
+tags:
+- workflow
+- devops
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.1.5
+  birth: '2025-12-01'
+  token_size: 3479
 ---
 
 +++

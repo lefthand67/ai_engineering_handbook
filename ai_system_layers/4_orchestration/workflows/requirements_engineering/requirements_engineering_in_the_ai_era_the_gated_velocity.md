@@ -11,17 +11,25 @@ kernelspec:
   language: python
 ---
 
+---
+title: '📘 Requirements Engineering in the AI Era: The Gated Velocity Handbook'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: The definitive handbook for the Gated Velocity methodology, blending
+  high-velocity LLM synthesis with deterministic SLM auditing and human Micro-Gating
+  for NFR compliance.
+tags:
+- workflow
+- architecture
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.2.4
+  birth: '2025-12-07'
+  token_size: 5120
+---
 # 📘 Requirements Engineering in the AI Era: The Gated Velocity Handbook
-
------
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.2.2  
-Birth: 2025-12-07  
-Last Modified: 2025-12-31
-
------
-
 > INFO: *The handbook is optimized for environments supporting Mermaid.js diagrams. For static export, rasterized versions are available in Appendix A.*
 
 Maximize LLM-driven velocity while enforcing Non-Functional Requirement (NFR) compliance via structured, low-friction human Micro-Gating.

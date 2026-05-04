@@ -12,16 +12,25 @@ kernelspec:
   language: python
 ---
 
-# YAML Frontmatter for AI-Enabled Engineering
-
 ---
 title: YAML Frontmatter for AI-Enabled Engineering
-author: Vadim Rudakov, rudakow.wadim@gmail.com
-date: 2026-02-08
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Comprehensive guide to using YAML frontmatter in AI-enabled engineering,
+  focusing on RAG efficiency, machine readability, and MyST-aligned standards.
+tags:
+- context_management
+- documentation
+date: '2026-05-01'
 options:
-  version: 0.3.0
-  birth: 2026-02-05
+  type: guide
+  version: 0.3.1
+  birth: '2026-02-05'
+  token_size: 1498
 ---
+
+# YAML Frontmatter for AI-Enabled Engineering
 
 +++
 

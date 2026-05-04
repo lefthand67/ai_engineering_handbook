@@ -11,17 +11,24 @@ kernelspec:
   language: python
 ---
 
+---
+title: Appendices for "Requirements Engineering in the AI Era"
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Complementary prompt templates and JSON schemas for the Gated Velocity
+  Pipeline, covering elicitation, technical spec generation, and acceptance criteria.
+tags:
+- workflow
+- documentation
+date: '2026-05-02'
+options:
+  type: guide
+  version: 0.4.3
+  birth: '2025-12-07'
+  token_size: 3355
+---
 # Appendices for "Requirements Engineering in the AI Era"
-
------
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.4.1  
-Birth: 2025-12-07  
-Last Modified: 2025-12-31
-
------
-
 > INFO: Nothing was tested. Need to be investigated further.
 
 ## Appendix A: Template 1: Elicitation and User Story Generation Prompt

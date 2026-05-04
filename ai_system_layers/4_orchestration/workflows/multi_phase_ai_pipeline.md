@@ -12,12 +12,22 @@ kernelspec:
 ---
 
 ---
-title: "Multi-Phase AI Pipeline: Decoupling Research from Code Generation"
-author: Vadim Rudakov, rudakow.wadim@gmail.com
-date: 2026-02-16
+title: 'Multi-Phase AI Pipeline: Decoupling Research from Code Generation'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Documents the Research-Apply pipeline for AI-assisted engineering, decoupling
+  knowledge retrieval (Research) from code generation (Execution) to ensure architectural
+  alignment and hardware stability.
+tags:
+- workflow
+- architecture
+date: '2026-05-02'
 options:
-  version: 1.0.0
-  birth: 2026-01-14
+  type: guide
+  version: 1.0.2
+  birth: '2026-01-14'
+  token_size: 1557
 ---
 
 +++

@@ -13,13 +13,22 @@ kernelspec:
 
 ---
 title: Production Git Workflow Standards
-author: rudakow.wadim@gmail.com
-date: 2026-02-18
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: 2026-05-04
+description: Mandatory professional-grade conventions for Git branching and committing
+  in the AI Engineering Book repository.
+tags:
+- git
+- workflow
+- documentation
 options:
+  type: guide
   version: 1.0.1
   birth: 2025-11-29
+  token_size: 6125
 ---
-
 # Production Git Workflow Standards
 
 +++
@@ -64,7 +73,7 @@ Branch names **MUST** use the format:
 | `chore/`   | For non-code tasks like dependency, docs updates.  | `chore/TICKET-789-update-deps`   |
 
 > Branches are different from commits—they are temporary and mainly used until merged. Introducing too many types for branches would be unnecessary and would make them harder to manage and remember.
-> 
+>
 > -- [Conventional Branch docs](https://conventional-branch.github.io/)
 
 :::{seealso}
@@ -104,7 +113,9 @@ See: [SemVer: Artifact Versioning Policy (AVP)](/tools/docs/git/semver_artifact_
 :::
 
 :::{tip} Machine-readable configuration
-The valid types, ArchTag-required types, and CHANGELOG section mappings are configured in `pyproject.toml` under `[tool.commit-convention]`. Both `validate_commit_msg.py` and `generate_changelog.py` read from this single source of truth — update the table above and `pyproject.toml` together.
+The valid types, ArchTag-required types, and CHANGELOG section mappings are configured in `pyproject.toml` under `[tool.commit-convention]`. Both `validate_commit_msg.py` and `generate_changelog.py` read from this single source of truth. 
+
+**The authoritative list of allowed ArchTags is governed by `pyproject.toml [tool.commit-convention].archtag-valid-values`. This table provides the definitions and usage guidelines for those tags.** If a commit lacks a required tag or uses an invalid one, the validator provides just-in-time instructional feedback based on this configuration.
 :::
 
 +++
@@ -141,9 +152,9 @@ A **breaking change** is defined by **observable behavior change for consumers**
 
 +++
 
-For commits of type 
-- `refactor:`, 
-- `perf:`, or 
+For commits of type
+- `refactor:`,
+- `perf:`, or
 - `BREAKING CHANGE` Footer,
 
 the architectural intent **MUST** be provided as an ArchTag (Architectural Tag).
@@ -411,7 +422,7 @@ The goal of every feature branch’s final history is **logical atomicity**. An 
 
 - **Rule 1: One Goal Per Commit.** A commit must achieve one objective only (e.g., *refactor logic*, *add unit tests*, *fix a bug*).
 - **Rule 2: The Squashed Commit Must Be Stable.** The final squashed commit on trunk **MUST** be buildable and pass all tests. Intermediate feature branch commits are transient development artifacts — they are eliminated by Squash-and-Merge and need not individually pass CI.
-- **Rule 3: Cohesive Narrative.** The sequence of commits in a Pull Request (PR) should tell a clear story for reviewers. However, only the squashed commit matters for trunk history and changelog extraction.
+- **Rule 3: Cohesive Narrative.** The sequence of commits in a Pull Request (PR) should tell a clear story for reviewers. However, only the squashed commit matters for trunk history and changelog extraction — internal feature branch history is invisible after Squash-and-Merge.
 
 +++
 
@@ -493,10 +504,4 @@ If a large feature needs decomposition, split it into **separate PRs** (each squ
 
 | Guardrail | Implementation |
 |:-----------------------------------|:-----------------------------------|
-| **Reviewer Gate**  | Reviewers **reject PRs** that are not logically atomic (e.g., mix refactor + feature) or lack structured body bullets in the PR description. |
-| **Merge Policy**| Repository settings **enforce "Squash and Merge"** as the only allowed merge method. The Git host populates the squash commit message from the PR description. |
-| **Commit Message Validation** | `validate_commit_msg.py` (pre-commit hook, `commit-msg` stage) validates both the subject line format and structured body bullets. |
-
-:::{caution} No Rebase on `main`
-Rebase operations create new commits with their own hashes, so such operation can break the monitoring systems if they configured on commit hash change detection.
-:::
+| **Reviewer Gate**  | Reviewers **reject PRs** that are not logically atomic (e.g., mix refactor + feature) o... [truncated]

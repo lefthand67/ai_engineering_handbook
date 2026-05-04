@@ -46,6 +46,7 @@ def _load_commit_convention() -> dict:
 _CONFIG = _load_commit_convention()
 VALID_TYPES = frozenset(_CONFIG["valid-types"])
 ARCHTAG_REQUIRED_TYPES = frozenset(_CONFIG["archtag-required-types"])
+ARCHTAG_VALID_VALUES = _CONFIG.get("archtag-valid-values", [])
 
 # Regex for CC subject: type[(scope)][!]: description
 # Groups: type, scope (optional), breaking (optional), desc
@@ -149,19 +150,34 @@ def validate_archtag(
     body_lines: list[str],
     breaking: bool = False,
 ) -> list[str]:
-    """Validate ArchTag presence for refactor/perf/breaking commits (Tier 3)."""
+    """Validate ArchTag presence, position, and value for refactor/perf/breaking commits (Tier 3)."""
     needs_archtag = commit_type in ARCHTAG_REQUIRED_TYPES or breaking
     if not needs_archtag:
         return []
 
-    has_archtag = any(_ARCHTAG_RE.match(line) for line in body_lines)
-    if not has_archtag:
+    # 1. Check for presence and position
+    if not body_lines:
+        return ["COMMIT_EDITMSG:body — ArchTag required for breaking change or refactor/perf type — body is empty [pyproject.toml]"]
+
+    if not _ARCHTAG_RE.match(body_lines[0]):
+        # Check if it exists elsewhere to provide a "Move it" hint
+        if any(_ARCHTAG_RE.match(line) for line in body_lines[1:]):
+            return ["COMMIT_EDITMSG:body — ArchTag Position: ArchTag found in body, but it MUST be the first line. Move it to the top. [pyproject.toml]"]
+
         reason = "breaking change" if breaking else f"'{commit_type}' type"
-        return [
-            f"ArchTag required for {reason} — "
-            f"add ArchTag:TAG-NAME as first body line "
-            f"(see pyproject.toml [tool.commit-convention].archtag-required-types)"
-        ]
+        valid_options = ", ".join(ARCHTAG_VALID_VALUES)
+        return [f"COMMIT_EDITMSG:body — ArchTag required for {reason} — add 'ArchTag:VALUE' as the first line of the body. Valid options: {valid_options}. [pyproject.toml]"]
+
+    # 2. Validate the value of the ArchTag found on the first line
+    tag_line = body_lines[0]
+    try:
+        tag_value = tag_line.split(":", 1)[1].strip()
+    except IndexError:
+        return ["COMMIT_EDITMSG:body — Malformed ArchTag: Expected 'ArchTag:VALUE' on the first line. [pyproject.toml]"]
+
+    if not any(re.match(pattern, tag_value) for pattern in ARCHTAG_VALID_VALUES):
+        valid_options = ", ".join(ARCHTAG_VALID_VALUES)
+        return [f"COMMIT_EDITMSG:body — Invalid ArchTag: '{tag_value}' is not recognized. Valid options: {valid_options}. If this is a new decision, create an ADR first. [pyproject.toml]"]
 
     return []
 

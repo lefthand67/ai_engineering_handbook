@@ -55,6 +55,7 @@ from tools.scripts.validate_commit_msg import (
     main,
     VALID_TYPES,
     ARCHTAG_REQUIRED_TYPES,
+    ARCHTAG_VALID_VALUES,
 )
 
 
@@ -312,6 +313,35 @@ class TestValidateArchTag:
         lines = ["ArchTag:BREAKING-CHANGE", "- Updated: f.py — breaking"]
         errors = validate_archtag("feat", lines, breaking=True)
         assert errors == []
+
+    def test_refactor_without_archtag_instructional_message(self):
+        """Missing ArchTag → error follows instructional contract structure and lists options from config."""
+        lines = ["- Updated: f.py — simplified"]
+        errors = validate_archtag("refactor", lines, breaking=False)
+        assert len(errors) == 1
+        # Verify structural contract: identifier:field — message [source]
+        import re
+        assert re.match(r"^[^\s]+:[^\s]+ — .+ \[.+\]$", errors[0])
+        # Semantic check: error must contain the configured valid tags
+        assert any(tag in errors[0] for tag in ARCHTAG_VALID_VALUES)
+
+    def test_archtag_wrong_position_instructional_message(self):
+        """ArchTag not on first line → error follows instructional contract structure."""
+        lines = ["- Updated: f.py — simplified", "ArchTag:TECHDEBT-PAYMENT"]
+        errors = validate_archtag("refactor", lines, breaking=False)
+        assert len(errors) == 1
+        import re
+        assert re.match(r"^[^\s]+:[^\s]+ — .+ \[.+\]$", errors[0])
+
+    def test_archtag_invalid_value_instructional_message(self):
+        """Invalid tag value → error follows instructional contract structure and lists options."""
+        lines = ["ArchTag:MAGIC-FIX", "- Updated: f.py — simplified"]
+        errors = validate_archtag("refactor", lines, breaking=False)
+        assert len(errors) == 1
+        import re
+        assert re.match(r"^[^\s]+:[^\s]+ — .+ \[.+\]$", errors[0])
+        # Semantic check: the error should at least mention a known valid tag from config
+        assert "TECHDEBT-PAYMENT" in errors[0]
 
 
 # ---------------------------------------------------------------------------

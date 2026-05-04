@@ -12,17 +12,21 @@ kernelspec:
 ---
 
 ---
-title: "Token Economics of Prompt Delivery"
-type: guide
+title: Token Economics of Prompt Delivery
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: BPE tokenizer mechanics and measured token costs across formats and tokenizers — the empirical companion to Format as Architecture.
-tags: [prompts, architecture]
-date: 2026-03-29
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Explains BPE tokenizer mechanics and provides empirical measurements
+  of token costs across different prompt formats and tokenizers.
+tags:
+- prompts
+- architecture
+date: '2026-05-02'
 options:
-  version: 0.1.0
-  birth: 2026-03-29
+  type: guide
+  version: 0.1.2
+  birth: '2026-03-29'
+  token_size: 6533
 ---
 
 +++

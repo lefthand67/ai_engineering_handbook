@@ -12,17 +12,21 @@ kernelspec:
 ---
 
 ---
-title: "Format as Architecture: Signal-to-Noise in Prompt Delivery"
-type: guide
+title: 'Format as Architecture: Signal-to-Noise in Prompt Delivery'
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: How the serialization format of a system prompt affects LLM behavior — a decision framework for choosing between JSON, YAML, XML, and Markdown.
-tags: [prompts, architecture]
-date: 2026-03-29
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Analyzes how the serialization format (JSON, YAML, XML, Markdown) of
+  a system prompt affects LLM behavior, token costs, and instruction adherence.
+tags:
+- prompts
+- architecture
+date: '2026-05-02'
 options:
-  version: 0.2.0
-  birth: 2026-02-15
+  type: guide
+  version: 0.2.2
+  birth: '2026-02-15'
+  token_size: 5052
 ---
 
 +++

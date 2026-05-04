@@ -12,17 +12,21 @@ kernelspec:
 ---
 
 ---
-title: "Appendix: YAML Serializer Variance and Token Economics"
-type: guide
+title: 'Appendix: YAML Serializer Variance and Token Economics'
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Empirical analysis showing that YAML token costs are a function of (format, serializer, tokenizer) — not format alone. PyYAML vs yq isolation, semantic fidelity, ranking stability across 5 prompt files."
-tags: [prompts, architecture]
-date: 2026-03-27
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Empirical analysis showing that YAML token costs are a function of format,
+  serializer, and tokenizer, providing a concrete recommendation for prompt delivery.
+tags:
+- prompts
+- architecture
+date: '2026-05-02'
 options:
-  version: 1.0.0
-  birth: 2026-03-27
+  type: guide
+  version: 1.0.2
+  birth: '2026-03-27'
+  token_size: 8727
 ---
 
 +++

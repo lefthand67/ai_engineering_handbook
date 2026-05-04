@@ -1,15 +1,10 @@
 ---
 jupytext:
-  root_level_metadata_filter: -title,-authors,-date,-description,-tags,-options
   text_representation:
     extension: .md
     format_name: myst
     format_version: 0.13
     jupytext_version: 1.19.1
-kernelspec:
-  display_name: Bash
-  language: bash
-  name: bash
 ---
 
 ---
@@ -17,17 +12,18 @@ title: 'Layer 3: Prompts-as-Infrastructure'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-22
-description: Documentation for the Block-Based Prompt Architecture used in the AI
-  Engineering Book ecosystem.
-tags: [prompts, architecture]
+date: "2026-05-02"
+description: Overview of the Prompts-as-Infrastructure layer, describing the block-based
+  architecture for scalable prompt engineering.
+tags:
+- prompts
+- architecture
 options:
   type: guide
-  token_size: 1200
-  version: 1.0.0
-  birth: 2026-04-22
+  birth: "2026-01-01"
+  version: "1.0.0"
+  token_size: 661
 ---
-
 # Layer 3: Prompts-as-Infrastructure
 
 +++

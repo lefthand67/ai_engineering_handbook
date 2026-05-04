@@ -214,6 +214,12 @@ Jupytext sync runs as a pre-commit lint step. The `.aider.conf.yml` also configu
 Python version: 3.13+ (locked in `.python-version`)
 Package manager: `uv` (never use pip directly)
 
+**Tool-Driven Instructional Feedback (ADR-26050):**
+- **Scripts are Instructors:** Treat validation script errors (hooks) not as mere failures, but as Just-In-Time (JIT) instructions.
+- **Follow the Guidance:** When a hook fails, prioritize the specific "How-to-Fix" instructions provided in the error message over general documentation.
+- **Reporting Contract:** Errors follow the format `file_path:field — <Instructional Message> [config_source]`.
+- **Actionable Correction:** If a script tells you to move a line, change a value to a specific approved option, or add a missing tag, perform that exact action to resolve the violation.
+
 **TDD Approach (Tests First):**
 - **IMPORTANT: Always write tests FIRST, then implement the functionality to make them pass (Red → Green → Refactor)**
 - For new features or refactoring: write failing tests first, then implement until tests pass

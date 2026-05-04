@@ -557,6 +557,29 @@ class TestValidateFrontmatter:
         errors = _module.validate_frontmatter(Path("fake/path"), fm, first_type)
         assert len(errors) > 0
 
+    def test_options_block_required_fields_accepted(self, evidence_env):
+        """Contract: Required fields (id, status) should be accepted inside 'options' block.
+        (Migration to Common Frontmatter Standard ADR-26042)
+        """
+        artifact_type = "analysis"
+        fm = _build_valid_frontmatter(artifact_type)
+        
+        # Move id and status to options
+        id_val = fm.pop("id")
+        status_val = fm.pop("status")
+        
+        # Ensure options block exists and is a dict
+        options = fm.get("options")
+        if not isinstance(options, dict):
+            options = {}
+            fm["options"] = options
+            
+        options["id"] = id_val
+        options["status"] = status_val
+        
+        errors = _module.validate_frontmatter(Path("fake/path"), fm, artifact_type)
+        assert len(errors) == 0, f"Errors found when required fields were in options block: {errors}"
+
 
 # ======================
 # Section Validation

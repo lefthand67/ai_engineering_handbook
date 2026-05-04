@@ -45,6 +45,7 @@ import sys
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -313,6 +314,20 @@ def validate_naming(filepath: Path, filename: str, artifact_type: str) -> list[V
     return errors
 
 
+def _get_field(frontmatter: dict, field: str) -> Any:
+    """Get field value from top level or options block.
+
+    Ensures compatibility with Common Frontmatter Standard (ADR-26042)
+    where non-native fields are moved to the 'options' namespace.
+    """
+    if field in frontmatter:
+        return frontmatter[field]
+    options = frontmatter.get("options", {})
+    if isinstance(options, dict) and field in options:
+        return options[field]
+    return None
+
+
 def validate_frontmatter(filepath: Path, frontmatter: dict, artifact_type: str) -> list[ValidationError]:
     """Validate frontmatter fields against config requirements.
 
@@ -332,7 +347,7 @@ def validate_frontmatter(filepath: Path, frontmatter: dict, artifact_type: str) 
 
     # Common required fields
     for field_name in COMMON_REQUIRED_FIELDS:
-        if frontmatter.get(field_name) is None:
+        if _get_field(frontmatter, field_name) is None:
             errors.append(ValidationError(
                 file_path=filepath,
                 error_type="frontmatter",
@@ -343,7 +358,7 @@ def validate_frontmatter(filepath: Path, frontmatter: dict, artifact_type: str) 
 
     # Type-specific required fields
     for field_name in type_config.get("required_fields", []):
-        if frontmatter.get(field_name) is None:
+        if _get_field(frontmatter, field_name) is None:
             errors.append(ValidationError(
                 file_path=filepath,
                 error_type="frontmatter",
@@ -367,25 +382,27 @@ def validate_frontmatter(filepath: Path, frontmatter: dict, artifact_type: str) 
 
     # Status (only for types with non-empty statuses list)
     valid_statuses = type_config.get("statuses", [])
-    if valid_statuses and "status" in frontmatter:
-        if frontmatter["status"] not in valid_statuses:
+    status_value = _get_field(frontmatter, "status")
+    if valid_statuses and status_value is not None:
+        if status_value not in valid_statuses:
             errors.append(ValidationError(
                 file_path=filepath,
                 error_type="frontmatter",
                 field="status",
-                message=f"Invalid status: '{frontmatter['status']}' (valid: {valid_statuses})",
+                message=f"Invalid status: '{status_value}' (valid: {valid_statuses})",
                 config_source=f"{EVIDENCE_CONFIG_PATH.name} → artifact_types.{artifact_type}.statuses",
             ))
 
     # Severity (only for types with severity list)
     valid_severities = type_config.get("severity", [])
-    if valid_severities and "severity" in frontmatter:
-        if frontmatter["severity"] not in valid_severities:
+    severity_value = _get_field(frontmatter, "severity")
+    if valid_severities and severity_value is not None:
+        if severity_value not in valid_severities:
             errors.append(ValidationError(
                 file_path=filepath,
                 error_type="frontmatter",
                 field="severity",
-                message=f"Invalid severity: '{frontmatter['severity']}' (valid: {valid_severities})",
+                message=f"Invalid severity: '{severity_value}' (valid: {valid_severities})",
                 config_source=f"{EVIDENCE_CONFIG_PATH.name} → artifact_types.{artifact_type}.severity",
             ))
 

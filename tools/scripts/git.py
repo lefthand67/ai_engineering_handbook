@@ -118,7 +118,7 @@ def clone_repo(url: str, path: Path, branch: str | None = None) -> bool:
     cmd.extend([url, str(path)])
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(cmd)
         return result.returncode == 0
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
@@ -138,12 +138,10 @@ def pull_repo(path: Path) -> tuple[bool, str]:
         result = subprocess.run(
             ["git", "pull", "--rebase"],
             cwd=path,
-            capture_output=True,
-            text=True,
         )
         if result.returncode == 0:
-            return True, result.stdout
-        return False, result.stderr
+            return True, "Updated"
+        return False, "Git pull failed"
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         return False, str(e)
 
@@ -187,6 +185,28 @@ def get_repo_status(path: Path) -> tuple[str | None, str | None, str | None]:
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None, None, None
+
+
+def is_repo_dirty(path: Path) -> bool:
+    """Check if a git repository has unstaged or uncommitted changes.
+
+    Args:
+        path: Path to the git repository.
+
+    Returns:
+        True if the repository is dirty, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return bool(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 
 def reset_repo(path: Path) -> bool:

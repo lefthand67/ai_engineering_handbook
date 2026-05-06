@@ -109,7 +109,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("manage_external_repos")
 
-from tools.scripts.git import clone_repo, detect_repo_root, get_repo_status, pull_repo, reset_repo
+from tools.scripts.git import clone_repo, detect_repo_root, get_repo_status, pull_repo, reset_repo, is_repo_dirty
 from tools.scripts.paths import get_external_repo_paths
 
 # Configuration constants
@@ -152,7 +152,7 @@ def main() -> int:
     args = parser.parse_args()
 
     # Configure logging based on verbosity flag
-    log_level = logging.INFO if args.verbose else logging.WARNING
+    log_level = logging.DEBUG if args.verbose else logging.INFO
     logging.basicConfig(
         level=log_level,
         format="%(levelname)s    %(name)s:%(filename)s:%(lineno)d %(message)s",
@@ -249,7 +249,7 @@ Examples:
     parser.add_argument(
         "--verbose", "-v",
         action="store_true",
-        help="Increase output verbosity (INFO level)",
+        help="Increase output verbosity (DEBUG level)",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -601,34 +601,24 @@ def setup_command(url: str, target_dir_name: str | None = None) -> int:
 
 
 def _pull_with_reset(repo_path: Path, reset: bool) -> tuple[bool, str]:
-    """Try to pull updates, and optionally reset if unstaged changes block it.
+    """Try to pull updates, and optionally reset if the repo is dirty.
 
     Contract:
     - Input: repo_path (absolute path), reset (boolean flag)
     - Operation:
-        1. execute pull_repo()
-        2. If success: return (True, message)
-        3. If failure AND reset=True AND error matches local modification patterns:
+        1. If reset=True and is_repo_dirty(repo_path):
             a. log warning about forced reset
             b. execute reset_repo()
-            c. if reset succeeds, retry pull_repo() and return its result
-            d. if reset fails, return (False, "Reset failed...")
-        4. Otherwise: return (False, original_error_message)
+        2. execute pull_repo()
+        3. return result of pull_repo()
     - Side Effects: May perform a hard reset of the git repository at repo_path.
     """
-    success, message = pull_repo(repo_path)
-    if success:
-        return success, message
-
-    # Check for common git errors that indicate unstaged local changes
-    if reset and ("local changes would be overwritten" in message.lower() or "unstaged changes" in message.lower()):
+    if reset and is_repo_dirty(repo_path):
         logger.warning(f"Local changes detected in {repo_path.name}. Forcibly resetting to match remote...")
-        if reset_repo(repo_path):
-            return pull_repo(repo_path)
-        else:
+        if not reset_repo(repo_path):
             return False, f"Reset failed: Could not clear local changes in {repo_path.name}"
 
-    return success, message
+    return pull_repo(repo_path)
 
 
 def update_command(repo_names: List[str] = None, parallel: bool = False, reset: bool = False) -> int:
@@ -652,7 +642,7 @@ def update_command(repo_names: List[str] = None, parallel: bool = False, reset: 
     for dir_path in sorted(EXTERNAL_REPO_DIRS, key=str):
         full_path = repo_root / dir_path
         status = "✓" if full_path.exists() else "✗"
-        logger.info(f"   {status} {dir_path}")
+        logger.debug(f"   {status} {dir_path}")
 
     # Discover repositories across all directories
     all_repos = []
@@ -662,7 +652,7 @@ def update_command(repo_names: List[str] = None, parallel: bool = False, reset: 
             repos = discover_repos(full_path, parent_dir=dir_path)
             all_repos.extend(repos)
             if repos:
-                logger.info(f"   Found {len(repos)} repo(s) in {dir_path}")
+                logger.debug(f"   Found {len(repos)} repo(s) in {dir_path}")
 
     if not all_repos:
         logger.info("No git repositories found in registered directories")
@@ -724,7 +714,7 @@ def update_command(repo_names: List[str] = None, parallel: bool = False, reset: 
                 else:
                     logger.info(f"    ✅ Updated")
             else:
-                logger.error(f"    ❌ FAILED: {message.strip()}")
+                logger.error(f"    ❌ FAILED in {repo.name}{branch_tag} ({repo.path}): {message.strip()}")
                 all_success = False
 
     if all_success:

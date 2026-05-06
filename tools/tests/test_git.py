@@ -58,8 +58,43 @@ class TestDetectRepoRoot:
         assert result == Path("/fake/repo").resolve()
 
 
+class TestGetHistoricalPaths:
+    """Contract: get_historical_paths(dir) returns all paths that ever existed in that dir."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_historical_paths(self, mock_run):
+        """git log returns files → return filtered and stripped paths."""
+        # Simulate git log --oneline --name-only output
+        # format: commit_hash message\nfile_path\n...
+        mock_run.return_value = MagicMock(
+            stdout="a1b2c3d initial commit\narch/evidence/S-1.md\narch/evidence/S-2.md\nother/file.txt\n"
+        )
+        result = _module.get_historical_paths("arch/evidence")
+        assert result == {"arch/evidence/S-1.md", "arch/evidence/S-2.md"}
+        mock_run.assert_called_once_with(
+            ["git", "log", "--oneline", "--name-only", "--", "arch/evidence/"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_empty_when_no_files(self, mock_run):
+        """git log returns nothing → return empty set."""
+        mock_run.return_value = MagicMock(stdout="")
+        result = _module.get_historical_paths("empty/dir")
+        assert result == set()
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_empty_on_failure(self, mock_run):
+        """git fails → return empty set (graceful degradation)."""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        result = _module.get_historical_paths("fail/dir")
+        assert result == set()
+
+
 class TestCloneRepo:
-    """Contract: clone_repo(url, path) clones repository, returns success bool."""
+
 
     @patch.object(_module.subprocess, "run")
     def test_clone_success(self, mock_run):
@@ -72,8 +107,6 @@ class TestCloneRepo:
         assert result is True
         mock_run.assert_called_once_with(
             ["git", "clone", "https://github.com/test/repo", "/tmp/test/repo"],
-            capture_output=True,
-            text=True,
         )
 
     @patch.object(_module.subprocess, "run")
@@ -95,8 +128,6 @@ class TestCloneRepo:
                 "https://github.com/test/repo",
                 "/tmp/test/repo",
             ],
-            capture_output=True,
-            text=True,
         )
 
     @patch.object(_module.subprocess, "run")
@@ -116,30 +147,26 @@ class TestPullRepo:
     @patch.object(_module.subprocess, "run")
     def test_pull_up_to_date(self, mock_run):
         """Repo is up to date → return True with status message."""
-        mock_run.return_value = MagicMock(returncode=0, stdout="Already up to date.")
+        mock_run.return_value = MagicMock(returncode=0)
         success, message = _module.pull_repo(Path("/tmp/test/repo"))
         assert success is True
-        assert "Already up to date" in message
+        assert message == "Updated"
 
     @patch.object(_module.subprocess, "run")
     def test_pull_updates(self, mock_run):
-        """Pull with updates → return True with changed files."""
-        mock_run.return_value = MagicMock(
-            returncode=0, stdout="Updating abc123..def456\n 3 files changed"
-        )
+        """Pull with updates → return True with status message."""
+        mock_run.return_value = MagicMock(returncode=0)
         success, message = _module.pull_repo(Path("/tmp/test/repo"))
         assert success is True
-        assert "files changed" in message
+        assert message == "Updated"
 
     @patch.object(_module.subprocess, "run")
     def test_pull_failure(self, mock_run):
         """git pull fails → return False with error."""
-        mock_run.return_value = MagicMock(
-            returncode=1, stderr="error: Your local changes would be overwritten"
-        )
+        mock_run.return_value = MagicMock(returncode=1)
         success, message = _module.pull_repo(Path("/tmp/test/repo"))
         assert success is False
-        assert "error" in message.lower()
+        assert "git pull failed" in message.lower()
 
 
 class TestGetRepoStatus:
@@ -266,4 +293,36 @@ class TestResetRepo:
             MagicMock(returncode=1)
         ]
         result = _module.reset_repo(Path("/fake/path"))
+        assert result is False
+
+
+class TestIsRepoDirty:
+    """Contract: is_repo_dirty(path) returns True if repo has changes, False otherwise."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_for_clean_repo(self, mock_run):
+        """git status --porcelain is empty → return False."""
+        mock_run.return_value = MagicMock(stdout="")
+        result = _module.is_repo_dirty(Path("/tmp/test/repo"))
+        assert result is False
+        mock_run.assert_called_once_with(
+            ["git", "status", "--porcelain"],
+            cwd=Path("/tmp/test/repo"),
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_true_for_dirty_repo(self, mock_run):
+        """git status --porcelain is non-empty → return True."""
+        mock_run.return_value = MagicMock(stdout=" M file1.txt\n?? file2.txt\n")
+        result = _module.is_repo_dirty(Path("/tmp/test/repo"))
+        assert result is True
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_on_git_failure(self, mock_run):
+        """git fails → return False (graceful degradation)."""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        result = _module.is_repo_dirty(Path("/tmp/test/repo"))
         assert result is False

@@ -892,7 +892,19 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
     # If the file starts with a fence, parts[0] is empty, and parts[1, 3, ...] are the blocks.
     if content.strip().startswith("---"):
         parts = re.split(r"^\s*---\s*$", content, flags=re.MULTILINE)
-        blocks = [p.strip("\n") for p in parts[1::2]]
+        # The first part must be empty for the file to start with a fence.
+        if not parts[0].strip():
+            blocks = []
+            # Collect the first block
+            if len(parts) > 1:
+                blocks.append(parts[1].strip("\n"))
+                # Collect the second block ONLY if the gap between first and second is empty
+                # (Dual-Block Pattern: Block 1 -> fence -> Block 2)
+                if len(parts) > 3 and not parts[2].strip():
+                    blocks.append(parts[3].strip("\n"))
+            # We only support up to 2 blocks (Jupytext + Project) at the start.
+            # Anything after that is treated as body content.
+
 
     if not blocks:
         return None

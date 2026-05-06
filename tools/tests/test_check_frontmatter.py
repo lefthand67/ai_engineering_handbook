@@ -563,6 +563,41 @@ class TestParseFrontmatter:
             for e in errors
         )
         assert has_placement_error, "Duplicate governed field should be rejected as misplaced"
+
+    def test_ignores_yaml_blocks_in_body(self, frontmatter_env):
+        """YAML blocks occurring in the body of the document must be ignored.
+        
+        Contract: Only contiguous blocks at the start are parsed.
+        """
+        # Use config-driven valid frontmatter for the top block
+        valid_fm = _build_valid_frontmatter("guide")
+        top_block = yaml.dump(valid_fm, default_flow_style=False)
+        
+        # Create a fake YAML block for the body
+        fake_fm = {"title": "Fake Title", "options": {"type": "adr"}}
+        body_block = yaml.dump(fake_fm, default_flow_style=False)
+        
+        content = (
+            f"---\n{top_block}---\n"
+            "\n"
+            "# Body\n"
+            "Here is an example of a YAML block in the body:\n"
+            "\n"
+            f"---\n{body_block}---\n"
+            "\n"
+            "This should be ignored."
+        )
+        
+        result = _module.parse_frontmatter(content)
+        assert isinstance(result, dict)
+        # Verify the top block was parsed
+        assert result["title"] == valid_fm["title"]
+        assert result["options"]["type"] == "guide"
+        # Verify the body block was NOT merged
+        assert result["title"] != "Fake Title"
+        assert "Fake Title" not in str(result)
+
+
     def test_unquoted_colon_in_title_fails_parsing(self):
         """YAML with an unquoted colon in a value (e.g. title) should fail safe_load.
         The parser should log an error and skip the block.

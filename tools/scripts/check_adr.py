@@ -174,7 +174,13 @@ def validate_conditional_fields(adr_file: AdrFile, all_adr_numbers: set[int] | N
 
     field_rules = CONDITIONAL_FIELDS.get(adr_file.status, {})
     for field_name, rules in field_rules.items():
+        # Check both top-level and options block (per ADR-26042)
         value = adr_file.frontmatter.get(field_name)
+        if value is None:
+            options = adr_file.frontmatter.get("options")
+            if isinstance(options, dict):
+                value = options.get(field_name)
+
         if rules.get("required") and not value:
             errors.append(
                 ValidationError(

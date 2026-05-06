@@ -14,6 +14,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+import tools.scripts.check_adr as _module
 
 
 # ======================
@@ -615,8 +616,58 @@ class TestFrontmatterParsingBug:
 
 
 # ======================
-# Unit Tests: Sync Validation
+# Unit Tests: Conditional Fields
 # ======================
+
+
+class TestConditionalFieldsNamespace:
+    """Contract: Conditional fields (e.g. superseded_by) must be detected 
+    regardless of whether they are at top level or under options.*
+    """
+
+    def test_detects_superseded_by_in_options_block(self, adr_env):
+        """ADR with status 'superseded' and 'superseded_by' in options block should pass."""
+        # Create an ADR file with conditional field in options block
+        adr_path = create_adr_file_full(
+            directory=adr_env.adr_dir,
+            number=26006,
+            title="Test Superseded ADR",
+            slug="test_superseded",
+            status="superseded",
+            superseded_by="ADR-26027",
+        )
+        
+        # Use get_adr_files to load as AdrFile
+        from tools.scripts.adr_utils import get_adr_files
+        adr_file = next(f for f in get_adr_files() if f.number == 26006)
+        
+        # Validate conditional fields
+        errors = _module.validate_conditional_fields(adr_file)
+        
+        # Should be no errors
+        missing_fields = [e for e in errors if e.error_type == "missing_conditional_field"]
+        assert not missing_fields, f"Expected no missing fields, but found: {missing_fields}"
+
+    def test_rejects_missing_superseded_by_in_both_locations(self, adr_env):
+        """ADR with status 'superseded' but no 'superseded_by' anywhere should fail."""
+        # Create ADR with status superseded but explicitly omit superseded_by
+        # we can do this by creating it with status='superseded' and superseded_by=None
+        adr_path = create_adr_file_full(
+            directory=adr_env.adr_dir,
+            number=26007,
+            title="Missing Ref ADR",
+            slug="missing_ref",
+            status="superseded",
+            superseded_by=None,
+        )
+        
+        from tools.scripts.adr_utils import get_adr_files
+        adr_file = next(f for f in get_adr_files() if f.number == 26007)
+        
+        errors = _module.validate_conditional_fields(adr_file)
+        
+        # Should have a missing_conditional_field error
+        assert any(e.error_type == "missing_conditional_field" for e in errors)
 
 
 # ======================

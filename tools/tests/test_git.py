@@ -210,3 +210,60 @@ class TestGetStagedFiles:
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
         result = _module.get_staged_files()
         assert result == set()
+
+
+class TestResetRepo:
+    """Contract: reset_repo(path) resets repository to its remote tracking branch."""
+
+    def test_reset_repo_clears_unstaged_changes(self, tmp_path):
+        # Setup: Create a remote repo
+        remote_path = tmp_path / "remote"
+        remote_path.mkdir()
+        subprocess.run(["git", "init", "-b", "main"], cwd=remote_path, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=remote_path, capture_output=True)
+        subprocess.run(["git", "config", "user.name", "Test User"], cwd=remote_path, capture_output=True)
+
+        file_path = remote_path / "test.txt"
+        file_path.write_text("original content")
+        subprocess.run(["git", "add", "test.txt"], cwd=remote_path, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=remote_path, capture_output=True)
+
+        # Setup: Create local repo and clone from remote
+        local_path = tmp_path / "local"
+        subprocess.run(["git", "clone", str(remote_path), str(local_path)], capture_output=True)
+
+        # Modify file in local repo
+        local_file = local_path / "test.txt"
+        local_file.write_text("modified content")
+
+        # Execute
+        success = _module.reset_repo(local_path)
+
+        # Verify
+        assert success is True
+        assert local_file.read_text() == "original content"
+
+    @patch.object(_module.subprocess, "run")
+    def test_reset_repo_fails_on_rev_parse_error(self, mock_run):
+        """git rev-parse fails → return False."""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git rev-parse")
+        result = _module.reset_repo(Path("/fake/path"))
+        assert result is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_reset_repo_fails_on_git_not_found(self, mock_run):
+        """git binary not found → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        result = _module.reset_repo(Path("/fake/path"))
+        assert result is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_reset_repo_fails_on_reset_command(self, mock_run):
+        """git reset returns non-zero → return False."""
+        # First call (rev-parse) succeeds, second (reset) fails
+        mock_run.side_effect = [
+            MagicMock(stdout="main\n"),
+            MagicMock(returncode=1)
+        ]
+        result = _module.reset_repo(Path("/fake/path"))
+        assert result is False

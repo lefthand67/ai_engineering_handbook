@@ -109,7 +109,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("manage_external_repos")
 
-from tools.scripts.git import clone_repo, detect_repo_root, get_repo_status, pull_repo
+from tools.scripts.git import clone_repo, detect_repo_root, get_repo_status, pull_repo, reset_repo
 from tools.scripts.paths import get_external_repo_paths
 
 # Configuration constants
@@ -137,6 +137,257 @@ class AgentRepo:
     url: str
     parent_dir: Path  # Which registered directory contains this repo
     branch: Optional[str] = None
+
+
+def main() -> int:
+    """Entry point for the CLI.
+
+    Contract: Parses CLI arguments and dispatches to appropriate command function.
+    Returns exit code (0 = success, 1 = failure).
+
+    Returns:
+        Exit code for sys.exit().
+    """
+    parser = _create_parser()
+    args = parser.parse_args()
+
+    # Configure logging based on verbosity flag
+    log_level = logging.INFO if args.verbose else logging.WARNING
+    logging.basicConfig(
+        level=log_level,
+        format="%(levelname)s    %(name)s:%(filename)s:%(lineno)d %(message)s",
+        stream=sys.stdout,
+    )
+    logger.setLevel(log_level)
+
+    if args.command == "setup":
+        return setup_command(args.url, target_dir_name=args.dir)
+    elif args.command == "update":
+        repo_names = args.repos if args.repos else []
+        return update_command(repo_names=repo_names, parallel=args.parallel, reset=args.reset)
+    elif args.command == "list":
+        return list_command(dirs_only=getattr(args, 'dirs', False))
+    elif args.command == "register":
+        return register_command(args.path, args.description)
+    elif args.command == "unregister":
+        return unregister_command(args.path)
+    elif args.command == "relocate":
+        return relocate_command(args.old_path, args.new_path)
+    elif args.command == "sync":
+        return sync_command(update=args.update, dry_run=args.dry_run)
+    elif args.command == "sync-consumers":
+        return sync_consumers_command(dry_run=args.dry_run)
+    else:
+        parser.print_help()
+        return 1
+
+
+def _create_parser() -> argparse.ArgumentParser:
+    """Create argument parser with comprehensive help.
+
+    Returns:
+        Configured ArgumentParser with subcommands and examples.
+    """
+    epilog = """
+Configuration:
+  External product repos are cloned to directories registered in
+  .vadocs/validation/external-repos.conf.json (ADR-26046).
+  All registered directories are excluded from git tracking, validation
+  scripts, and documentation builds.
+
+  Consumer files (.gitignore, myst.yml) are defined per-entry in the registry.
+  The relocate command updates all consumers atomically.
+
+  To see registered directories: %(prog)s list --dirs
+
+Examples:
+  # Pre-session refresh: update all repos
+  %(prog)s update
+
+  # Run with verbose output
+  %(prog)s -v update
+
+  # Update specific repos in parallel
+  %(prog)s update --parallel langgraph autogen
+
+  # Clone a new external repository
+  %(prog)s setup https://github.com/langchain-ai/langgraph
+
+  # Clone to specific registered directory (required when multiple dirs exist)
+  %(prog)s setup https://github.com/example/agent --dir research/my_repos
+
+  # Register a new directory
+  %(prog)s register research/new_agents "New agent research"
+
+  # Remove a directory from the registry
+  %(prog)s unregister research/old_agents
+
+  # Rename a directory — updates registry AND all consumer files atomically
+  %(prog)s relocate old/path/external_repos new/path/external_repos
+
+  # Synchronize state with manifest
+  %(prog)s sync --update
+
+  # Synchronize state with manifest (dry-run)
+  %(prog)s sync --dry-run
+
+  # Synchronize consumer files (.gitignore, myst.yml)
+  %(prog)s sync-consumers
+
+  # List all repos with status
+  %(prog)s list
+
+  # Show registered directories
+  %(prog)s list --dirs
+"""
+
+    parser = argparse.ArgumentParser(
+        description="Manage external product source code repositories",
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Increase output verbosity (INFO level)",
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+
+    # setup command
+    setup_parser = subparsers.add_parser(
+        "setup",
+        help="Clone a new external repository",
+        description="Clone a git repository into a registered directory. "
+        "When multiple directories are registered, --dir is required.",
+    )
+    setup_parser.add_argument(
+        "url",
+        help="Repository URL to clone (e.g., https://github.com/org/repo)",
+    )
+    setup_parser.add_argument(
+        "--dir",
+        help="Target registered directory (required when multiple directories exist)",
+        default=None,
+    )
+
+    # update command
+    update_parser = subparsers.add_parser(
+        "update",
+        help="Pull updates for external repositories",
+        description="Run 'git pull --rebase' on all (or specified) repositories. "
+        "Use --parallel flag to update multiple repositories simultaneously. "
+        "NOTE: With --parallel, SSH passphrase prompts from multiple repos "
+        "will interleave on the terminal. Use sequential mode (default) if your "
+        "repos require passphrase authentication.",
+    )
+    update_parser.add_argument(
+        "repos",
+        nargs="*",
+        help="Specific repository names to update (empty = update all)",
+    )
+    update_parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Update repositories concurrently. WARNING: SSH passphrase prompts "
+        "from multiple repos will interleave on terminal — use sequential mode "
+        "if keys require passphrase. Recommended for 3+ repos with SSH agent.",
+    )
+    update_parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Forcibly clear unstaged changes in external repositories if "
+        "git pull --rebase fails due to local modifications.",
+    )
+
+    # list command
+    list_parser = subparsers.add_parser(
+        "list",
+        help="List all external repositories with branch, date, and remote URL",
+        description="Display a table of all cloned repositories with their "
+        "current branch, last commit date, and remote URL.",
+    )
+    list_parser.add_argument(
+        "--dirs",
+        action="store_true",
+        help="Show registered directories instead of repositories",
+    )
+
+    # register command
+    register_parser = subparsers.add_parser(
+        "register",
+        help="Add a new directory to the external repos registry",
+        description="Register a new directory for external product repos. "
+        "Updates .vadocs/validation/external-repos.conf.json.",
+    )
+    register_parser.add_argument(
+        "path",
+        help="Relative path for the new directory (e.g., research/new_agents)",
+    )
+    register_parser.add_argument(
+        "description",
+        help="Description of what this directory contains",
+    )
+
+    # unregister command
+    unregister_parser = subparsers.add_parser(
+        "unregister",
+        help="Remove a directory from the external repos registry",
+        description="Remove a registered directory from the registry. "
+        "Does NOT delete the directory on disk — only updates the config.",
+    )
+    unregister_parser.add_argument(
+        "path",
+        help="Relative path of the directory to remove from registry",
+    )
+
+    # relocate command
+    relocate_parser = subparsers.add_parser(
+        "relocate",
+        help="Update registered path across all consumer files",
+        description="Rename a registered directory path in the registry AND all consumer "
+        "files (.gitignore, myst.yml). Moves the directory on disk if it still exists, "
+        "or updates consumers only if it was already moved manually (e.g., git mv).",
+    )
+    relocate_parser.add_argument(
+        "old_path",
+        help="Current registered path (e.g., old_dir/external_repos)",
+    )
+    relocate_parser.add_argument(
+        "new_path",
+        help="New path to relocate to (e.g., new_dir/external_repos)",
+    )
+
+    # sync command
+    sync_parser = subparsers.add_parser(
+        "sync",
+        help="Synchronize repositories with the manifest",
+        description="Reconcile actual state (disk + registry) with desired state "
+        "defined in .vadocs/inventory/manage_external_repos.json.",
+    )
+    sync_parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Pull latest changes for all manifest repositories",
+    )
+    sync_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be changed without applying modifications",
+    )
+
+    # sync-consumers command
+    consumers_parser = subparsers.add_parser(
+        "sync-consumers",
+        help="Sync consumer files (.gitignore, myst.yml)",
+        description="Rebuild consumer file exclusions to match the current registry.",
+    )
+    consumers_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show changes to consumer files without applying them",
+    )
+
+    return parser
 
 
 class SyncManager:
@@ -303,233 +554,6 @@ class SyncManager:
                     print(f"   Updating {repo_name}...")
                     pull_repo(full_path)
 
-def main() -> int:
-    """Entry point for the CLI.
-
-    Contract: Parses CLI arguments and dispatches to appropriate command function.
-    Returns exit code (0 = success, 1 = failure).
-
-    Returns:
-        Exit code for sys.exit().
-    """
-    parser = _create_parser()
-    args = parser.parse_args()
-
-    if args.command == "setup":
-        return setup_command(args.url, target_dir_name=args.dir)
-    elif args.command == "update":
-        repo_names = args.repos if args.repos else []
-        return update_command(repo_names=repo_names, parallel=args.parallel)
-    elif args.command == "list":
-        return list_command(dirs_only=getattr(args, 'dirs', False))
-    elif args.command == "register":
-        return register_command(args.path, args.description)
-    elif args.command == "unregister":
-        return unregister_command(args.path)
-    elif args.command == "relocate":
-        return relocate_command(args.old_path, args.new_path)
-    elif args.command == "sync":
-        return sync_command(update=args.update, dry_run=args.dry_run)
-    elif args.command == "sync-consumers":
-        return sync_consumers_command(dry_run=args.dry_run)
-    else:
-        parser.print_help()
-        return 1
-
-
-def _create_parser() -> argparse.ArgumentParser:
-    """Create argument parser with comprehensive help.
-
-    Returns:
-        Configured ArgumentParser with subcommands and examples.
-    """
-    epilog = """
-Configuration:
-  External product repos are cloned to directories registered in
-  .vadocs/validation/external-repos.conf.json (ADR-26046).
-  All registered directories are excluded from git tracking, validation
-  scripts, and documentation builds.
-
-  Consumer files (.gitignore, myst.yml) are defined per-entry in the registry.
-  The relocate command updates all consumers atomically.
-
-  To see registered directories: %(prog)s list --dirs
-
-Examples:
-  # Pre-session refresh: update all repos
-  %(prog)s update
-
-  # Update specific repos in parallel
-  %(prog)s update --parallel langgraph autogen
-
-  # Clone a new external repository
-  %(prog)s setup https://github.com/langchain-ai/langgraph
-
-  # Clone to specific registered directory (required when multiple dirs exist)
-  %(prog)s setup https://github.com/example/agent --dir research/my_repos
-
-  # Register a new directory
-  %(prog)s register research/new_agents "New agent research"
-
-  # Remove a directory from the registry
-  %(prog)s unregister research/old_agents
-
-  # Rename a directory — updates registry AND all consumer files atomically
-  %(prog)s relocate old/path/external_repos new/path/external_repos
-
-  # Synchronize state with manifest
-  %(prog)s sync --update
-
-  # Synchronize state with manifest (dry-run)
-  %(prog)s sync --dry-run
-
-  # Synchronize consumer files (.gitignore, myst.yml)
-  %(prog)s sync-consumers
-
-  # List all repos with status
-  %(prog)s list
-
-  # Show registered directories
-  %(prog)s list --dirs
-"""
-
-    parser = argparse.ArgumentParser(
-        description="Manage external product source code repositories",
-        epilog=epilog,
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
-
-    # setup command
-    setup_parser = subparsers.add_parser(
-        "setup",
-        help="Clone a new external repository",
-        description="Clone a git repository into a registered directory. "
-        "When multiple directories are registered, --dir is required.",
-    )
-    setup_parser.add_argument(
-        "url",
-        help="Repository URL to clone (e.g., https://github.com/org/repo)",
-    )
-    setup_parser.add_argument(
-        "--dir",
-        help="Target registered directory (required when multiple directories exist)",
-        default=None,
-    )
-
-    # update command
-    update_parser = subparsers.add_parser(
-        "update",
-        help="Pull updates for external repositories",
-        description="Run 'git pull --rebase' on all (or specified) repositories. "
-        "Use --parallel flag to update multiple repositories simultaneously. "
-        "NOTE: With --parallel, SSH passphrase prompts from multiple repos "
-        "will interleave on the terminal. Use sequential mode (default) if your "
-        "repos require passphrase authentication.",
-    )
-    update_parser.add_argument(
-        "repos",
-        nargs="*",
-        help="Specific repository names to update (empty = update all)",
-    )
-    update_parser.add_argument(
-        "--parallel",
-        action="store_true",
-        help="Update repositories concurrently. WARNING: SSH passphrase prompts "
-        "from multiple repos will interleave on terminal — use sequential mode "
-        "if keys require passphrase. Recommended for 3+ repos with SSH agent.",
-    )
-
-    # list command
-    list_parser = subparsers.add_parser(
-        "list",
-        help="List all external repositories with branch, date, and remote URL",
-        description="Display a table of all cloned repositories with their "
-        "current branch, last commit date, and remote URL.",
-    )
-    list_parser.add_argument(
-        "--dirs",
-        action="store_true",
-        help="Show registered directories instead of repositories",
-    )
-
-    # register command
-    register_parser = subparsers.add_parser(
-        "register",
-        help="Add a new directory to the external repos registry",
-        description="Register a new directory for external product repos. "
-        "Updates .vadocs/validation/external-repos.conf.json.",
-    )
-    register_parser.add_argument(
-        "path",
-        help="Relative path for the new directory (e.g., research/new_agents)",
-    )
-    register_parser.add_argument(
-        "description",
-        help="Description of what this directory contains",
-    )
-
-    # unregister command
-    unregister_parser = subparsers.add_parser(
-        "unregister",
-        help="Remove a directory from the external repos registry",
-        description="Remove a registered directory from the registry. "
-        "Does NOT delete the directory on disk — only updates the config.",
-    )
-    unregister_parser.add_argument(
-        "path",
-        help="Relative path of the directory to remove from registry",
-    )
-
-    # relocate command
-    relocate_parser = subparsers.add_parser(
-        "relocate",
-        help="Update registered path across all consumer files",
-        description="Rename a registered directory path in the registry AND all consumer "
-        "files (.gitignore, myst.yml). Moves the directory on disk if it still exists, "
-        "or updates consumers only if it was already moved manually (e.g., git mv).",
-    )
-    relocate_parser.add_argument(
-        "old_path",
-        help="Current registered path (e.g., old_dir/external_repos)",
-    )
-    relocate_parser.add_argument(
-        "new_path",
-        help="New path to relocate to (e.g., new_dir/external_repos)",
-    )
-
-    # sync command
-    sync_parser = subparsers.add_parser(
-        "sync",
-        help="Synchronize repositories with the manifest",
-        description="Reconcile actual state (disk + registry) with desired state "
-        "defined in .vadocs/inventory/manage_external_repos.json.",
-    )
-    sync_parser.add_argument(
-        "--update",
-        action="store_true",
-        help="Pull latest changes for all manifest repositories",
-    )
-    sync_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be changed without applying modifications",
-    )
-
-    # sync-consumers command
-    consumers_parser = subparsers.add_parser(
-        "sync-consumers",
-        help="Sync consumer files (.gitignore, myst.yml)",
-        description="Rebuild consumer file exclusions to match the current registry.",
-    )
-    consumers_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show changes to consumer files without applying them",
-    )
-
-    return parser
-
 
 def setup_command(url: str, target_dir_name: str | None = None) -> int:
     """Clone a repository to a registered directory.
@@ -576,26 +600,59 @@ def setup_command(url: str, target_dir_name: str | None = None) -> int:
     return 0
 
 
-def update_command(repo_names: List[str] = None, parallel: bool = False) -> int:
+def _pull_with_reset(repo_path: Path, reset: bool) -> tuple[bool, str]:
+    """Try to pull updates, and optionally reset if unstaged changes block it.
+
+    Contract:
+    - Input: repo_path (absolute path), reset (boolean flag)
+    - Operation:
+        1. execute pull_repo()
+        2. If success: return (True, message)
+        3. If failure AND reset=True AND error matches local modification patterns:
+            a. log warning about forced reset
+            b. execute reset_repo()
+            c. if reset succeeds, retry pull_repo() and return its result
+            d. if reset fails, return (False, "Reset failed...")
+        4. Otherwise: return (False, original_error_message)
+    - Side Effects: May perform a hard reset of the git repository at repo_path.
+    """
+    success, message = pull_repo(repo_path)
+    if success:
+        return success, message
+
+    # Check for common git errors that indicate unstaged local changes
+    if reset and ("local changes would be overwritten" in message.lower() or "unstaged changes" in message.lower()):
+        logger.warning(f"Local changes detected in {repo_path.name}. Forcibly resetting to match remote...")
+        if reset_repo(repo_path):
+            return pull_repo(repo_path)
+        else:
+            return False, f"Reset failed: Could not clear local changes in {repo_path.name}"
+
+    return success, message
+
+
+def update_command(repo_names: List[str] = None, parallel: bool = False, reset: bool = False) -> int:
     """Pull updates for repositories across all registered directories.
 
-    Contract: Runs git pull --rebase on all (or specified) repos.
-    Returns 0 only if ALL repos update successfully, 1 if ANY fail.
-
-    Args:
-        repo_names: List of repository names to update (empty list = all repos).
-        parallel: Whether to update repositories concurrently.
-
-    Returns:
-        0 if all updates succeed, 1 if any fail.
+    Contract:
+    - Input: repo_names (optional filter), parallel (concurrency flag), reset (force-reset flag)
+    - Operation:
+        1. Discover all repos in EXTERNAL_REPO_DIRS.
+        2. Filter by repo_names if provided.
+        3. For each repo:
+            - In sequential mode: call _pull_with_reset()
+            - In parallel mode: submit _pull_with_reset() to ThreadPoolExecutor
+        4. Track overall success status.
+    - Output: 0 if all target repos updated successfully, 1 if any failed.
+    - Side Effects: Updates local source code of external repositories.
     """
     repo_root = detect_repo_root()
 
-    print(f"🔍 Discovering repositories in registered directories...")
+    logger.info("Discovering repositories in registered directories...")
     for dir_path in sorted(EXTERNAL_REPO_DIRS, key=str):
         full_path = repo_root / dir_path
         status = "✓" if full_path.exists() else "✗"
-        print(f"   {status} {dir_path}")
+        logger.info(f"   {status} {dir_path}")
 
     # Discover repositories across all directories
     all_repos = []
@@ -605,35 +662,35 @@ def update_command(repo_names: List[str] = None, parallel: bool = False) -> int:
             repos = discover_repos(full_path, parent_dir=dir_path)
             all_repos.extend(repos)
             if repos:
-                print(f"   Found {len(repos)} repo(s) in {dir_path}")
+                logger.info(f"   Found {len(repos)} repo(s) in {dir_path}")
 
     if not all_repos:
-        print("ℹ No git repositories found in registered directories")
+        logger.info("No git repositories found in registered directories")
         dirs_str = ", ".join(str(d) for d in EXTERNAL_REPO_DIRS)
-        print(f"   Registered directories: {dirs_str}")
+        logger.info(f"   Registered directories: {dirs_str}")
         return 0
 
     # Filter to specified repos if provided
     if repo_names:
-        print(f"\n🎯 Filtering to specified repositories: {', '.join(repo_names)}")
+        logger.info(f"Filtering to specified repositories: {', '.join(repo_names)}")
         all_repos = [r for r in all_repos if r.name in repo_names]
         if not all_repos:
             available = ", ".join(r.name for r in _discover_all(repo_root))
-            print(f"❌ Error: Specified repositories not found: {', '.join(repo_names)}")
-            print(f"   Available: {available}")
+            logger.error(f"Specified repositories not found: {', '.join(repo_names)}")
+            logger.info(f"   Available: {available}")
             return 1
 
-    print(f"\n🔄 Updating {len(all_repos)} repository/ies...")
-    print(f"   Mode: {'Parallel' if parallel else 'Sequential'}")
+    logger.info(f"Updating {len(all_repos)} repository/ies (Mode: {'Parallel' if parallel else 'Sequential'})")
     all_success = True
 
     if parallel:
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        print(f"   Using thread pool with max 5 workers\n")
+        logger.info("Using thread pool with max 5 workers")
         with ThreadPoolExecutor(max_workers=5) as executor:
+            # Use the reset-aware helper for parallel execution
             future_to_repo = {
-                executor.submit(pull_repo, repo.path): repo for repo in all_repos
+                executor.submit(_pull_with_reset, repo.path, reset): repo for repo in all_repos
             }
             for future in as_completed(future_to_repo):
                 repo = future_to_repo[future]
@@ -643,37 +700,37 @@ def update_command(repo_names: List[str] = None, parallel: bool = False) -> int:
                     success, message = future.result()
                     if success:
                         if "Already up to date" in message:
-                            print(f"✓ {repo.name}{branch_tag}: Already up to date")
+                            logger.info(f"✓ {repo.name}{branch_tag}: Already up to date")
                         else:
-                            print(f"✅ {repo.name}{branch_tag}: Updated")
+                            logger.info(f"✅ {repo.name}{branch_tag}: Updated")
                     else:
-                        print(f"❌ Error in {repo.name}{branch_tag} ({repo.path}): {message.strip()}")
+                        logger.error(f"❌ Error in {repo.name}{branch_tag} ({repo.path}): {message.strip()}")
                         all_success = False
                 except Exception as e:
-                    print(f"❌ Error in {repo.name}{branch_tag} ({repo.path}): Unexpected exception: {e}")
+                    logger.error(f"❌ Error in {repo.name}{branch_tag} ({repo.path}): Unexpected exception: {e}")
                     all_success = False
     else:
-        print()
         for idx, repo in enumerate(all_repos, 1):
             branch, _, _ = get_repo_status(repo.path)
             branch_tag = f" ({branch})" if branch else ""
-            print(f"[{idx}/{len(all_repos)}] {repo.name}{branch_tag}...")
-            success, message = pull_repo(repo.path)
+            logger.info(f"[{idx}/{len(all_repos)}] {repo.name}{branch_tag}...")
+            
+            # Use the reset-aware helper for sequential execution
+            success, message = _pull_with_reset(repo.path, reset)
+            
             if success:
                 if "Already up to date" in message:
-                    print(f"    ✓ Already up to date")
+                    logger.info(f"    ✓ Already up to date")
                 else:
-                    print(f"    ✅ Updated")
+                    logger.info(f"    ✅ Updated")
             else:
-                print(f"    ❌ FAILED: {message.strip()}")
+                logger.error(f"    ❌ FAILED: {message.strip()}")
                 all_success = False
 
-    print(f"\n{'='*60}")
     if all_success:
-        print(f"✅ All repositories updated successfully")
+        logger.info("All repositories updated successfully")
     else:
-        print(f"❌ Some repositories failed to update (see errors above)")
-    print(f"{'='*60}")
+        logger.error("Some repositories failed to update (see errors above)")
 
     return 0 if all_success else 1
 

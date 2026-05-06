@@ -1037,12 +1037,19 @@ class TestUpdateCommandVerboseOutput:
     """Verify verbose output in update command (ADR verbose enhancement).
 
     Contract: Update command shows progress, directory discovery, and summary.
+
+    Note on Testing:
+    These tests verify UX side-effects (log messages) rather than return values.
+    Because the logger defaults to WARNING, we must explicitly use
+    `caplog.set_level("INFO", "manage_external_repos")` in each test to ensure
+    that INFO-level progress messages are captured by the pytest recorder.
     """
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_directory_discovery(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_directory_discovery(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows which directories are being scanned."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1055,14 +1062,14 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows directory discovery phase
-        assert "Discovering" in captured.out or str(_TEST_AGENTS_DIR) in captured.out
+        assert any("Discovering" in rec.message or str(_TEST_AGENTS_DIR) in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_sequential_mode(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_sequential_mode(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows sequential mode indicator."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1075,14 +1082,14 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows mode indicator
-        assert "Sequential" in captured.out or "Updating" in captured.out
+        assert any("Sequential" in rec.message or "Updating" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_parallel_mode(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_parallel_mode(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows parallel mode indicator."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1095,14 +1102,14 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[], parallel=True)
 
-        captured = capsys.readouterr()
         # Contract: shows parallel mode and thread pool info
-        assert "Parallel" in captured.out
+        assert any("Parallel" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_progress_counter(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_progress_counter(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows progress counter in sequential mode."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1118,14 +1125,15 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows progress like [1/2], [2/2]
-        assert "1/2" in captured.out and "2/2" in captured.out
+        messages = [rec.message for rec in caplog.records]
+        assert any("1/2" in m for m in messages) and any("2/2" in m for m in messages)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_summary_on_success(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_summary_on_success(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows success summary."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1138,13 +1146,12 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows success summary
-        assert "All repositories updated successfully" in captured.out
+        assert any("All repositories updated successfully" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_summary_on_failure(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_summary_on_failure(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows failure summary."""
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
@@ -1161,14 +1168,14 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows failure summary
-        assert "Some repositories failed" in captured.out
+        assert any("Some repositories failed" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_parallel_shows_thread_pool(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_parallel_shows_thread_pool(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update parallel mode shows thread pool info."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         agents_dir = tmp_path / _TEST_AGENTS_DIR
         agents_dir.mkdir(parents=True)
@@ -1181,15 +1188,15 @@ class TestUpdateCommandVerboseOutput:
 
         _module.update_command(repo_names=[], parallel=True)
 
-        captured = capsys.readouterr()
         # Contract: shows thread pool info
-        assert "thread pool" in captured.out or "workers" in captured.out
+        assert any("thread pool" in rec.message or "workers" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "get_repo_status")
     @patch.object(_module, "detect_repo_root")
-    def test_update_parallel_exception_handling(self, mock_detect, mock_status, mock_pull, tmp_path, capsys):
+    def test_update_parallel_exception_handling(self, mock_detect, mock_status, mock_pull, tmp_path, caplog):
         """Update parallel mode handles exceptions gracefully."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         mock_status.return_value = ("main", None, None)
         agents_dir = tmp_path / _TEST_AGENTS_DIR
@@ -1204,10 +1211,9 @@ class TestUpdateCommandVerboseOutput:
 
         exit_code = _module.update_command(repo_names=[], parallel=True)
 
-        captured = capsys.readouterr()
         # Contract: exits 1 and shows exception
         assert exit_code != 0
-        assert "Unexpected exception" in captured.out or "Error" in captured.out
+        assert any("Unexpected exception" in rec.message or "Error" in rec.message for rec in caplog.records)
 
 
 @_PATCHED_DIRS
@@ -1217,8 +1223,9 @@ class TestUpdateCommandEdgeCases:
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "get_repo_status")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_branch_info(self, mock_detect, mock_status, mock_pull, tmp_path, capsys):
+    def test_update_shows_branch_info(self, mock_detect, mock_status, mock_pull, tmp_path, caplog):
         """Update shows branch information."""
+        caplog.set_level("INFO", "manage_external_repos")
         mock_detect.return_value = tmp_path
         mock_status.return_value = ("main", "origin", "2024-01-01")
         agents_dir = tmp_path / _TEST_AGENTS_DIR
@@ -1232,14 +1239,14 @@ class TestUpdateCommandEdgeCases:
 
         _module.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows branch info
-        assert "(main)" in captured.out
+        assert any("(main)" in rec.message for rec in caplog.records)
 
     @patch.object(_module, "pull_repo")
     @patch.object(_module, "detect_repo_root")
-    def test_update_shows_repo_count_per_directory(self, mock_detect, mock_pull, tmp_path, capsys):
+    def test_update_shows_repo_count_per_directory(self, mock_detect, mock_pull, tmp_path, caplog):
         """Update shows how many repos found per directory."""
+        caplog.set_level("INFO", "manage_external_repos")
         registry_entries = {
             "ai_agents/agents_source_code",
             "research/other_agents",
@@ -1264,9 +1271,8 @@ class TestUpdateCommandEdgeCases:
         with patch.object(reloaded, "pull_repo", return_value=(True, "Updated")):
             reloaded.update_command(repo_names=[])
 
-        captured = capsys.readouterr()
         # Contract: shows repo count per directory
-        assert "Found" in captured.out and "repo" in captured.out.lower()
+        assert any("Found" in rec.message and "repo" in rec.message.lower() for rec in caplog.records)
 
 
 class TestRegisterCommandEdgeCases:
@@ -1929,3 +1935,50 @@ class TestSyncConsumersCLI:
         # Contract: Content should remain unchanged in dry-run
         assert "research/dir1/" not in gitignore.read_text()
         assert "some-existing-content" in gitignore.read_text()
+
+
+@_PATCHED_DIRS
+class TestUpdateResetLogic:
+    """Verify the --reset flag logic in update_command.
+
+    Contract: If --reset is True and pull fails due to unstaged changes,
+    the tool should call reset_repo() and retry the pull.
+    """
+
+    @pytest.mark.parametrize(
+        "reset_flag, reset_repo_success, expected_exit",
+        [
+            (False, True, 1),  # Standard failure: reset=False -> exit 1
+            (True, True, 0),   # Recovery success: reset=True, reset_repo succeeds -> exit 0
+            (True, False, 1),  # Adversary case: reset=True, reset_repo fails -> exit 1
+        ],
+    )
+    @patch.object(_module, "reset_repo")
+    @patch.object(_module, "pull_repo")
+    @patch.object(_module, "detect_repo_root")
+    def test_update_reset_behavior(
+        self, mock_detect, mock_pull, mock_reset, tmp_path,
+        reset_flag, reset_repo_success, expected_exit
+    ):
+        mock_detect.return_value = tmp_path
+        agents_dir = tmp_path / _TEST_AGENTS_DIR
+        agents_dir.mkdir(parents=True)
+
+        repo_dir = agents_dir / "test-repo"
+        repo_dir.mkdir()
+        (repo_dir / ".git").mkdir()
+
+        # Pull fails first with unstaged changes, then succeeds on retry
+        mock_pull.side_effect = [
+            (False, "error: Your local changes would be overwritten by merge"),
+            (True, "Already up to date.")
+        ]
+        mock_reset.return_value = reset_repo_success
+
+        # Use a wrapper to simulate passing the reset flag to update_command
+        # since we're calling update_command directly here
+        exit_code = _module.update_command(repo_names=["test-repo"], reset=reset_flag)
+
+        assert exit_code == expected_exit
+        if reset_flag:
+            mock_reset.assert_called_once_with(repo_dir)

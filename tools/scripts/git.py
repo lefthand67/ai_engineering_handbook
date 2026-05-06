@@ -187,3 +187,32 @@ def get_repo_status(path: Path) -> tuple[str | None, str | None, str | None]:
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None, None, None
+
+
+def reset_repo(path: Path) -> bool:
+    """Forcefully reset a repository to its remote tracking branch.
+
+    Args:
+        path: Path to the git repository.
+
+    Returns:
+        True if reset succeeded, False otherwise.
+    """
+    try:
+        branch_result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        branch = branch_result.stdout.strip()
+        result = subprocess.run(
+            ["git", "reset", "--hard", f"origin/{branch}"],
+            cwd=path,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+    except (subprocess.CalledProcessError, subprocess.SubprocessError, FileNotFoundError):
+        return False

@@ -3,89 +3,104 @@ title: Open WebUI Tool System Analysis
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-05-03
+date: 2026-05-06
 description: Source-level analysis of the tool definition, registration, and execution
-  pipeline in Open WebUI, including production-grade implementation patterns for deterministic
-  retrieval.
+  pipeline in Open WebUI, focusing on declarative schema generation and context injection.
 tags:
 - agents
 - architecture
 options:
-  type: analysis
+  type: guide
   birth: 2026-05-03
-  version: 1.1.0
-  token_size: 873
+  version: 1.2.0
+  token_size: 1344
   id: A-26026
-  status: accepted
 ---
 # Open WebUI Tool System Analysis
 
-This analysis examines the implementation of the tool system in Open WebUI, focusing on how tools are defined, how their schemas are generated for LLMs, and the mechanism used to execute them.
+This analysis examines the architectural implementation of the tool system in Open WebUI. The system is designed as a flexible middleware that bridges high-level LLM tool-calling capabilities with local Python execution and external API orchestration.
 
-## 1. Tool Activation and Scoping
-... (rest of section 1)
----
+## 1. Tool Definition & Schema Generation
 
-## 2. Tool Definition and Schema Generation
-... (rest of section 2)
----
+Open WebUI employs a **Declarative Schema Generation** pattern. Instead of requiring developers to manually write JSON schemas, the system extracts tool specifications directly from Python source code.
 
-## 3. Context Injection via Parameter Wrapping
-... (rest of section 3)
----
+### 1.1 The Docstring-to-JSON Pipeline
+The system analyzes tool functions using the `inspect` module and Pydantic.
 
-## 4. Multi-Provider Tool Orchestration
-... (rest of section 4)
----
+- **Mechanism**: The backend parses the function's docstring (expecting reStructuredText format) and type hints.
+- **Source**: `backend/open_webui/tools/builtin.py` (and associated tool loaders).
+- **Process**:
+    1. **Introspection**: The system reads the function signature and docstring.
+    2. **Parameter Extraction**: It maps `:param <name>:` tags in the docstring to the function's arguments.
+    3. **Type Mapping**: Python type hints (e.g., `str`, `int`, `list[str]`) are mapped to JSON Schema types.
+    4. **Schema Assembly**: A Pydantic model is dynamically constructed to validate the LLM's output before execution.
 
-## 5. External Tool Execution Pipeline
-... (rest of section 5)
----
+**Claim**: The LLM only sees the pruned JSON schema, not the Python code. The docstring serves as the primary source of truth for the tool's "instruction manual" provided to the LLM.
 
-## 6. Access Control Integration
-... (rest of section 6)
----
+## 2. Context Injection Architecture
 
-## 7. Production Engineering Patterns: Deterministic Retrieval & The "Sentry" Model
+A critical challenge in tool-calling is providing the tool with session-specific context (e.g., User ID, API keys, Database handles) without exposing these internal parameters to the LLM in the tool schema.
 
-When building tools for verifiable systems (like the SLM Mentor), relying on the LLM's "helpfulness" to handle tool errors leads to hallucinations. The following patterns are required to move from "vibe-based" tools to deterministic components.
+### 2.1 Parameter Masking via Signature Manipulation
+Open WebUI solves this using a combination of `functools.partial` and `inspect.Signature` modification.
 
-### 7.1 The Valves Injection Pattern (The "Hook" Requirement)
-A common failure mode in Open WebUI is the failure of the backend to inject configuration `Valves` into the tool instance. To ensure successful injection, the following structure is mandatory:
+- **Source**: `backend/open_webui/utils/tools.py`
+- **Implementation**:
+    1. **Partial Binding**: When a tool is invoked, the system uses `functools.partial` to bind internal context (like `user_valves` or `self`) to the function.
+    2. **Signature Pruning**: To prevent the LLM from attempting to provide values for these internal parameters, the system creates a new `inspect.Signature` object.
+    3. **Masking**: It removes the internal parameters from the signature before the final JSON schema is generated.
+
+**Claim**: This architecture allows for "invisible" dependency injection, where the tool has full access to the system state, but the LLM only sees the user-facing arguments.
+
+### 2.2 The Valves Injection Trigger
+For the backend to successfully inject configuration `Valves` into a tool instance, the tool class must explicitly define the `valves` attribute.
+
+**Critical Requirement**: The backend looks for the existence of a class-level `valves` attribute to trigger the injection logic. Without it, `self.valves` will be missing or empty at runtime.
 
 ```python
 class Tools:
     class Valves(BaseModel):
-        project_root: str = Field(default="", description="...")
+        project_root: str = Field(default="", description="Path to project root")
 
-    # MANDATORY: The backend looks for this class attribute to trigger injection
-    valves = Valves() 
+    # MANDATORY: The backend uses this attribute as a trigger for injection
+    valves = Valves()
 
     def __init__(self):
-        # Fallback to prevent AttributeError if injection fails
+        # Recommended fallback to prevent AttributeError if injection fails
         if not hasattr(self, 'valves'):
             self.valves = Valves()
 ```
-**Critical Failure Mode:** If `valves = Valves()` is omitted, `self.valves` will be missing or empty at runtime, even if the UI shows the values are set.
 
-### 7.2 The "Sentry" Error Pattern
-Standard Python exceptions or "polite" error messages are often ignored or "smoothed over" by the LLM's conversational persona. For critical tools, errors must be transformed into **Operational Commands**.
 
-**The Pattern:** Use a structured "Reason/Action" format that mimics a system alert.
+## 3. Execution Pipeline & Middleware
 
-```python
-# Bad:- "Error: project_root not configured." (Model will try to work around it)
-# Good:
-return "Reason: project_root Valve is not configured. Action: Please set the project_root in Open WebUI tool settings."
-```
+The transition from an LLM's tool-call request to actual Python execution is handled by a hybrid middleware layer.
 
-### 7.3 The "Binary Gate" Protocol
-To prevent the LLM from falling back to probabilistic RAG when a deterministic tool fails, the system prompt must define a **Binary Gate**.
+### 3.1 Hybrid Invocation Strategy
+- **Source**: `backend/open_webui/utils/middleware.py`
+- **Mechanism**: 
+    - **Native Tool Calling**: For models that support native tool-calling (e.g., GPT-4, Claude 3.5), the system uses the provider's API to handle the request/response loop.
+    - **Prompt-Based Fallback**: For models without native support, Open WebUI injects tool descriptions into the system prompt and parses the model's text output (usually XML or JSON) to trigger the tool.
 
-**Implementation Rule:**
-1. **Mandate:** If a critical tool (e.g., `get_syllabus`) returns any error, the session is **blocked**.
-2. **Forbidden Fallback:** The LLM is explicitly forbidden from using internal training data or RAG as a substitute.
-3. **Fixed Output:** The only permitted response is a professional breach notification:
-   `[RETRIEVAL BREACH]: Unable to synchronize [FILE]. Reason: [Tool Reason]. Required Action: [Tool Action].`
+### 3.2 Execution Flow
+`LLM Request` $\rightarrow$ `Middleware (Parse Call)` $\rightarrow$ `Tool Registry (Lookup)` $\rightarrow$ `Context Injection (Partial)` $\rightarrow$ `Python Execution` $\rightarrow$ `Result Formatting` $\rightarrow$ `LLM Response`.
 
-By coupling the **Sentry Tool** (which provides the Reason/Action) with the **Binary Gate Prompt** (which mandates the breach), the system ensures that a technical failure results in a halt rather than a hallucination.
+## 4. Multi-Provider Orchestration
+
+Open WebUI acts as an orchestrator for three distinct tool types:
+
+| Tool Type | Registration Method | Execution Environment |
+| :--- | :--- | :--- |
+| **Local Tools** | Python files uploaded to workspace | Backend Python process (Dynamic Load) |
+| **OpenAPI Tools** | OpenAPI JSON/YAML Specification | External HTTP Server (REST) |
+| **MCP Tools** | Model Context Protocol (MCP) Config | External MCP Server (JSON-RPC) |
+
+**Architectural Note**: The system abstracts these different backends into a unified tool interface, allowing the LLM to invoke a local script and a remote API using the same conceptual "tool call" mechanism.
+
+## 5. Scoping and Access Control
+
+Tools are not globally available but are bound to specific contexts to minimize prompt noise and enhance security.
+
+- **Model-Level Binding**: Tools are attached to a specific model definition. Only chats using that model have access to the tools.
+- **Folder-Level Binding**: Tools are assigned to a folder/collection. Any model used within that context inherits the folder's toolset.
+- **Permission Layer**: The system checks user roles and permissions before executing the tool, ensuring that administrative tools (e.g., user management) cannot be triggered by standard users.

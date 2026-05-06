@@ -1,3 +1,21 @@
+---
+title: MemPalace — AI Memory System
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: 2026-05-06
+description: Analysis of the MemPalace AI memory system, its hierarchical structure,
+  and retrieval performance.
+tags:
+- agents
+- architecture
+options:
+  type: guide
+  birth: 2026-05-06
+  version: 1.0.0
+  id: A-26061
+  token_size: 3938
+---
 # MemPalace — AI Memory System
 
 ## Overview
@@ -295,7 +313,7 @@ MemPalace integrates with Qwen Code via MCP. Add to your project-level `.qwen/se
     "mempalace": {
       "command": "python",
       "args": ["-m", "mempalace.mcp_server"],
-      "cwd": "/home/commi/Yandex.Disk/it_working/projects/soviar-systems/ai_engineering_book"
+      "cwd": "/path/to/your/project"
     }
   }
 }

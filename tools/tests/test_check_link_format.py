@@ -331,6 +331,40 @@ class TestLinkFormatCLI:
         captured = capsys.readouterr()
         assert "No files matching '*.xyz' found!" in captured.out
 
+    def test_explicit_file_in_excluded_dir_is_skipped(self, tmp_path, capsys, monkeypatch):
+        """Explicitly passing a file from an excluded directory should be skipped.
+        
+        This verifies that the 'leak' where files in external research repositories
+        are processed when passed as explicit arguments is fixed.
+        """
+        # Mock exclusion
+        excl_dir_name = "excluded_dir"
+        monkeypatch.setattr("tools.scripts.check_link_format.is_excluded", lambda p: excl_dir_name in str(p))
+
+
+        excl_dir = tmp_path / excl_dir_name
+        excl_dir.mkdir()
+        
+        # Create a file with a format error
+        target = excl_dir / "target.md"
+        target.touch()
+        (excl_dir / "target.ipynb").touch()
+        
+        source = excl_dir / "source.md"
+        source.write_text("[link](target.md)", encoding="utf-8")
+
+        cli = LinkFormatCLI()
+        # Run on the specific source file
+        with pytest.raises(SystemExit) as exc_info:
+            cli.run(["--paths", str(source)])
+
+        # It should be skipped, thus no errors found
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "✅" in captured.out or "No files matching" in captured.out
+
+
+
     def test_run_with_verbose(self, tmp_path, capsys):
         (tmp_path / "target.ipynb").touch()
         source = tmp_path / "source.md"

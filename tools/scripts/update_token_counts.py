@@ -48,11 +48,10 @@ from tools.scripts.paths import VALIDATION_EXCLUDE_DIRS, is_excluded
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Matches YAML frontmatter between --- fences at the start of a file.
-# Consistent with check_frontmatter.py for structural alignment.
+# Matches YAML frontmatter blocks delimited by --- fences at the start of a file.
 # We use a non-greedy match for the content and ensure the closing delimiter
 # is followed by a newline to confirm it's on its own line.
-FRONTMATTER_PATTERN = re.compile(r"^---\s*\n([\s\S]*?)---\s*\n", re.DOTALL)
+FRONTMATTER_PATTERN = re.compile(r"^---\s*\n([\s\S]*?)---\s*\n", re.DOTALL | re.MULTILINE)
 
 # The field name used for token size in frontmatter.
 # Defined as a constant to facilitate renaming and maintain consistency.
@@ -170,7 +169,7 @@ def calculate_tokens(text: str) -> int:
     return len(encoding.encode(text, disallowed_special=()))
 
 def update_file_tokens(file_path: Path, dry_run: bool = False) -> bool:
-    """Update the token_size field in a file's frontmatter using surgical substitution.
+    """Update the token_size field in a file's governed frontmatter block.
 
     Args:
         file_path: Path to the file to update.
@@ -182,61 +181,95 @@ def update_file_tokens(file_path: Path, dry_run: bool = False) -> bool:
     """
     try:
         content = file_path.read_text(encoding="utf-8")
-        match = FRONTMATTER_PATTERN.match(content)
-        if not match:
-            logger.debug(f"[{file_path.name}] No frontmatter match found.")
+        matches = list(FRONTMATTER_PATTERN.finditer(content))
+        if not matches:
+            logger.debug(f"[{file_path.name}] No frontmatter blocks found.")
             return False
 
         logger.debug(f"[{file_path.name}] Found frontmatter")
-        fm_text = match.group(1)
-        body = content[match.end():]
         new_size = calculate_tokens(content)
         changed = False
+        result_content = content
 
-        # 1. Surgical Removal: Eliminate redundant top-level 'token_size' keys.
-        removal_pattern = rf'^{TOKEN_SIZE_FIELD}: .*\n'
-        new_fm_text, n = re.subn(removal_pattern, '', fm_text, flags=re.MULTILINE)
-        if n > 0:
-            logger.debug(f"[{file_path.name}] Removed redundant top-level '{TOKEN_SIZE_FIELD}'")
+        # 1. Try to find an existing governed block (containing 'options.type')
+        governed_match = None
+        for match in matches:
+            fm_text = match.group(1)
+            try:
+                fm_data = yaml.safe_load(fm_text)
+                if isinstance(fm_data, dict):
+                    options = fm_data.get("options")
+                    if isinstance(options, dict) and "type" in options:
+                        governed_match = match
+                        break
+            except yaml.YAMLError:
+                continue
+
+        # 2. Fallback: if no block with options.type exists but there's only one block, treat it as governed
+        if governed_match is None and len(matches) == 1:
+            governed_match = matches[0]
+            logger.debug(f"[{file_path.name}] No governed block found, treating single block as governed")
+
+        if governed_match is None:
+            logger.debug(f"[{file_path.name}] No governed block identified among multiple blocks.")
+            return False
+
+        # Now update the identified governed block
+        match = governed_match
+        fm_text = match.group(1)
+        try:
+            fm_data = yaml.safe_load(fm_text)
+        except yaml.YAMLError:
+            logger.error(f"[{file_path.name}] Malformed YAML in governed block: {fm_text}")
+            return False
+
+        if fm_data is None:
+            fm_data = {}
+        elif not isinstance(fm_data, dict):
+            logger.error(f"[{file_path.name}] Governed block is not a dictionary.")
+            return False
+
+        logger.debug(f"[{file_path.name}] Found governed frontmatter block")
+
+        # 1. Structural correction: Ensure token_size is NOT at the root
+        if TOKEN_SIZE_FIELD in fm_data:
+            logger.debug(f"[{file_path.name}] Removing root-level '{TOKEN_SIZE_FIELD}'")
+            del fm_data[TOKEN_SIZE_FIELD]
             changed = True
 
-        # 2. Surgical Update: Update 'options.token_size' if it exists.
-        # We match ANY value (not just digits) to ensure wrong types are overwritten.
-        governed_pattern = rf'(^  {TOKEN_SIZE_FIELD}: ).*$'
-        gov_match = re.search(governed_pattern, new_fm_text, flags=re.MULTILINE)
+        # 2. Structural correction: Ensure 'options' is a dictionary
+        if "options" not in fm_data or not isinstance(fm_data["options"], dict):
+            logger.debug(f"[{file_path.name}] Correcting 'options' to be a dictionary")
+            fm_data["options"] = {}
+            changed = True
 
-        if gov_match:
-            current_val_str = gov_match.group(0).split(': ')[1]
-            # We only update if the value actually changes.
-            if current_val_str != str(new_size):
-                def replace_val(m):
-                    return f"{m.group(1)}{new_size}"
-                new_fm_text = re.sub(governed_pattern, replace_val, new_fm_text, flags=re.MULTILINE)
-                logger.debug(f"[{file_path.name}] Updated options.{TOKEN_SIZE_FIELD}: {current_val_str} -> {new_size}")
-                changed = True
-        else:
-            # 3. Structural Addition: Add governed token_size if missing.
-            options_match = re.search(r'^options:.*$', new_fm_text, flags=re.MULTILINE)
-            if options_match:
-                line_end = options_match.end()
-                insertion = f"\n  {TOKEN_SIZE_FIELD}: {new_size}"
-                new_fm_text = new_fm_text[:line_end] + insertion + new_fm_text[line_end:]
-                logger.debug(f"[{file_path.name}] Added {TOKEN_SIZE_FIELD} to existing options block")
-            else:
-                prefix = "" if not new_fm_text or new_fm_text.endswith('\n') else "\n"
-                new_fm_text = new_fm_text.rstrip() + f"{prefix}\noptions:\n  {TOKEN_SIZE_FIELD}: {new_size}"
-                logger.debug(f"[{file_path.name}] Added new options block with {TOKEN_SIZE_FIELD}")
+        # 3. Update token_size inside options
+        current_size = fm_data["options"].get(TOKEN_SIZE_FIELD)
+        if current_size != new_size:
+            logger.debug(f"[{file_path.name}] Updating options.{TOKEN_SIZE_FIELD}: {current_size} -> {new_size}")
+            fm_data["options"][TOKEN_SIZE_FIELD] = new_size
             changed = True
 
         if not changed:
             return False
 
+        # Dump YAML back to text, maintaining readability and avoiding sorting
+        new_fm_text = yaml.dump(
+            fm_data,
+            default_flow_style=False,
+            sort_keys=False,
+            allow_unicode=True
+        ).strip()
+
+        # Replace only this block in the content
+        start, end = match.span()
+        result_content = content[:start] + f"---\n{new_fm_text}\n---\n" + content[end:]
+
         if dry_run:
-            logger.info(f"[{file_path.name}] Dry run: would have updated frontmatter")
+            logger.info(f"[{file_path.name}] Dry run: would have updated governed frontmatter")
             return True
 
-        # Reconstruct the file.
-        file_path.write_text(f"---\n{new_fm_text.strip()}\n---\n\n{body}", encoding="utf-8")
+        file_path.write_text(result_content, encoding="utf-8")
         return True
     except Exception as e:
         logger.error(f"Unexpected error updating {file_path}: {e}", exc_info=True)
@@ -261,6 +294,11 @@ def scan_paths(paths: list[Path], fmt: str = "md") -> list[Path]:
 
     for path in paths:
         if path.is_file():
+            # CRITICAL: Always check exclusions for explicit file arguments.
+            # Prevents modification of files in external research repos when passed directly.
+            if is_excluded(str(path)):
+                logger.debug(f"[{path.name}] Excluded by validation rules")
+                continue
             files.append(path)
         elif path.is_dir():
             for child in sorted(path.rglob(f"*{extension}")):

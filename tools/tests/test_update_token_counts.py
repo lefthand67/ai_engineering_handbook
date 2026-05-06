@@ -298,29 +298,46 @@ class TestUpdateTokenCountsIntegration:
         # 1. Valid file in root
         root_file = tmp_path / "root.md"
         root_file.write_text("---\\ntitle: Root\\noptions:\\n  token_size: 0\\n---\\n\\nBody")
-        
+
         # 2. Valid file in subdir
         subdir = tmp_path / "docs"
         subdir.mkdir()
         sub_file = subdir / "sub.md"
         sub_file.write_text("---\\ntitle: Sub\\noptions:\\n  token_size: 0\\n---\\n\\nBody")
-        
+
         # 3. Non-governed file (no frontmatter)
         plain_file = tmp_path / "plain.txt"
         plain_file.write_text("Plain text")
-        
-        # 4. File in excluded dir (using a common exclusion like '.git' or 'node_modules'
-        # but we'll just mock the exclusion list by using a path that is usually excluded)
-        # Note: VALIDATION_EXCLUDE_DIRS is imported in the script.
-        # For this test, we rely on the current VALIDATION_EXCLUDE_DIRS content.
-        # Since we can't easily change the global, we check if it's updated.
-        # Instead, let's just verify that .md files are targeted.
-        
+
         update_token_counts(root=tmp_path, paths=[tmp_path])
-        
+
         assert "token_size:" in root_file.read_text()
         assert "token_size:" in sub_file.read_text()
         assert plain_file.read_text() == "Plain text"
+
+    def test_explicit_file_in_excluded_dir_is_skipped(self, tmp_path, monkeypatch):
+        """Explicitly passing a file from an excluded directory should be skipped.
+        
+        This verifies that the 'leak' where files in external research repositories
+        are processed when passed as explicit arguments is fixed.
+        """
+        # Mock exclusion to a generic path
+        excl_dir_name = "excluded_dir"
+        monkeypatch.setattr("tools.scripts.update_token_counts.VALIDATION_EXCLUDE_DIRS", {excl_dir_name})
+        monkeypatch.setattr("tools.scripts.update_token_counts.is_excluded", lambda p: excl_dir_name in p)
+
+
+        excl_dir = tmp_path / excl_dir_name
+        excl_dir.mkdir()
+        test_file = excl_dir / "external.md"
+        test_file.write_text("---\\ntitle: External\\noptions:\\n  token_size: 0\\n---\\n\\nBody")
+
+        # Execute
+        update_token_counts(root=tmp_path, paths=[test_file])
+
+        # Verify: File should NOT have been updated
+        assert "token_size: 0" in test_file.read_text(), "Excluded file should NOT have been updated"
+
 
     def test_main_cli_execution(self, tmp_path, monkeypatch):
         """Verify the main CLI entry point works with arguments."""

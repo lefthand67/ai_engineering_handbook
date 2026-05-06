@@ -25,6 +25,7 @@ from tools.scripts.paths import (
     VALIDATION_EXCLUDE_DIRS,
     BROKEN_LINKS_EXCLUDE_FILES,
     BROKEN_LINKS_EXCLUDE_LINK_STRINGS,
+    is_excluded,
 )
 
 
@@ -135,6 +136,12 @@ Default pattern: *.md""",
             resolved_paths_list.append(resolved)
 
             if resolved.is_file():
+                # CRITICAL: Always check exclusions for explicit file arguments.
+                # Prevents processing of files in external research repos when passed directly.
+                if is_excluded(str(resolved)):
+                    if verbose:
+                        print(f"  EXCLUDING (by directory rule): {resolved}")
+                    continue
                 files.append(resolved)
             elif resolved.is_dir():
                 files.extend(file_finder.find(resolved, pattern))

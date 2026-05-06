@@ -350,6 +350,10 @@ def scan_paths(
 
     for path in paths:
         if path.is_file():
+            # CRITICAL: Always check exclusions for explicit file arguments.
+            # Prevents processing of files in external research repos when passed directly.
+            if any(part in VALIDATION_EXCLUDE_DIRS for part in path.parts):
+                continue
             files.append(path)
         elif path.is_dir():
             for child in sorted(path.rglob(f"*{extension}")):
@@ -465,10 +469,9 @@ def validate_parsed_frontmatter(
     # Step 7: Check options.* namespace compliance (warnings only until Phase 1.15).
     errors.extend(_check_options_namespace(frontmatter, file_path, hub))
 
-    # Step 8: Reject duplicate governed fields across multiple blocks.
-    # Requires raw content to detect block separation.
+    # Step 8: Reject governed fields in non-governed blocks.
     if content is not None:
-        errors.extend(_check_duplicate_governed_fields(content, file_path, hub))
+        errors.extend(_check_governed_field_placement(content, file_path, hub))
 
     return errors
 
@@ -495,8 +498,10 @@ def _field_present(frontmatter: dict, field: str) -> bool:
     if field in frontmatter:
         return True
     options = frontmatter.get("options", {})
-    if isinstance(options, dict) and field in options:
-        return True
+    if isinstance(options, dict):
+        # Check both the full field name and the name without 'options.' prefix
+        if field in options or field.replace("options.", "") in options:
+            return True
     return False
 
 
@@ -555,9 +560,10 @@ def _get_required_fields(
     # 2. Hub type-specific required
     required.update(type_def.get("required", []))
 
-    # 3. Spoke required_fields
+    # 3. Spoke required_fields (and common_required_fields for sub-types)
     if spoke_config is not None:
         required.update(spoke_config.get("required_fields", []))
+        required.update(spoke_config.get("common_required_fields", []))
 
     return required
 
@@ -717,22 +723,23 @@ def _validate_field_value(
     return None
 
 
-def _check_duplicate_governed_fields(
+def _check_governed_field_placement(
     content: str, file_path: Path, hub_config: dict
 ) -> list[FrontmatterError]:
-    """Reject duplicate governed fields across multiple frontmatter blocks.
+    """Enforce that governed fields reside exclusively in the governed block.
 
     Governed fields (non-myst_native) must reside exclusively in the governed
-    block. If a governed field appears in more than one block, it's a duplication
-    error (blocking).
+    block (the one containing 'options.type'). If a governed field appears in
+    any other block, it's a placement error (blocking).
 
-    Example: 'token_size' appearing in both Jupytext and Governed blocks.
+    Example: 'token_size' appearing in the Jupytext block instead of the
+    governed block.
     """
     errors: list[FrontmatterError] = []
     field_registry = hub_config.get("field_registry", {})
     governed_fields = {f for f, meta in field_registry.items() if not meta.get("myst_native", True)}
 
-    # Find all YAML blocks at the start of the file using the same logic as parse_frontmatter
+    # Find all YAML blocks at the start of the file
     blocks_data: list[dict] = []
     current_pos = 0
     while True:
@@ -757,38 +764,50 @@ def _check_duplicate_governed_fields(
         if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
             break
 
-    if len(blocks_data) < 2:
+    if not blocks_data:
         return []
 
-    # Track which blocks provide which governed field
-    # field_name -> set of block_indices
-    field_providers: dict[str, set[int]] = {}
-
+    # Identify the governed block (the one with options.type)
+    governed_block_idx: int | None = None
     for idx, data in enumerate(blocks_data):
+        options = data.get("options")
+        if isinstance(options, dict) and "type" in options:
+            governed_block_idx = idx
+            break
+
+    # If no governed block is found, any governed field is misplaced
+    # (though main() already flags missing_type, we still check for leakages)
+    for idx, data in enumerate(blocks_data):
+        if idx == governed_block_idx:
+            continue
+
         # Check top-level keys
         for key in data:
             if key in governed_fields:
-                field_providers.setdefault(key, set()).add(idx)
+                errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="misplaced_field",
+                        field=key,
+                        message=f"governed field '{key}' is misplaced in a non-governed block — it must reside exclusively in the governed block (the one with options.type)",
+                        config_source=f"{HUB_CONFIG_REL} → field_registry",
+                    )
+                )
 
         # Check keys inside 'options'
         options = data.get("options")
         if isinstance(options, dict):
             for key in options:
                 if key in governed_fields:
-                    field_providers.setdefault(key, set()).add(idx)
-
-    # Any field provided by > 1 block is a duplicate
-    for field, providers in field_providers.items():
-        if len(providers) > 1:
-            errors.append(
-                FrontmatterError(
-                    file_path=file_path,
-                    error_type="duplicate_field",
-                    field=field,
-                    message=f"governed field '{field}' is duplicated across multiple frontmatter blocks — it must reside exclusively in the governed block",
-                    config_source=f"{HUB_CONFIG_REL} → field_registry",
-                )
-            )
+                    errors.append(
+                        FrontmatterError(
+                            file_path=file_path,
+                            error_type="misplaced_field",
+                            field=key,
+                            message=f"governed field '{key}' is misplaced in a non-governed block — it must reside exclusively in the governed block (the one with options.type)",
+                            config_source=f"{HUB_CONFIG_REL} → field_registry",
+                        )
+                    )
 
     return errors
 
@@ -855,44 +874,33 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
         source = cells[0].get("source", [])
         content = "".join(source) if isinstance(source, list) else source
 
-    merged_data: dict[str, Any] = {}
+    blocks = []
     current_pos = 0
-    found_any = False
-
     while True:
-        # Search for a block starting at current_pos (ignoring leading whitespace)
         match = re.search(r"^\s*---\s*\n(.*?)\n---\s*\n", content[current_pos:], re.DOTALL | re.MULTILINE)
         if not match:
-            logger.debug(f"No more frontmatter blocks found in {file_path}. Stopped at pos {current_pos}")
+            break
+        blocks.append(match.group(1))
+        current_pos += match.end()
+        if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
             break
 
-        # Update position to the end of the match
-        block_text = match.group(1)
-        current_pos += match.end()
+    if not blocks:
+        return None
 
-        logger.debug(f"Found YAML block in {file_path} at pos {current_pos - match.end()} - {current_pos}")
-        logger.debug(f"Block content:\n---\n{block_text}---")
+    merged_data: dict = {}
+    has_valid_block = False
 
+    for block_text in blocks:
         try:
             data = yaml.safe_load(block_text)
             if isinstance(data, dict):
-                logger.debug(f"Successfully parsed block into dict: {data}")
                 merged_data.update(data)
-                found_any = True
-            else:
-                logger.debug(f"Parsed block was not a dict (type: {type(data)}), skipping merge.")
-        except yaml.YAMLError as e:
-            logger.error(f"YAML parsing error in {file_path} at pos {current_pos - match.end()}: {e}")
+                has_valid_block = True
+        except yaml.YAMLError:
+            continue
 
-        # If the remaining content doesn't start with a block (ignoring whitespace), stop.
-        if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
-            logger.debug(f"No consecutive block found after pos {current_pos}. Stopping parse.")
-            break
-
-    if found_any:
-        logger.debug(f"Final merged frontmatter for {file_path}: {merged_data}")
-        return merged_data
-    return None
+    return merged_data if has_valid_block else None
 
 def resolve_type(frontmatter: dict) -> str | None:
     """Read options.type from parsed frontmatter.

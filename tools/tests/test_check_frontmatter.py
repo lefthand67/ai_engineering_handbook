@@ -374,6 +374,17 @@ class TestLoadConfigChain:
         preserved_subtypes = set(child_config["artifact_types"].keys())
         assert preserved_subtypes == expected_subtypes
 
+    def test_subtype_required_fields_merge_includes_common(self, frontmatter_env):
+        """Sub-type resolution must merge common_required_fields from spoke config."""
+        # 'analysis' is a sub-type of 'evidence'
+        # evidence.conf.json has common_required_fields: [id, title, date]
+        # artifact_types.analysis has required_fields: [status, tags]
+        hub, spoke = _module.load_config_chain(frontmatter_env, doc_type="analysis")
+        required = _module._get_required_fields("analysis", hub, spoke)
+        
+        expected = {"id", "title", "date", "status", "tags"}
+        assert expected.issubset(required), f"Missing required fields: {expected - required}"
+
 
 # ======================
 # Tests: Frontmatter Parsing
@@ -471,8 +482,8 @@ class TestParseFrontmatter:
         result = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert result is None
 
-    def test_handles_multiple_frontmatter_blocks(self):
-        """Files with multiple YAML blocks (e.g. Jupytext + Governed) → returns the governed one."""
+    def test_merges_multiple_frontmatter_blocks(self):
+        """Files with multiple YAML blocks at start → all blocks merged into one dict."""
         content = (
             "---\n"
             "jupytext:\n"
@@ -489,9 +500,69 @@ class TestParseFrontmatter:
         )
         result = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
+        assert "jupytext" in result, "Jupytext block missing from merged result"
+        assert "title" in result, "Governed block missing from merged result"
         assert result["title"] == "Governed Doc"
         assert result["options"]["type"] == "guide"
 
+    def test_rejects_governed_field_in_non_governed_block(self, frontmatter_env):
+        """Governed fields must reside exclusively in the governed block."""
+        # Field 'token_size' is governed (non-myst_native)
+        # It is placed in the first block (Jupytext), and omitted from the second (Governed)
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "token_size: 100\n"
+            "---\n"
+            "\n"
+            "---\n"
+            "title: Governed Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "test_leak.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        has_placement_error = any(
+            e.error_type == "misplaced_field" and e.field == "token_size"
+            for e in errors
+        )
+        assert has_placement_error, "Governed field in Jupytext block should be rejected"
+
+    def test_rejects_duplicate_governed_field_across_blocks(self, frontmatter_env):
+        """Field present in both blocks → rejected as misplaced."""
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "token_size: 100\n"
+            "---\n"
+            "\n"
+            "---\n"
+            "title: Governed Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "token_size: 200\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "test_dup.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        has_placement_error = any(
+            e.error_type == "misplaced_field" and e.field == "token_size"
+            for e in errors
+        )
+        assert has_placement_error, "Duplicate governed field should be rejected as misplaced"
     def test_unquoted_colon_in_title_fails_parsing(self):
         """YAML with an unquoted colon in a value (e.g. title) should fail safe_load.
         The parser should log an error and skip the block.
@@ -909,6 +980,19 @@ class TestScanPaths:
         result = _module.scan_paths([f1, subdir], frontmatter_env)
         assert f1 in result
         assert f2 in result
+
+    def test_explicit_file_in_excluded_dir_is_skipped(self, frontmatter_env, monkeypatch):
+        """Explicitly passing a file from an excluded directory should be skipped."""
+        # Define a dummy exclude dir
+        monkeypatch.setattr(_module, "VALIDATION_EXCLUDE_DIRS", {"excluded_dir"})
+
+        excl_dir = frontmatter_env / "excluded_dir"
+        excl_dir.mkdir()
+        test_file = excl_dir / "test.md"
+        test_file.write_text("# content", encoding="utf-8")
+
+        result = _module.scan_paths([test_file], frontmatter_env)
+        assert result == [], f"File in excluded directory should be skipped, but got: {result}"
 
 
 # ======================

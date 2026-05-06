@@ -597,6 +597,30 @@ class TestLinkCheckerCLI:
             assert "SKIP Excluded Link String: ./intro/" in captured.out
             assert "BROKEN LINK" not in captured.out  # Crucial check
 
+    def test_run_explicit_file_in_excluded_dir_is_skipped(self, tmp_path, capsys):
+        # Setup a mock repository structure
+        root_dir = tmp_path / "repo"
+        root_dir.mkdir()
+        (root_dir / ".git").mkdir()
+
+        # Create an excluded directory ('misc' is in VALIDATION_EXCLUDE_DIRS)
+        excluded_dir = root_dir / "misc"
+        excluded_dir.mkdir(parents=True)
+        
+        # Create a file in that excluded directory
+        excluded_file = excluded_dir / "secret_notes.ipynb"
+        excluded_file.write_text("some content", encoding="utf-8")
+
+        # Run the CLI with the explicit path to the excluded file
+        cli = LinkCheckerCLI()
+        with pytest.raises(SystemExit) as exc_info:
+            cli.run(["--paths", str(excluded_file), "--pattern", "*.ipynb"])
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        # It should report that no files matching the pattern were found (because it was skipped)
+        assert "No files matching '*.ipynb' found!" in captured.out
+
 
 # ======================
 # Defensive Tests

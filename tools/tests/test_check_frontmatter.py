@@ -1104,11 +1104,21 @@ class TestErrorMessages:
 class TestValidateFrontmatterConvenience:
     """Contract: validate_frontmatter() reads file, parses, and delegates."""
 
-    def test_returns_empty_when_no_frontmatter(self, frontmatter_env):
-        """File without frontmatter → empty list (not an error)."""
+    def test_returns_error_when_governed_file_has_no_frontmatter(self, frontmatter_env):
+        """Governed file (.md) without frontmatter → [missing_frontmatter error]."""
         md_file = frontmatter_env / "no_fm.md"
         md_file.write_text("# Just a heading\n\nNo frontmatter here.\n", encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        missing_fm = [e for e in errors if e.error_type == "missing_frontmatter"]
+        assert len(missing_fm) == 1
+        assert missing_fm[0].field is None
+        assert "governed extension but no YAML frontmatter" in missing_fm[0].message
+
+    def test_returns_empty_when_non_governed_extension_has_no_frontmatter(self, frontmatter_env):
+        """Non-governed file (.txt) without frontmatter → empty list."""
+        txt_file = frontmatter_env / "no_fm.txt"
+        txt_file.write_text("Plain text content.", encoding="utf-8")
+        errors = _module.validate_frontmatter(txt_file, frontmatter_env)
         assert errors == []
 
     def test_returns_error_when_no_type(self, frontmatter_env):

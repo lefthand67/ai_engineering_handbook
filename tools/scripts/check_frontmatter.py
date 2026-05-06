@@ -376,11 +376,23 @@ def validate_frontmatter(
     """Validate a single file's frontmatter against hub + spoke rules.
 
     Orchestrates: read file -> parse -> resolve type -> load configs -> check.
-    Returns empty list if valid or if file has no frontmatter.
+    Returns empty list if valid or if file is not governed.
     """
     content = file_path.read_text(encoding="utf-8")
     frontmatter = parse_frontmatter(content, file_path=file_path)
     if frontmatter is None:
+        # If file has a governed extension but no frontmatter, it's a blocking error.
+        governed_exts = HUB_CONFIG.get("governed_extensions", [])
+        if file_path.suffix in governed_exts:
+            return [
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="missing_frontmatter",
+                    field=None,
+                    message="file has governed extension but no YAML frontmatter present — all governed files must have frontmatter to be subject to validation",
+                    config_source=f"{HUB_CONFIG_REL} → governed_extensions",
+                )
+            ]
         return []
     return validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content)
 
@@ -415,7 +427,7 @@ def validate_parsed_frontmatter(
                 file_path=file_path,
                 error_type="missing_type",
                 field="options.type",
-                message="frontmatter present but missing required 'options.type' — type determines which validation rules apply and is required for governance",
+                message=f"frontmatter present but missing required 'options.type' — type determines which validation rules apply. To fix: add 'options:\\n  type: <type>' to the frontmatter (valid types: {', '.join(sorted(VALID_TYPES))})",
                 config_source=".vadocs/conf.json → field_registry.type",
             )
         ]
@@ -427,7 +439,7 @@ def validate_parsed_frontmatter(
                 file_path=file_path,
                 error_type="unknown_type",
                 field="options.type",
-                message=f"unknown type '{doc_type}', expected one of {sorted(VALID_TYPES)}",
+                message=f"unknown type '{doc_type}', expected one of {sorted(VALID_TYPES)}. To fix: check for typos in 'options.type'",
                 config_source=f"{HUB_CONFIG_REL} → types",
             )
         ]
@@ -452,7 +464,7 @@ def validate_parsed_frontmatter(
                     file_path=file_path,
                     error_type="missing_field",
                     field=field,
-                    message=f"missing required field '{field}'",
+                    message=f"missing required field '{field}' — To fix: add '{field}: <value>' to the frontmatter (or under options.* if not MyST-native)",
                     config_source=block_source,
                 )
             )
@@ -633,7 +645,7 @@ def _validate_field_value(
                 file_path=file_path,
                 error_type="invalid_format",
                 field=field,
-                message=f"field '{field}' has value '{str_value}', expected format YYYY-MM-DD",
+                message=f"field '{field}' has value '{str_value}', expected format YYYY-MM-DD. To fix: ensure the date is quoted in YAML (e.g., date: \"2026-01-01\") to prevent automatic type conversion",
                 config_source=f"{HUB_CONFIG_REL} → date_format",
             )
 
@@ -840,7 +852,7 @@ def _check_options_namespace(
                     file_path=file_path,
                     error_type="invalid_namespace",
                     field=key,
-                    message=f"field '{key}' is not MyST-native and must be under options.*",
+                    message=f"field '{key}' is not MyST-native and must be under options.*. To fix: move the field into the 'options' block",
                     config_source=".vadocs/conf.json → field_registry",
                 )
             )
@@ -876,28 +888,37 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
 
     blocks = []
     current_pos = 0
-    while True:
-        match = re.search(r"^\s*---\s*\n(.*?)\n---\s*\n", content[current_pos:], re.DOTALL | re.MULTILINE)
-        if not match:
-            break
-        blocks.append(match.group(1))
-        current_pos += match.end()
-        if not re.match(r"^\s*---", content[current_pos:], re.MULTILINE):
-            break
+    # Use split to find all blocks between fences. Fences must be on their own line.
+    # If the file starts with a fence, parts[0] is empty, and parts[1, 3, ...] are the blocks.
+    if content.strip().startswith("---"):
+        parts = re.split(r"^\s*---\s*$", content, flags=re.MULTILINE)
+        blocks = [p.strip("\n") for p in parts[1::2]]
 
     if not blocks:
         return None
 
+    # Parser Transparency: log discovered blocks for debuggability
+    file_id = str(file_path) if file_path else "content"
+    logger.debug(f"Found {len(blocks)} YAML blocks in {file_id}")
+    for i, block in enumerate(blocks):
+        logger.debug(f"Block {i} content:\n---\n{block}\n---")
+
     merged_data: dict = {}
     has_valid_block = False
 
-    for block_text in blocks:
+    for i, block_text in enumerate(blocks):
         try:
             data = yaml.safe_load(block_text)
+            if data is None:
+                logger.warning(f"YAML block {i} in {file_id} is empty or contains only whitespace")
+                continue
             if isinstance(data, dict):
                 merged_data.update(data)
                 has_valid_block = True
-        except yaml.YAMLError:
+            else:
+                logger.warning(f"YAML block {i} in {file_id} is not a dictionary (got {type(data).__name__})")
+        except yaml.YAMLError as e:
+            logger.warning(f"YAML syntax error in block {i} of {file_id}: {e}")
             continue
 
     return merged_data if has_valid_block else None

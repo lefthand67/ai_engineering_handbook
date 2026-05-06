@@ -152,19 +152,18 @@ def validate_sections(adr_file: AdrFile) -> list[ValidationError]:
 def validate_tags(adr_file: AdrFile) -> list[ValidationError]:
     """Delegate tag validation to check_frontmatter and enforce non-empty tags."""
     errors = []
-    if adr_file.frontmatter:
-        fm_errs = check_frontmatter.validate_parsed_frontmatter(
-            adr_file.frontmatter, adr_file.path, detect_repo_root(), content=adr_file.content
-        )
-        for e in fm_errs:
-            # Tag errors are reported as 'invalid_value' (unknown tag) or 'missing_field' (absent)
-            if e.error_type in ("invalid_value", "missing_field") and e.field == "tags":
-                errors.append(ValidationError(adr_file.number, "invalid_tag", e.message))
+    fm_errs = check_frontmatter.validate_parsed_frontmatter(
+        adr_file.frontmatter or {}, adr_file.path, detect_repo_root(), content=adr_file.content
+    )
+    for e in fm_errs:
+        # Tag errors are reported as 'invalid_value' (unknown tag) or 'missing_field' (absent)
+        if e.error_type in ("invalid_value", "missing_field") and e.field == "tags":
+            errors.append(ValidationError(adr_file.number, "invalid_tag", e.message))
 
-        # Domain rule: Tags must not be an empty list
-        tags = adr_file.frontmatter.get("tags")
-        if isinstance(tags, list) and not tags:
-            errors.append(ValidationError(adr_file.number, "empty_tags", f"ADR {adr_file.number} tags list is empty"))
+    # Domain rule: Tags must not be an empty list
+    tags = adr_file.frontmatter.get("tags") if adr_file.frontmatter else None
+    if isinstance(tags, list) and not tags:
+        errors.append(ValidationError(adr_file.number, "empty_tags", f"ADR {adr_file.number} tags list is empty"))
     return errors
 
 def validate_conditional_fields(adr_file: AdrFile, all_adr_numbers: set[int] | None = None) -> list[ValidationError]:
@@ -415,10 +414,9 @@ def main(argv: list[str] | None = None) -> int:
             errors.append(ValidationError(adr.number, "status_mismatch", f"Frontmatter '{adr.status}' vs Body '{adr.body_status}'"))
 
         # Generic frontmatter delegation
-        if adr.frontmatter:
-            fm_errs = check_frontmatter.validate_parsed_frontmatter(adr.frontmatter, adr.path, detect_repo_root(), content=adr.content)
-            for e in fm_errs:
-                errors.append(ValidationError(adr.number, e.error_type, f"Frontmatter: {e.message}"))
+        fm_errs = check_frontmatter.validate_frontmatter(adr.path, detect_repo_root())
+        for e in fm_errs:
+            errors.append(ValidationError(adr.number, e.error_type, f"Frontmatter: {e.message}"))
 
         if errors:
             total_errors += len(errors)

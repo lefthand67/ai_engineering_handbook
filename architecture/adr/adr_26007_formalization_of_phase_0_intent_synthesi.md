@@ -1,21 +1,25 @@
+
 ---
-id: 26007
-title: "Formalization of Phase 0: Intent Synthesis (Requirements Engineering)"
+title: 'Formalization of Phase 0: Intent Synthesis (Requirements Engineering)'
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-01
-description: "Phase 0 Intent Synthesis is a mandatory human-lead + reasoning-model gateway before any aidx session, producing a Mission artifact that grounds all subsequent phases."
-tags: [workflow, model]
-token_size: 2800
-status: superseded
-superseded_by: ADR-26028
+description: Phase 0 Intent Synthesis is a mandatory human-lead + reasoning-model
+  gateway before any aidx session, producing a Mission artifact that grounds all subsequent
+  phases.
+tags:
+- workflow
+- model
 options:
   type: adr
   birth: 2026-01-24
   version: 1.0.1
+  token_size: 873
+  id: 26007
+  status: superseded
+  superseded_by: ADR-26028
 ---
-
 # ADR-26007: Formalization of Phase 0: Intent Synthesis (Requirements Engineering)
 
 ## Title

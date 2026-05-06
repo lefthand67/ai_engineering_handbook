@@ -1,12 +1,24 @@
----
-id: 26031
-title: "Prefixed Namespace System for Architectural Records"
-date: 2026-02-25
-status: rejected
-superseded_by: null
-tags: [governance, documentation, workflow]
----
 
+---
+title: Prefixed Namespace System for Architectural Records
+date: 2026-02-25
+tags:
+- governance
+- documentation
+- workflow
+options:
+  token_size: 789
+  id: 26031
+  status: rejected
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-25'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-25.
+---
 # ADR-26031: Prefixed Namespace System for Architectural Records
 
 ## Date

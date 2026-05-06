@@ -1,12 +1,23 @@
----
-id: 26040
-title: "Podman Kube YAML as Deployment Standard"
-date: 2026-03-09
-status: accepted
-superseded_by: null
-tags: [devops]
----
 
+---
+title: Podman Kube YAML as Deployment Standard
+date: 2026-03-09
+tags:
+- devops
+options:
+  token_size: 1730
+  id: 26040
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-03-09'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
+  -->.'
+---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-26040: Podman Kube YAML as Deployment Standard

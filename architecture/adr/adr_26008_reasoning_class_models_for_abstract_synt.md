@@ -1,21 +1,24 @@
+
 ---
-id: 26008
 title: Selection of Reasoning-Class Models for Abstract Synthesis (Phase 0)
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-01
-description: "Reasoning-Class models (high abstract synthesis) are required for Phase 0 to resolve requirements ambiguity before the aidx pipeline engages local hardware."
-tags: [model, workflow]
-token_size: 3000
-status: superseded
-superseded_by: ADR-26027
+description: Reasoning-Class models (high abstract synthesis) are required for Phase
+  0 to resolve requirements ambiguity before the aidx pipeline engages local hardware.
+tags:
+- model
+- workflow
 options:
   type: adr
   birth: 2026-01-24
   version: 1.0.1
+  token_size: 1021
+  id: 26008
+  status: superseded
+  superseded_by: ADR-26027
 ---
-
 # ADR-26008: Selection of Reasoning-Class Models for Abstract Synthesis (Phase 0)
 
 ## Title

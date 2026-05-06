@@ -1,12 +1,24 @@
----
-id: ADR-26016
-title: "Metadata-Driven Architectural Records Lifecycle"
-date: 2026-02-01
-status: accepted
-superseded_by: null
-tags: [devops, documentation, governance]
----
 
+---
+title: Metadata-Driven Architectural Records Lifecycle
+date: 2026-02-01
+tags:
+- devops
+- documentation
+- governance
+options:
+  token_size: 770
+  id: ADR-26016
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-01'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Metadata-Driven Architectural Records Lifecycle.
+---
 # ADR-26016: Metadata-Driven Architectural Records Lifecycle
 
 ## Title

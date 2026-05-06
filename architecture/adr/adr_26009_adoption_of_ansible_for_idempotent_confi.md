@@ -1,12 +1,23 @@
+
 ---
-id: 26009
 title: Adoption of Ansible for Idempotent Configuration Management
 date: 2026-01-24
-status: proposed
-tags: [devops]
-superseded_by: null
+tags:
+- devops
+options:
+  token_size: 945
+  id: 26009
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-01-24'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Transitioning from procedural Bash-based server configuration to declarative,
+  idempotent state management using **Ansible**..
 ---
-
 # ADR-26009: Adoption of Ansible for Idempotent Configuration Management
 
 ## Title

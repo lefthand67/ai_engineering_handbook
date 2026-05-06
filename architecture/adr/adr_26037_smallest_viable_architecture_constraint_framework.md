@@ -1,12 +1,23 @@
----
-id: 26037
-title: "Smallest Viable Architecture (SVA) Constraint Framework"
-date: 2026-03-02
-status: accepted
-superseded_by: null
-tags: [architecture, governance]
----
 
+---
+title: Smallest Viable Architecture (SVA) Constraint Framework
+date: 2026-03-02
+tags:
+- architecture
+- governance
+options:
+  token_size: 2388
+  id: 26037
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-03-02'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-03-02.
+---
 # ADR-26037: Smallest Viable Architecture (SVA) Constraint Framework
 
 ## Date

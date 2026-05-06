@@ -1,21 +1,24 @@
+
 ---
-id: 26048
-title: "Formalize Weighted Response Confidence (WRC) as Ecosystem Evaluation Metric"
+title: Formalize Weighted Response Confidence (WRC) as Ecosystem Evaluation Metric
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-19
-description: "Establishment of the WRC scoring system as the authoritative metric for assessing the production-readiness of AI consultant outputs, integrating SVA penalties."
-tags: [architecture, prompts]
-status: proposed
-superseded_by: null
+description: Establishment of the WRC scoring system as the authoritative metric for
+  assessing the production-readiness of AI consultant outputs, integrating SVA penalties.
+tags:
+- architecture
+- prompts
 options:
   type: adr
   birth: 2026-04-19
   version: 0.1.0
-  token_size: 700
+  token_size: 1046
+  id: 26048
+  status: proposed
+  superseded_by: null
 ---
-
 # ADR-26048: Formalize Weighted Response Confidence (WRC) as Ecosystem Evaluation Metric
 
 ## Date

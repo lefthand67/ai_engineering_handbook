@@ -1,12 +1,24 @@
----
-id: 26023
-title: "MyST-Aligned Frontmatter Standard"
-date: 2026-02-08
-status: accepted
-superseded_by: null
-tags: [governance, documentation, context_management]
----
 
+---
+title: MyST-Aligned Frontmatter Standard
+date: 2026-02-08
+tags:
+- governance
+- documentation
+- context_management
+options:
+  id: 26023
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-08'
+  token_size: 1765
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-08.
+---
 # ADR-26023: MyST-Aligned Frontmatter Standard
 
 ## Date
@@ -69,28 +81,31 @@ Both `author` (string) and `authors` (array of objects) are valid MyST formats. 
 ### 2. Example: `author` as String
 
 ```yaml
----
+
 title: Article Title
 author: Vadim Rudakov, rudakow.wadim@gmail.com
 date: 2026-02-08
 options:
-  version: 0.1.0
+  version: "0.1.0"
   birth: 2026-01-03
+  token_size: 1688
+  type: adr
 ---
 ```
 
 ### 3. Example: `authors` as Array
 
 ```yaml
----
+
 title: Article Title
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-02-08
 options:
-  version: 0.1.0
+  version: "0.1.0"
   birth: 2026-01-03
+  type: adr
 ---
 ```
 

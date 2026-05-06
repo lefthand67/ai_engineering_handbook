@@ -1,12 +1,23 @@
 ---
-id: 26035
-title: "Architecture Knowledge Base Taxonomy"
+title: Architecture Knowledge Base Taxonomy
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-02-26
-status: accepted
-superseded_by: null
-tags: [governance, documentation, architecture]
+description: Adopt a three-category Architecture Knowledge Base taxonomy aligned with
+  ISO 42010, formalized as a directory structure and machine-readable configuration.
+tags:
+- governance
+- documentation
+options:
+  type: adr
+  id: 26035
+  birth: 2026-02-26
+  version: 1.0.0
+  status: accepted
+  superseded_by: null
+  token_size: 2348
 ---
-
 # ADR-26035: Architecture Knowledge Base Taxonomy
 
 ## Date
@@ -82,13 +93,20 @@ All schemas are defined in the evidence validation config in `.vadocs/` (the sin
 **Analysis** (`evidence/analyses/A-YYNNN_slug.md`):
 ```yaml
 ---
-id: A-26001
-title: "Architecture Knowledge Base Taxonomy"
+title: Architecture Knowledge Base Taxonomy
 date: 2026-02-26
-status: active          # active | absorbed | superseded
-tags: [governance, documentation]
-sources: [S-26001]      # source IDs that fed into this
-produces: [ADR-26035]   # ADR/artifact IDs this generates
+tags:
+- governance
+- documentation
+options:
+  id: A-26001
+  status: active
+  sources:
+  - S-26001
+  produces:
+  - ADR-26035
+  type: adr
+  token_size: 2218
 ---
 ```
 

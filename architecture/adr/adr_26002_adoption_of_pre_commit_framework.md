@@ -1,12 +1,22 @@
+
 ---
-id: 26002
 title: Adoption of the Pre-commit Framework
 date: 2026-01-31
-status: accepted
-tags: [git]
-superseded_by: null
+tags:
+- git
+options:
+  token_size: 722
+  id: 26002
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-01-31'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Using the `pre-commit` package to manage and orchestrate Git hook execution..
 ---
-
 # ADR-26002: Adoption of the Pre-commit Framework
 
 ## Title

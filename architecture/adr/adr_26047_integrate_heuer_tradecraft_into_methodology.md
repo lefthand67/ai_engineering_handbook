@@ -1,21 +1,25 @@
+
 ---
-id: 26047
-title: "Integrate Heuer Intelligence Tradecraft into AI System Methodology"
+title: Integrate Heuer Intelligence Tradecraft into AI System Methodology
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-19
-description: "Establishment of Richard Heuer's intelligence tradecraft (ACH, Disconfirmation, Linchpin Analysis) as a core methodology for the AI system to counter the autoregressive consistency trap."
-tags: [architecture, prompts]
-status: proposed
-superseded_by: null
+description: Establishment of Richard Heuer's intelligence tradecraft (ACH, Disconfirmation,
+  Linchpin Analysis) as a core methodology for the AI system to counter the autoregressive
+  consistency trap.
+tags:
+- architecture
+- prompts
 options:
   type: adr
   birth: 2026-04-19
   version: 0.1.0
-  token_size: 850
+  token_size: 1592
+  id: 26047
+  status: proposed
+  superseded_by: null
 ---
-
 # ADR-26047: Integrate Heuer Intelligence Tradecraft into AI System Methodology
 
 ## Date

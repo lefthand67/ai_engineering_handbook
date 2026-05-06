@@ -1,12 +1,23 @@
----
-id: 26029
-title: "pyproject.toml as Tool Configuration Hub"
-date: 2026-02-16
-status: accepted
-tags: [governance, workflow]
-superseded_by: null
----
 
+---
+title: pyproject.toml as Tool Configuration Hub
+date: 2026-02-16
+tags:
+- governance
+- workflow
+options:
+  token_size: 1131
+  id: 26029
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-16'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-16.
+---
 # ADR-26029: pyproject.toml as Tool Configuration Hub
 
 ## Date

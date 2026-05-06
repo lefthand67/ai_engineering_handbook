@@ -1,13 +1,24 @@
+
 ---
-id: 26044
-title: "Skills as Progressive Disclosure Units"
+title: Skills as Progressive Disclosure Units
 author: Vadim Rudakov, rudakow.wadim@gmail.com
 date: 2026-03-18
-status: proposed
-superseded_by: null
-tags: [context_management]
+tags:
+- context_management
+options:
+  token_size: 2702
+  id: 26044
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-03-18'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
+  -->.'
 ---
-
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-26044: Skills as Progressive Disclosure Units

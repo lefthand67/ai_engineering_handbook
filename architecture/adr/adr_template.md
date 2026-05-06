@@ -1,13 +1,21 @@
----
-id: YY001
-title: "Short Description"  # Always quote titles (may contain colons)
-date: YYYY-MM-DD
-status: proposed  # Valid values defined in adr.conf.json
-superseded_by: null
-tags: [primary_domain]  # First tag = primary (determines index sub-section). Valid tags in conf.json
-description: ""  # One-line elevator pitch — shown in adr_index.md
----
 
+---
+title: Short Description
+date: "2026-01-01"
+tags: []
+description: ''
+options:
+  token_size: 457
+  id: YY001
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: "2026-01-01"
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-{{ id }}: {{ title }}

@@ -1,12 +1,23 @@
+
 ---
-id: 26020
 title: Hub-and-Spoke Ecosystem Documentation Architecture
 date: 2026-02-04
-status: accepted
-tags: [architecture, documentation]
-superseded_by: null
+tags:
+- architecture
+- documentation
+options:
+  token_size: 1144
+  id: 26020
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-04'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-04.
 ---
-
 # ADR-26020: Hub-and-Spoke Ecosystem Documentation Architecture
 
 ## Date
@@ -15,7 +26,7 @@ superseded_by: null
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 

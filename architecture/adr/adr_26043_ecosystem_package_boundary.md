@@ -1,13 +1,25 @@
+
 ---
-id: 26043
-title: "Ecosystem Package Boundary"
+title: Ecosystem Package Boundary
 author: Vadim Rudakov, rudakow.wadim@gmail.com
 date: 2026-03-14
-status: proposed
-superseded_by: null
-tags: [governance, architecture]
+tags:
+- governance
+- architecture
+options:
+  token_size: 2072
+  id: 26043
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-03-14'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
+  -->.'
 ---
-
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-26043: Ecosystem Package Boundary

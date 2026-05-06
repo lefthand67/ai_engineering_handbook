@@ -1,12 +1,24 @@
+
 ---
-id: 26004
 title: Implementation of Agentic RAG for Autonomous Research
 date: 2026-02-01
-status: rejected
-tags: [context_management, workflow]
-superseded_by: null
+tags:
+- context_management
+- workflow
+options:
+  token_size: 1067
+  id: 26004
+  status: rejected
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-01'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Standardizing Autonomous Knowledge Retrieval via an Agentic RAG "Pre-Flight"
+  Workflow for `aider`..
 ---
-
 # ADR-26004: Implementation of Agentic RAG for Autonomous Research
 
 ## Title

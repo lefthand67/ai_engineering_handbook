@@ -1,12 +1,22 @@
----
-id: 26033
-title: "Virtual Monorepo via Package-Driven Dependency Management"
-date: 2026-02-25
-status: proposed
-superseded_by: null
-tags: [governance]
----
 
+---
+title: Virtual Monorepo via Package-Driven Dependency Management
+date: 2026-02-25
+tags:
+- governance
+options:
+  token_size: 390
+  id: 26033
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-25'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-25.
+---
 # ADR-26033: Virtual Monorepo via Package-Driven Dependency Management
 
 ## Date

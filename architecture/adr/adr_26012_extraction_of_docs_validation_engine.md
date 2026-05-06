@@ -1,12 +1,22 @@
+
 ---
-id: 26012
 title: Extraction of Documentation Validation Engine
 date: 2026-01-31
-status: proposed
-tags: [governance]
-superseded_by: null
+tags:
+- governance
+options:
+  token_size: 1165
+  id: 26012
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-01-31'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Extracting validation scripts into a standalone, reusable Python package..
 ---
-
 # ADR-26012: Extraction of Documentation Validation Engine
 
 ## Title

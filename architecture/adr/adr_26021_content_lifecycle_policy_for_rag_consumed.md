@@ -1,12 +1,24 @@
----
-id: ADR-26021
-title: "Content Lifecycle Policy for RAG-Consumed Repositories"
-date: 2026-02-05
-status: accepted
-superseded_by: null
-tags: [governance, documentation, context_management]
----
 
+---
+title: Content Lifecycle Policy for RAG-Consumed Repositories
+date: 2026-02-05
+tags:
+- governance
+- documentation
+- context_management
+options:
+  token_size: 1281
+  id: ADR-26021
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-05'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 2026-02-05.
+---
 # ADR-26021: Content Lifecycle Policy for RAG-Consumed Repositories
 
 ## Date
@@ -15,7 +27,7 @@ tags: [governance, documentation, context_management]
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 

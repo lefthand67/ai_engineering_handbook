@@ -1,12 +1,24 @@
----
-id: 26054
-title: "JSON as Governance Config Format"
-date: 2026-03-23
-status: proposed
-superseded_by: null
-tags: [governance, architecture]
----
 
+---
+title: JSON as Governance Config Format
+date: 2026-03-23
+tags:
+- governance
+- architecture
+options:
+  token_size: 1441
+  id: 26054
+  status: proposed
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-03-23'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
+  -->.'
+---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-26054: JSON as Governance Config Format

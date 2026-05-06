@@ -1,21 +1,24 @@
+
 ---
-id: 26003
-title: "Adoption of `gitlint` for Tiered Workflow Enforcement"
+title: Adoption of `gitlint` for Tiered Workflow Enforcement
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-01
-description: "gitlint adoption for tiered Git commit validation was rejected in favor of a custom Python validator capable of the conditional Tier 3 ArchTag logic that gitlint could not express."
-tags: [git]
-token_size: 2500
-status: rejected
-superseded_by: null
+description: gitlint adoption for tiered Git commit validation was rejected in favor
+  of a custom Python validator capable of the conditional Tier 3 ArchTag logic that
+  gitlint could not express.
+tags:
+- git
 options:
   type: adr
   birth: 2026-01-24
   version: 1.0.1
+  token_size: 1056
+  id: 26003
+  status: rejected
+  superseded_by: null
 ---
-
 # ADR-26003: Adoption of `gitlint` for Tiered Workflow Enforcement
 
 ## Title

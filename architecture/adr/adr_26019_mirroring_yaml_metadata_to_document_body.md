@@ -1,21 +1,26 @@
+
 ---
-id: 26019
-title: "Mirroring YAML Metadata to Document Body for Human Verification"
+title: Mirroring YAML Metadata to Document Body for Human Verification
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-01
-description: "A pre-commit hook automatically mirrors YAML frontmatter fields into a prose reflection block in the document body, making metadata visible on the MyST-rendered static site."
-tags: [governance, documentation, context_management]
-token_size: 4500
-status: superseded
-superseded_by: ADR-26023
+description: A pre-commit hook automatically mirrors YAML frontmatter fields into
+  a prose reflection block in the document body, making metadata visible on the MyST-rendered
+  static site.
+tags:
+- governance
+- documentation
+- context_management
 options:
   type: adr
   birth: 2026-02-01
   version: 1.0.1
+  token_size: 1745
+  id: 26019
+  status: superseded
+  superseded_by: ADR-26023
 ---
-
 # ADR-26019: Mirroring YAML Metadata to Document Body for Human Verification
 
 ## Date
@@ -49,13 +54,13 @@ Every content article in the repo already uses a hand-written metadata block pos
 
 +++
 
----
 
 Owner: Vadim Rudakov, lefthand67@gmail.com
 Version: 0.1.3
 Birth: 2026-01-14
 Last Modified: 2026-01-17
-
+options:
+  type: adr
 ---
 
 +++
@@ -88,7 +93,7 @@ We will automate the existing reflection block pattern as a **positional project
 After {term}`ADR-26018` implementation, an article will have:
 
 ```markdown
----
+
 jupytext:
   text_representation:
     extension: .md
@@ -96,23 +101,25 @@ jupytext:
     format_version: 0.13
 kernelspec:
   name: python3
-owner: "Vadim Rudakov"
-version: "0.1.3"
-birth: 2026-01-14
+owner: Vadim Rudakov
 last_modified: 2026-01-17
+options:
+  birth: 2026-01-14
+  version: "0.1.3"
+  type: adr
 ---
 
 # Article Title
 
 +++
 
----
 
 Owner: Vadim Rudakov
 Version: 0.1.3
 Birth: 2026-01-14
 Last Modified: 2026-01-17
-
+options:
+  type: adr
 ---
 
 +++

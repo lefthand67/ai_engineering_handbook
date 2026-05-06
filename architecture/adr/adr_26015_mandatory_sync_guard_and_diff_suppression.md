@@ -1,12 +1,23 @@
+
 ---
-id: 26015
 title: Mandatory Sync-Guard & Diff Suppression
 date: 2026-02-01
-status: accepted
-tags: [ci]
-superseded_by: null
+tags:
+- ci
+options:
+  token_size: 821
+  id: 26015
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-01'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Implementation of GitOps integrity via Pre-commit synchronization and
+  Git attribute diff suppression..
 ---
-
 # ADR-26015: Mandatory Sync-Guard & Diff Suppression
 
 ## Title
@@ -15,7 +26,7 @@ Implementation of GitOps integrity via Pre-commit synchronization and Git attrib
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 

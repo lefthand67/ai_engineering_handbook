@@ -1,21 +1,26 @@
+
 ---
-id: 26018
-title: "Universal YAML Frontmatter Adoption for Machine-Readable Documentation"
+title: Universal YAML Frontmatter Adoption for Machine-Readable Documentation
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-01
-description: "YAML frontmatter is mandated as the universal machine-readable interface for all documentation artifacts, requiring owner, version, and last_modified fields on every file."
-tags: [governance, documentation, context_management]
-token_size: 2600
-status: superseded
-superseded_by: ADR-26023
+description: YAML frontmatter is mandated as the universal machine-readable interface
+  for all documentation artifacts, requiring owner, version, and last_modified fields
+  on every file.
+tags:
+- governance
+- documentation
+- context_management
 options:
   type: adr
   birth: 2026-02-01
   version: 1.0.1
+  token_size: 1146
+  id: 26018
+  status: superseded
+  superseded_by: ADR-26023
 ---
-
 # ADR-26018: Universal YAML Frontmatter Adoption for Machine-Readable Documentation
 
 ## Title

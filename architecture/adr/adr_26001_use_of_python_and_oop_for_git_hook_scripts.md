@@ -1,12 +1,23 @@
+
 ---
-id: 26001
 title: Use of Python and OOP for Git Hook Scripts
 date: 2026-01-24
-status: accepted
-tags: [git]
-superseded_by: null
+tags:
+- git
+options:
+  token_size: 782
+  id: 26001
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-01-24'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Standardizing Git Hook Implementation with Python and Object-Oriented
+  Programming (OOP).
 ---
-
 # ADR-26001: Use of Python and OOP for Git Hook Scripts
 
 ## Title

@@ -1,12 +1,24 @@
----
-id: 26028
-title: "Tool-Agnostic Phase 0: Intent Synthesis"
-date: 2026-02-15
-status: accepted
-tags: [workflow, model]
-superseded_by: null
----
 
+---
+title: 'Tool-Agnostic Phase 0: Intent Synthesis'
+date: 2026-02-15
+tags:
+- workflow
+- model
+options:
+  token_size: 1182
+  id: 26028
+  status: accepted
+  superseded_by: null
+  type: adr
+  version: 1.0.0
+  birth: '2026-02-15'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Formalizing a Tool-Agnostic "Human-Lead + Reasoning-Class Model" Requirements
+  Engineering Phase (Phase 0) Before Automated Execution..
+---
 # ADR-26028: Tool-Agnostic Phase 0: Intent Synthesis
 
 ## Title

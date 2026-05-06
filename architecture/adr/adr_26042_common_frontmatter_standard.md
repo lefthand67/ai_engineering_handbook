@@ -1,21 +1,31 @@
 ---
-id: 26042
-title: "Common Frontmatter Standard"
+title: Common Frontmatter Standard
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-04-14
-description: "Adopts a composable block frontmatter schema as the universal standard for all governed documents. Defines 3 block types (identity, discovery, lifecycle) that compose additively per document type. Requires every file with frontmatter to self-identify via options.type so validation scripts load the correct spoke config. Eliminates directory-based type inference, fixes inconsistent date semantics, and replaces flat required-fields lists with additive block inheritance. Hub config (.vadocs/conf.json) defines field registry, block composition, and 10-type taxonomy; spoke configs (.vadocs/types/<type>.conf.json) add type-specific required fields, allowed statuses, and severity values."
-status: accepted
-superseded_by: null
-tags: [governance, documentation, context_management]
-token_size: 4000
+description: Adopts a composable block frontmatter schema as the universal standard
+  for all governed documents. Defines 3 block types (identity, discovery, lifecycle)
+  that compose additively per document type. Requires every file with frontmatter
+  to self-identify via options.type so validation scripts load the correct spoke config.
+  Eliminates directory-based type inference, fixes inconsistent date semantics, and
+  replaces flat required-fields lists with additive block inheritance. Hub config
+  (.vadocs/conf.json) defines field registry, block composition, and 10-type taxonomy;
+  spoke configs (.vadocs/types/<type>.conf.json) add type-specific required fields,
+  allowed statuses, and severity values.
+tags:
+- governance
+- documentation
+- context_management
 options:
   type: adr
   birth: 2026-03-11
   version: 1.1.0
+  token_size: 2858
+  id: 26042
+  status: accepted
+  superseded_by: null
 ---
-
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 
 # ADR-26042: Common Frontmatter Standard

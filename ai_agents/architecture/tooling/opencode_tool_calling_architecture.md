@@ -14,9 +14,9 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.1.0
-  id: A-26058
+  id: 26058
   status: accepted
-  token_size: 1180
+  token_size: 1522
 ---
 # OpenCode Tool Calling Architecture Analysis
 
@@ -94,11 +94,22 @@ yield* ctx.ask({ permission: key, metadata: {}, patterns: ["*"], always: ["*"] }
 
 **Explanation**: Before a tool's `execute` logic is triggered, the system invokes `ctx.ask()`. This checks the merged `Permission.Ruleset` (combining agent defaults and session overrides) to determine if the action is permitted, implementing a "Default-Deny" security model.
 
-## 4. Steering and Constraints
+## 4. The Three-Tier Steering Model
 
-**Claim**: Steering is implemented by injecting `<system-reminder>` blocks into the prompt via the `insertReminders` function to enforce operational modes (e.g., Plan Mode).
+OpenCode employs a highly structured steering approach, utilizing synthetic prompt injections and strict permission-gated modalities.
 
-**Path**: `ai_agents/research/ai_coding_agents/opencode/packages/opencode/src/session/prompt.ts`
+### Tier 1: Tool-Level Steering (Semantic)
+OpenCode uses **Template-Based Steering**, where tool descriptions are not static strings but are generated based on the current environment.
+
+- **Mechanism**: Tool descriptions can be injected with runtime data (OS, shell type, environment variables) to reduce LLM hallucinations.
+- **Pattern**: Descriptions are treated as dynamic templates that are resolved at the moment of prompt assembly.
+- **Role**: Ensures the LLM understands the exact environmental constraints of the tool it is about to call.
+
+### Tier 2: Operational Steering (Modality)
+Operational steering is implemented via high-priority `<system-reminder>` blocks.
+
+- **Mechanism**: The `insertReminders` function appends `synthetic` text parts to the prompt to enforce strict mode constraints.
+- **Path**: `ai_agents/research/ai_coding_agents/opencode/packages/opencode/src/session/prompt.ts`
 
 **Snippet**:
 ```typescript
@@ -118,4 +129,20 @@ ${exists ? `A plan file already exists at ${plan}. You can read it and make incr
 })
 ```
 
-**Explanation**: The `insertReminders` function appends a `synthetic` text part to the user's message. In "Plan Mode," this injects a high-priority `<system-reminder>` that restricts the agent to read-only actions and directs it through a specific workflow (Explore $\rightarrow$ Design $\rightarrow$ Review $\rightarrow$ Final Plan).
+- **Evidence**: The snippet shows how a `<system-reminder>` blocks the agent from making edits or running non-readonly tools when Plan mode is active.
+- **Role**: Overrides previous instructions to force the agent into a specific operational loop (e.g., Plan $\rightarrow$ Execute).
+
+### Tier 3: Contextual Steering (Conventions)
+Contextual steering is managed through the `Permission.Ruleset` and agent-specific configurations.
+
+- **Mechanism**: Merging of agent-level defaults with session-specific permission overrides.
+- **Pattern**: **Permission-Gated Steering**. By explicitly denying a tool at the API level (e.g., denying edit tools for a 'planner' persona), the agent is steered toward a specific role without relying solely on prompt-based guidance.
+- **Role**: Enforces strict isolation between different agent personas and privilege levels.
+
+## 5. Summary of Steering Patterns
+
+| Pattern | Implementation in OpenCode | Primary Goal |
+| :--- | :--- | :--- |
+| **Template-Based** | Dynamic resolution of `description` strings | Environmental Accuracy |
+| **System Reminders**| Synthetic `<system-reminder>` blocks | Absolute Modality Control |
+| **Permission-Gated**| `ctx.ask()` against `Permission.Ruleset` | Strict Role Isolation |

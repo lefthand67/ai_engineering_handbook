@@ -5,21 +5,21 @@ authors:
   email: rudakow.wadim@gmail.com
 date: 2026-05-06
 description: Source-level analysis of the tool calling system in Claude Code, focusing
-  on Zod-based validation, deferred tool loading, and distributed negative constraints.
+  on Zod-based validation, deferred tool loading, and the hierarchical steering model.
 tags:
 - agents
 - architecture
 options:
   type: guide
   birth: 2026-05-06
-  version: 1.1.0
-  id: A-26057
+  version: 1.2.0
+  id: 26057
   status: accepted
-  token_size: 1699
+  token_size: 1701
 ---
 # Claude Code Tool Calling Architecture Analysis
 
-This analysis examines the tool calling mechanism in Claude Code, emphasizing its focus on type safety and token efficiency.
+This analysis examines the tool calling mechanism in Claude Code, emphasizing its focus on type safety, token efficiency, and hierarchical steering.
 
 ## 1. Tool Definitions
 
@@ -66,23 +66,13 @@ const fullInputSchema = lazySchema(() => z.strictObject({
   timeout: semanticNumber(z.number().optional()).describe(`Optional timeout in milliseconds (max ${getMaxTimeoutMs()})`),
   description: z.string().optional().describe(`Clear, concise description of what this command does...`),
   run_in_background: semanticBoolean(z.boolean().optional()).describe(`Set to true to run this command in the background...`),
-  dangerouslyDisableSandbox: semanticBoolean(z.boolean().optional()).describe('Set this to true to dangerously override sandbox mode...`),
+  dangerouslyDisableSandbox: semanticBoolean(z.boolean().optional()).describe('Set this to true to dangerously override sandbox mode...'),
   _simulatedSedEdit: z.object({
     filePath: z.string(),
     newContent: z.string()
   }).optional().describe('Internal: pre-computed sed edit result from preview')
 }));
-
-// ... inside buildTool definition
-async call(input: BashToolInput, toolUseContext, _canUseTool?: CanUseToolFn, parentMessage?: AssistantMessage, onProgress?: ToolCallProgress<BashProgress>) {
-  if (input._simulatedSedEdit) {
-    return applySedEdit(input._simulatedSedEdit, toolUseContext, parentMessage);
-  }
-  // ... (shell execution logic via runShellCommand)
-}
 ```
-
-**Explanation**: The `Tool` interface ensures consistency across the agent's capabilities. By using Zod schemas, the agent can programmatically validate LLM-generated arguments before execution.
 
 ## 2. LLM Integration and Deferred Loading
 
@@ -115,7 +105,7 @@ export async function toolToAPISchema(
 }
 ```
 
-**Claim**: The system dynamically determines which tools to defer based on their type (e.g., LSP tools) or discovery status in the conversation history.
+**Explanation**: By marking tools as `defer_loading: true`, the agent avoids flooding the system prompt with every possible tool schema. The model must first use a `ToolSearch` tool to "discover" and load the specific schema it needs.
 
 **Path**: `ai_agents/research/ai_coding_agents/claude-code-main/src/services/api/claude.ts`
 
@@ -133,8 +123,6 @@ function shouldDeferLspTool(tool: Tool): boolean {
 const willDefer = (t: Tool) =>
   useToolSearch && (deferredToolNames.has(t.name) || shouldDeferLspTool(t))
 ```
-
-**Explanation**: By marking tools as `defer_loading: true`, the agent avoids flooding the system prompt with every possible tool schema. The model must first use a `ToolSearch` tool to "discover" and load the specific schema it needs.
 
 ## 3. Tool Invocation Pipeline
 
@@ -165,31 +153,35 @@ async function checkPermissionsAndCallTool(...) {
 }
 ```
 
-**Explanation**: This multi-stage pipeline prevents malformed or dangerous requests from reaching the system shell. The Zod layer catches type errors, `validateInput` catches logical errors (e.g., "blocked sleep patterns"), and the permission layer handles security boundaries.
+## 4. The Three-Tier Steering Model
 
-## 4. Negative Steering and Constraints
+Claude Code employs a hierarchical steering architecture that separates global behavioral guardrails, tool-specific operational constraints, and project-level domain conventions.
 
-**Claim**: High-risk tools include negative constraints (instructions on what to "NEVER" do) within their prompt descriptions to steer the LLM away from destructive or incorrect patterns.
+### Tier 1: Tool-Level Steering (Semantic)
+Claude Code uses **Distributed Steering**, where each tool is paired with a dedicated `prompt.ts` file to define imperative constraints.
 
-**Path**: `ai_agents/research/ai_coding_agents/claude-code-main/src/tools/FileEditTool/prompt.ts`
+- **Mechanism**: Imperative instructions ("ALWAYS", "NEVER", "MUST") are embedded in the tool's semantic description.
+- **Evidence**: `/src/tools/FileEditTool/prompt.ts`
+  - *"ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required."*
+- **Evidence**: `/src/tools/GrepTool/prompt.ts`
+  - *"ALWAYS use ${GREP_TOOL_NAME} for search tasks. NEVER invoke grep or rg as a ${BASH_TOOL_NAME} command."*
+- **Role**: Guides the model's selection of a specific tool based on the exact intent.
 
-**Snippet**:
-```typescript
-return `Performs exact string replacements in files.
-...
-- ALWAYS prefer editing existing files in the codebase. NEVER write new files unless explicitly required.
-...
-- Never include any part of the line number prefix in the old_string or new_string.`
-```
+### Tier 2: Operational Steering (Modality)
+Operational steering is managed through a modular system prompt assembly pipeline.
 
-**Path**: `ai_agents/research/ai_coding_agents/claude-code-main/src/tools/FileWriteTool/prompt.ts`
+- **Mechanism**: The system prompt is constructed from memoized sections in `src/constants/systemPromptSections.ts` and assembled in `src/constants/prompts.ts`.
+- **Blast Radius Steering**: A dedicated `# Executing actions with care` section steers the model to evaluate "reversibility and blast radius" before performing destructive operations.
+- **Modality Adjustments**: The prompt is modified based on `outputStyleConfig` to change the agent's explanation and reasoning style.
+- **Role**: Defines global behavioral rules and safety frameworks.
 
-**Snippet**:
-```typescript
-return `Writes a file to the local filesystem.
-...
-- NEVER create documentation files (*.md) or README files unless explicitly requested by the User.
-- Only use emojis if the user explicitly requests it. Avoid writing emojis to files unless asked.`
-```
+### Tier 3: Contextual Steering (Conventions)
+Claude Code uses a layered discovery mechanism to inject project-specific rules without bloating the global prompt.
 
-**Explanation**: Because the LLM is the primary driver of tool use, the "instructions" for the tool act as a final guardrail. Constraints like "NEVER write new files" in the `Edit` tool prevent the model from accidentally creating duplicate files when it should be modifying existing ones.
+- **Mechanism**: Hierarchy of markdown files acting as "Project Memory".
+- **Discovery Order**:
+  1. `CLAUDE.md`: Project-wide conventions (committed).
+  2. `CLAUDE.local.md`: User-specific overrides (git-ignored).
+  3. `.claude/rules/*.md`: Scoped rules for specific sub-directories.
+- **Lifecycle**: The `remember` skill allows the agent to promote ephemeral session memories into these persistent artifacts.
+- **Role**: Aligns agent behavior with specific project architectural standards.

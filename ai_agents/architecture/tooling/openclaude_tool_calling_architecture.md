@@ -5,21 +5,21 @@ authors:
   email: rudakow.wadim@gmail.com
 date: 2026-05-06
 description: Source-level analysis of tool calling in OpenClaude, focusing on Zod
-  validation, tool orchestration for concurrency, and role-based allowlists.
+  validation, tool orchestration for concurrency, and the hierarchical steering model.
 tags:
 - agents
 - architecture
 options:
   type: guide
   birth: 2026-05-06
-  version: 1.1.0
-  id: A-26059
+  version: 1.2.0
+  id: 26059
   status: accepted
-  token_size: 2200
+  token_size: 2650
 ---
 # OpenClaude Tool Calling Architecture Analysis
 
-This analysis examines the tool calling system in OpenClaude, which inherits and extends patterns from Claude Code.
+This analysis examines the tool calling system in OpenClaude, which inherits and extends patterns from Claude Code, adding specialized orchestration for concurrency and a tiered steering model.
 
 ## 1. Tool Definitions
 
@@ -259,7 +259,42 @@ async function checkPermissionsAndCallTool(
 
 **Explanation**: The pipeline ensures that no tool is executed without first passing: (1) structural validation via Zod, (2) logical validation via `validateInput`, and (3) a security permission check.
 
-## 5. Role-Based Constraints
+## 5. The Three-Tier Steering Model
+
+OpenClaude implements a tiered steering architecture to manage tool selection, behavioral modality, and project-specific constraints.
+
+### Tier 1: Tool-Level Steering (Semantic)
+OpenClaude relies on highly descriptive tool metadata and search hints to steer tool selection.
+
+- **Mechanism**: The `searchHint` and `description` fields in the `Tool` interface provide semantic anchors.
+- **Evidence**: `FileReadTool`
+  - `searchHint: 'read files, images, PDFs, notebooks'`
+- **Role**: Directs the LLM toward the correct tool during the initial selection phase.
+
+### Tier 2: Operational Steering (Modality)
+OpenClaude uses explicit "Mode" transitions to adjust behavioral rules.
+
+- **Mechanism**: Transitioning between **Plan Mode** and **Execution Mode**.
+- **Pattern**: When in Plan Mode, the agent is steered toward a "Planning Persona" that emphasizes strategy and validation over immediate tool execution.
+- **Evidence**: `enter_plan_mode` and `exit_plan_mode` tools.
+- **Role**: Aligns the agent's loop behavior with the current task phase.
+
+### Tier 3: Contextual Steering (Conventions)
+Contextual steering is handled via a configuration hierarchy and user-defined policy files.
+
+- **Mechanism**: Policy $\rightarrow$ User $\rightarrow$ Project config hierarchy.
+- **Pattern**: Project-level instructions (e.g., `SKILL.md`) are injected into the context to steer the agent toward specific implementation standards.
+- **Role**: Ensures the agent adheres to the specific coding standards of the current repository.
+
+## 6. Skill-Based Steering
+
+OpenClaude introduces a **Skill system** to prevent tool-overload and improve selection accuracy.
+
+- **Mechanism**: Grouping related tools into "Skills". Each skill has semantic metadata (`when_to_use`) and a list of `allowed-tools`.
+- **Implementation**: Defined in `SKILL.md` or internal skill registries.
+- **Role**: Reduces the active tool surface by only activating the specific "Skill" (subset of tools) relevant to the current context.
+
+## 7. Role-Based Constraints
 
 **Claim**: OpenClaude enforces role-based tool restrictions using centralized allow-lists and deny-lists to prevent recursive loops and restrict coordinator capabilities.
 

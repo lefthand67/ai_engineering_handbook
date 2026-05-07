@@ -5,25 +5,29 @@ authors:
   email: rudakow.wadim@gmail.com
 date: 2026-05-06
 description: Source-level analysis of the tool calling mechanism in Aider, focusing
-  on class-based declarations, litellm integration, and streaming tool capture.
+  on the dual approach of JSON schemas and Coder Protocols, and its hierarchical steering
+  model.
 tags:
 - agents
 - architecture
 options:
   type: guide
   birth: 2026-05-06
-  version: 1.1.0
-  id: A-26056
+  version: 1.2.0
+  id: 26056
   status: accepted
-  token_size: 1197
+  token_size: 1423
 ---
 # Aider Tool Calling Architecture Analysis
 
-This analysis examines the tool calling implementation in Aider, detailing how it defines tools, integrates them with various LLMs via LiteLLM, and manages the execution of edits.
+This analysis examines the tool calling implementation in Aider, detailing how it defines tools, integrates them with various LLMs, and employs a hierarchical steering model to ensure precise code editing.
 
-## 1. Tool Definitions
+## 1. Tool Definitions: Schemas and Protocols
 
-**Claim**: Aider defines its editing capabilities using JSON schema dictionaries that specify the required parameters and types for the LLM.
+Aider uses a dual approach to tool definitions: native JSON schemas for modern LLMs and "Coder Protocols" for structural precision.
+
+### 1.1 JSON Schema Definitions
+For models that support native tool calling, Aider defines capabilities using JSON schema dictionaries.
 
 **Path**: `ai_agents/research/ai_coding_agents/aider/aider/coders/editblock_func_coder.py`
 
@@ -80,15 +84,17 @@ This analysis examines the tool calling implementation in Aider, detailing how i
     ]
 ```
 
-**Explanation**: The `EditBlockFunctionCoder` class contains a `functions` list where the `replace_lines` tool is defined. This schema forces the LLM to provide an explanation and a list of edits, each consisting of a file path, the exact original lines to be replaced, and the new content.
+### 1.2 The "Coder Protocol" Pattern
+Unlike agents that rely solely on API-level tools, Aider implements **Coder Protocols**. These are strictly formatted text blocks (e.g., `SEARCH/REPLACE`) that the LLM is steered to produce. This ensures consistency across models that may have varying tool-calling capabilities.
 
-## 2. LLM Integration
+**Implementation**: Found in `aider/coders/` (e.g., `editblock_prompts.py`, `wholefile_prompts.py`).
 
-**Claim**: Aider integrates these tool definitions into the LLM request by setting the `tools` and `tool_choice` parameters in the `litellm.completion` call.
+## 2. LLM Integration and Invocation
+
+### 2.1 Request Integration
+Aider integrates tool definitions into the LLM request via LiteLLM, forcing the model to use specific functions when necessary.
 
 **Path**: `ai_agents/research/ai_coding_agents/aider/aider/models.py`
-
-**Snippet**:
 ```python
         if functions is not None:
             function = functions[0]
@@ -96,11 +102,8 @@ This analysis examines the tool calling implementation in Aider, detailing how i
             kwargs["tool_choice"] = {"type": "function", "function": {"name": function["name"]}}
 ```
 
-**Explanation**: In the `send_completion` method, if tool functions are provided, they are wrapped in the OpenAI-compatible `tools` format. The `tool_choice` is explicitly set to force the model to use the specified function.
-
-## 3. Tool Invocation
-
-**Claim**: Tool calls are captured from the LLM response in the base coder and then parsed and executed in specific coder implementations.
+### 2.2 Capture and Execution Loop
+Tool calls are captured in the base coder and executed by specific implementations.
 
 **Path (Capture)**: `ai_agents/research/ai_coding_agents/aider/aider/coders/base_coder.py`
 
@@ -131,26 +134,33 @@ This analysis examines the tool calling implementation in Aider, detailing how i
             # ...
 ```
 
-**Explanation**: The `base_coder.py` captures the `tool_calls` from the LLM response and stores them in `partial_response_function_call`. The `EditBlockFunctionCoder` then uses `parse_partial_args()` to convert the tool's arguments into a Python dictionary, which is then iterated over to apply the file edits.
+The `EditBlockFunctionCoder` parses the `tool_calls` arguments into a dictionary and applies the `original_lines` $\rightarrow$ `updated_lines` replacement logic to the target files.
 
-## 4. Tool Constraints and Steering
+## 3. The Three-Tier Steering Model
 
-**Claim**: Aider enforces strict constraints on the LLM's output through detailed descriptions in the tool schema.
+Aider prevents hallucinations and ensures editing precision through a hierarchical steering architecture.
 
-**Path**: `ai_agents/research/ai_coding_agents/aider/aider/coders/editblock_func_coder.py`
+### Tier 1: Tool-Level Steering (Semantic)
+Aider embeds high-intensity constraints directly into the prompts associated with each coder.
 
-**Snippet**:
-```python
-                                original_lines=dict(
-                                    type="array",
-                                    items=dict(
-                                        type="string",
-                                    ),
-                                    description=(
-                                        "A unique stretch of lines from the original file,"
-                                        " including all whitespace, without skipping any lines"
-                                    ),
-                                ),
-```
+- **Mechanism**: `_prompts.py` files use imperative language ("MUST", "DO NOT") to define the boundaries of the tool.
+- **Evidence**: `aider/coders/editblock_prompts.py`
+  - *"Every SEARCH section must EXACTLY MATCH the existing file content, character for character..."*
+- **Role**: Ensures the LLM produces structurally valid blocks that can be parsed without ambiguity.
 
-**Explanation**: To prevent the LLM from hallucinating or skipping content during a replace operation, the `original_lines` parameter description explicitly instructs the model to include "all whitespace, without skipping any lines". This ensures the replacement logic can find a unique and exact match in the target file.
+### Tier 2: Operational Steering (Modality)
+Aider manages operational modes through a class-based persona hierarchy.
+
+- **Mechanism**: `CoderPrompts` $\rightarrow$ `ArchitectPrompts` $\rightarrow$ `EditblockPrompts`.
+- **Modality Switching**: Aider can switch between an **Architect** (who provides high-level directions) and an **Editor** (who implements specific changes).
+- **Evidence**: `architect_prompts.py`
+  - *"Act as an expert architect engineer and provide direction to your editor engineer... DO NOT show the entire updated function/file/etc!"*
+- **Role**: Defines the persona and goal of the agent for the current turn.
+
+### Tier 3: Contextual Steering (Conventions)
+Aider uses a structural "compass" to steer the LLM toward relevant files in large repositories.
+
+- **Mechanism**: The **RepoMap**. Aider uses `grep-ast` to extract tags and a PageRank-like algorithm to rank the importance of symbols.
+- **Evidence**: `repomap.py` and `repo.py`.
+- **Injection**: The resulting condensed map of the codebase is injected into the prompt, guiding the LLM's decision on which files to request or edit.
+- **Role**: Provides structural awareness and prevents the LLM from guessing file locations in complex projects.

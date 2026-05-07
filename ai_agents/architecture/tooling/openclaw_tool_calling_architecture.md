@@ -5,21 +5,21 @@ authors:
   email: rudakow.wadim@gmail.com
 date: 2026-05-06
 description: Source-level analysis of tool calling in OpenClaw, focusing on TypeBox
-  schemas, scoped tool surfaces, and identity-based policy filtering.
+  schemas, scoped tool surfaces, and the hierarchical steering model.
 tags:
 - agents
 - architecture
 options:
   type: guide
   birth: 2026-05-06
-  version: 1.1.0
-  id: A-26060
+  version: 1.2.0
+  id: 26060
   status: accepted
-  token_size: 1571
+  token_size: 2004
 ---
 # OpenClaw Tool Calling Architecture Analysis
 
-This analysis examines the tool calling system in OpenClaw, focusing on its unique approach to scoped tool surfaces and policy-driven filtering.
+This analysis examines the tool calling system in OpenClaw, focusing on its unique approach to scoped tool surfaces, policy-driven filtering, and hierarchical steering.
 
 ## 1. Tool Definitions
 
@@ -71,7 +71,7 @@ export function createNodesTool(options?: {
 
 **Explanation**: The `AnyAgentTool` type provides a consistent contract for tool metadata and execution. Factories like `createNodesTool` allow the system to inject session-specific context (e.g., `agentSessionKey`) and runtime configurations (e.g., `modelHasVision`) into the tool's execution logic.
 
-## 2. LLM Integration
+## 2. LLM Integration: Scoped Tool Surfaces
 
 **Claim**: OpenClaw employs a "Scoped Tool Surface" approach, resolving available tools based on session identity and filtering them through a multi-step policy pipeline before providing them to the LLM.
 
@@ -154,7 +154,35 @@ export function applyToolPolicyPipeline(params: {
 
 **Explanation**: In `openresponses-http.ts`, the system checks if the LLM stopped because it wants to call a tool (`stopReason === "tool_calls"`). If so, it returns the call to the client. The actual execution happens in `tools-invoke-http.ts`, where the corresponding `AnyAgentTool.execute` method is called after passing through security hooks.
 
-## 4. Tool Constraints
+## 4. The Three-Tier Steering Model
+
+OpenClaw implements a high-granularity steering model that combines semantic tool descriptions, dynamic session-based modality, and complex identity policies.
+
+### Tier 1: Tool-Level Steering (Semantic)
+OpenClaw utilizes a normalized tool catalog where steering is embedded in the `description` field of the `AnyAgentTool`.
+
+- **Mechanism**: Descriptions are used as semantic anchors for the LLM to differentiate between similar tools (e.g., differentiating between different "node" control tools).
+- **Evidence**: `createNodesTool` implementation.
+  - *"Discover and control paired nodes (status/describe/pairing/notify/camera/photos/screen/location/notifications/invoke)."*
+- **Role**: Ensures correct tool selection based on the specific node action required.
+
+### Tier 2: Operational Steering (Modality)
+Operational steering is handled via **Sectional Composition** of the system prompt.
+
+- **Mechanism**: The `PromptMode` system allows OpenClaw to dynamically assemble the prompt from modular sections based on the current interaction state.
+- **Pattern**: The agent switches "Modality" by altering which prompt sections are injected (e.g., shifting from a discovery phase to an execution phase).
+- **Role**: Adjusts behavioral constraints based on the operational phase of the agent.
+
+### Tier 3: Contextual Steering (Conventions)
+Contextual steering is enforced through a sophisticated **Identity-Based Policy Pipeline**.
+
+- **Mechanism**: The `applyToolPolicyPipeline` filters available tools based on the user's identity, role, and associated plugin groups.
+- **Evidence**: `src/gateway/tool-resolution.ts`
+  - The pipeline resolves a hierarchy: `Profile` $\rightarrow$ `Global` $\rightarrow$ `Agent` $\rightarrow$ `Group` $\rightarrow$ `Subagent`.
+- **Artifacts**: User-specific persona artifacts (like `SOUL.md` if present) can influence the policy resolution.
+- **Role**: Ensures the agent only operates within the authorized and relevant architectural boundaries of the current session.
+
+## 5. Security and Constraints
 
 **Claim**: OpenClaw enforces strict security boundaries using a global "deny-list" for dangerous tools on HTTP surfaces and an `ownerOnly` property to restrict sensitive tools to authorized senders.
 

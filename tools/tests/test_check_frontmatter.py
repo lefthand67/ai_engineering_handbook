@@ -913,6 +913,161 @@ class TestValidateAuthors:
         author_errors = [e for e in errors if e.field == "authors"]
         assert len(author_errors) > 0
 
+# ======================
+# Tests: Unknown Field Detection
+# ======================
+
+
+class TestUnknownFieldDetection:
+    """Contract: forbid any fields not in the FIELD_REGISTRY or permitted infra-list.
+
+    - Top-level: Must be in FIELD_REGISTRY (myst_native=true) or ALLOWED_INFRA_KEYS.
+    - options.*: Must be in FIELD_REGISTRY.
+    - Permitted infra keys (jupytext, kernelspec) must be allowed.
+    - Unknown fields produce 'invalid_field' error.
+    """
+
+    def test_valid_fields_no_error(self, frontmatter_env):
+        """All fields in registry → no unknown field errors."""
+        fm = _build_valid_frontmatter("adr")
+        md_file = frontmatter_env / "test_valid.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        unknown_errors = [e for e in errors if e.error_type == "invalid_field"]
+        assert len(unknown_errors) == 0
+
+    def test_top_level_unknown_field_rejected(self, frontmatter_env):
+        """Field 'mystery_field' at top level → invalid_field error with correct instruction."""
+        fm = _build_valid_frontmatter("adr")
+        fm["mystery_field"] = "I should not be here"
+        md_file = frontmatter_env / "test_unknown_top.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        unknown_errors = [e for e in errors if e.error_type == "invalid_field" and e.field == "mystery_field"]
+        assert len(unknown_errors) > 0
+        # Verify that the instruction does NOT suggest moving to options for unknown fields
+        assert "move it under 'options'" not in unknown_errors[0].message
+        assert "remove it" in unknown_errors[0].message
+
+    def test_author_field_suggests_authors(self, frontmatter_env):
+        """Field 'author' at top level → suggests 'authors'."""
+        fm = _build_valid_frontmatter("adr")
+        fm["author"] = "Vadim"
+        md_file = frontmatter_env / "test_author.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        author_errors = [e for e in errors if e.field == "author"]
+        assert len(author_errors) > 0
+        assert "replace it with the registered 'authors' field" in author_errors[0].message
+
+    def test_options_unknown_field_rejected(self, frontmatter_env):
+        """Field 'mystery_field' under options → invalid_field error."""
+        fm = _build_valid_frontmatter("adr")
+        fm["options"]["mystery_field"] = "I should not be here"
+        md_file = frontmatter_env / "test_unknown_options.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        unknown_errors = [e for e in errors if e.error_type == "invalid_field" and e.field == "options.mystery_field"]
+        # Note: the script might report 'mystery_field' or 'options.mystery_field'
+        # We will check for the field name specifically.
+        assert any(e.field == "mystery_field" or e.field == "options.mystery_field" for e in unknown_errors)
+
+    def test_permitted_infra_keys_accepted(self, frontmatter_env):
+        """jupytext and kernelspec at top level → no unknown field errors."""
+        fm = _build_valid_frontmatter("adr")
+        fm["jupytext"] = {"text_representation": {"extension": ".md"}}
+        fm["kernelspec"] = {"name": "python3"}
+        md_file = frontmatter_env / "test_infra.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        unknown_errors = [e for e in errors if e.error_type == "invalid_field"]
+        assert len(unknown_errors) == 0
+
+
+class TestIDPrefixValidation:
+    """Contract: ID fields must follow type-specific prefixing.
+
+    - adr: ^ADR-\d+$ or ^\d+$
+    - evidence (analysis): ^A-\d+$
+    - evidence (source): ^S-\d+$
+    - other types: Must NOT start with A-, S-, or ADR-
+
+    Invalid IDs produce 'invalid_format' or 'invalid_value' errors.
+    """
+
+    def test_adr_valid_id(self, frontmatter_env):
+        """ADR with valid ID (ADR-123 or 123) → no errors."""
+        for valid_id in ["ADR-123", "123"]:
+            fm = _build_valid_frontmatter("adr")
+            fm["options"]["id"] = valid_id
+            md_file = frontmatter_env / f"test_{valid_id}.md"
+            md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+            errors = _module.validate_frontmatter(md_file, frontmatter_env)
+            id_errors = [e for e in errors if e.field == "id"]
+            assert len(id_errors) == 0, f"Valid ADR ID {valid_id} should be accepted"
+
+    def test_adr_invalid_id(self, frontmatter_env):
+        """ADR with invalid ID (e.g. A-123) → error."""
+        fm = _build_valid_frontmatter("adr")
+        fm["options"]["id"] = "A-123"
+        md_file = frontmatter_env / "test_bad_adr.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id"]
+        assert len(id_errors) > 0, "ADR ID starting with A- should be rejected"
+
+    def test_evidence_analysis_valid_id(self, frontmatter_env):
+        """Evidence analysis with valid ID (A-123) → no errors."""
+        fm = _build_valid_frontmatter("analysis")
+        fm["options"]["id"] = "A-123"
+        md_file = frontmatter_env / "test_analysis.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id"]
+        assert len(id_errors) == 0
+
+    def test_evidence_analysis_invalid_id(self, frontmatter_env):
+        """Evidence analysis with invalid ID (e.g. S-123) → error."""
+        fm = _build_valid_frontmatter("analysis")
+        fm["options"]["id"] = "S-123"
+        md_file = frontmatter_env / "test_bad_analysis.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id"]
+        assert len(id_errors) > 0
+
+    def test_evidence_source_valid_id(self, frontmatter_env):
+        """Evidence source with valid ID (S-123) → no errors."""
+        fm = _build_valid_frontmatter("source")
+        fm["options"]["id"] = "S-123"
+        md_file = frontmatter_env / "test_source.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id"]
+        assert len(id_errors) == 0
+
+    def test_evidence_source_invalid_id(self, frontmatter_env):
+        """Evidence source with invalid ID (e.g. A-123) → error."""
+        fm = _build_valid_frontmatter("source")
+        fm["options"]["id"] = "A-123"
+        md_file = frontmatter_env / "test_bad_source.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id"]
+        assert len(id_errors) > 0
+
+    def test_other_types_forbid_reserved_prefixes(self, frontmatter_env):
+        """guide type must not use A-, S-, or ADR- prefixes."""
+        fm = _build_valid_frontmatter("guide")
+        # guide might not have a required ID, but if it does, it must not be reserved
+        for reserved in ["A-123", "S-123", "ADR-123"]:
+            fm["options"]["id"] = reserved
+            md_file = frontmatter_env / f"test_reserved_{reserved}.md"
+            md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+            errors = _module.validate_frontmatter(md_file, frontmatter_env)
+            id_errors = [e for e in errors if e.field == "id"]
+            assert len(id_errors) > 0, f"Guide ID {reserved} should be rejected"
+
 
 class TestOptionsNamespace:
     """Contract: non-myst_native fields at top level produce blocking errors.
@@ -1038,7 +1193,7 @@ class TestScanPaths:
 class TestMainExitCodes:
     """Contract: main() returns 0 for valid files, 1 for errors.
 
-    Warnings (namespace, missing type) do not affect exit code.
+    Blocking errors (missing fields, invalid formats, namespace violations) cause exit 1.
     """
 
     def test_exit_0_all_valid(self, frontmatter_env):
@@ -1057,6 +1212,16 @@ class TestMainExitCodes:
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         exit_code = _module.main([str(md_file)])
         assert exit_code == 1
+
+    def test_exit_1_on_namespace_violation(self, frontmatter_env):
+        """File with non-myst_native field at top level → exit 1."""
+        fm = _build_valid_frontmatter("adr")
+        # Move 'id' to top level to trigger invalid_namespace
+        fm["id"] = fm["options"].pop("id")
+        md_file = frontmatter_env / "test.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+        exit_code = _module.main([str(md_file)])
+        assert exit_code == 1, "Namespace violation should be a blocking error (exit 1)"
 
     def test_no_args_scans_repo_root(self, frontmatter_env):
         """No args → scans from repo root."""

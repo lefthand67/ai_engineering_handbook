@@ -1,13 +1,12 @@
 
 ---
 title: Ecosystem Package Boundary
-author: Vadim Rudakov, rudakow.wadim@gmail.com
 date: 2026-03-14
 tags:
 - governance
 - architecture
 options:
-  token_size: 2072
+  token_size: 2056
   id: 26043
   status: proposed
   superseded_by: null

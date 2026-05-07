@@ -186,38 +186,47 @@ def extract_status(content: str) -> str | None:
             return str(status).lower()
     return extract_body_status(content)
 
+def parse_adr_file(filepath: Path) -> AdrFile | None:
+    """Parse a single ADR file into an AdrFile object. Returns None if not a valid ADR."""
+    from tools.scripts import check_frontmatter
+    try:
+        content = filepath.read_text(encoding="utf-8")
+        header_pattern = re.compile(r"^#\s+ADR-(\d+):\s+(.+)$", re.MULTILINE)
+        match = header_pattern.search(content)
+        if not match:
+            return None
+
+        number = int(match.group(1))
+        title = match.group(2).strip()
+        effective_status = extract_status(content)
+        body_status = extract_body_status(content)
+        frontmatter = check_frontmatter.parse_frontmatter(content)
+        frontmatter_title = frontmatter.get("title") if frontmatter else None
+        return AdrFile(
+            path=filepath,
+            number=number,
+            title=title,
+            status=effective_status,
+            body_status=body_status,
+            frontmatter_title=frontmatter_title,
+            frontmatter=frontmatter,
+            content=content,
+        )
+    except Exception as e:
+        logger.warning(f"Failed to parse ADR file {filepath}: {e}")
+        return None
+
 def get_adr_files() -> list[AdrFile]:
     """Discover and parse all ADR files in the ADR directory."""
-    from tools.scripts import check_frontmatter
     adr_files = []
     if not ADR_DIR.exists():
         return []
     for filepath in ADR_DIR.glob("adr_*.md"):
         if filepath.name in EXCLUDED_FILES:
             continue
-        content = filepath.read_text(encoding="utf-8")
-        # We use a local pattern here to avoid importing from check_adr
-        header_pattern = re.compile(r"^#\s+ADR-(\d+):\s+(.+)$", re.MULTILINE)
-        match = header_pattern.search(content)
-        if match:
-            number = int(match.group(1))
-            title = match.group(2).strip()
-            effective_status = extract_status(content)
-            body_status = extract_body_status(content)
-            frontmatter = check_frontmatter.parse_frontmatter(content)
-            frontmatter_title = frontmatter.get("title") if frontmatter else None
-            adr_files.append(
-                AdrFile(
-                    path=filepath,
-                    number=number,
-                    title=title,
-                    status=effective_status,
-                    body_status=body_status,
-                    frontmatter_title=frontmatter_title,
-                    frontmatter=frontmatter,
-                    content=content,
-                )
-            )
+        adr = parse_adr_file(filepath)
+        if adr:
+            adr_files.append(adr)
     return sorted(adr_files, key=lambda x: x.number)
 
 def parse_index() -> list[IndexEntry]:
@@ -248,8 +257,8 @@ def parse_index() -> list[IndexEntry]:
             )
     return entries
 
-def get_staged_adr_files() -> list[Path]:
-    """Get list of staged ADR files from git."""
+def get_staged_adr_files() -> list[AdrFile]:
+    """Get list of staged ADR files from git and parse them into AdrFile objects."""
     try:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
@@ -258,10 +267,20 @@ def get_staged_adr_files() -> list[Path]:
             text=True,
         )
         staged_files = result.stdout.strip().split("\n")
-        return [
-            Path(f)
+        paths = [
+            ROOT / f
             for f in staged_files
             if f.startswith("architecture/adr/adr_") and f.endswith(".md")
         ]
     except (subprocess.CalledProcessError, FileNotFoundError):
         return []
+
+    adr_files = []
+    for filepath in paths:
+        if filepath.name in EXCLUDED_FILES:
+            continue
+        adr = parse_adr_file(filepath)
+        if adr:
+            adr_files.append(adr)
+
+    return sorted(adr_files, key=lambda x: x.number)

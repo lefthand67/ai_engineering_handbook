@@ -123,51 +123,61 @@
 
   "types": {
     "adr": {
+      "prefix": "ADR",
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": ["id", "status"],
       "optional": ["superseded_by"]
     },
     "analysis": {
+      "prefix": "A",
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": ["id", "status"],
       "optional": ["sources", "produces"]
     },
     "retrospective": {
+      "prefix": "R",
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": ["id", "status", "severity"],
       "optional": ["produces"]
     },
     "source": {
+      "prefix": "S",
       "blocks": ["identity", "discovery"],
       "required": ["id", "model"],
       "optional": ["extracted_into"]
     },
     "tutorial": {
+      "prefix": null,
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": [],
       "optional": []
     },
     "guide": {
+      "prefix": null,
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": [],
       "optional": []
     },
     "script_instruction": {
+      "prefix": null,
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": [],
       "optional": []
     },
     "package_spec": {
+      "prefix": null,
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": [],
       "optional": []
     },
     "policy": {
+      "prefix": null,
       "blocks": ["identity", "discovery", "lifecycle"],
       "required": [],
       "optional": []
     },
     "service": {
+      "prefix": null,
       "blocks": ["identity"],
       "required": [],
       "optional": ["role", "version"]
@@ -223,6 +233,10 @@
   },
 
   "date_format": "^\\d{4}-\\d{2}-\\d{2}$",
+
+  "common_mistakes": {
+    "author": "authors"
+  },
 
   "governed_extensions": [".md", ".ipynb"],
   "governance_excludes": {

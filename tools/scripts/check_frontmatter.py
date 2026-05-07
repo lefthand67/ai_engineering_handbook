@@ -142,10 +142,11 @@ class FrontmatterError:
         "invalid_value"      — field value not in allowed set, e.g. unknown tag (blocking)
         "unknown_type"       — options.type not in conf.json types registry (blocking)
         "missing_type"       — frontmatter present but options.type absent (blocking)
-        "namespace_warning"  — non-myst_native field at top level instead of options.* (non-blocking)
+        "invalid_field"      — field present but not defined in hub registry (blocking)
+        "invalid_namespace"  — non-myst_native field at top level instead of options.* (blocking)
 
-    main() treats "namespace_warning" as stderr-only; all others cause exit 1.
-    """
+    all error_types cause exit 1.
+    """,
 
     file_path: Path
     error_type: str  # see taxonomy above
@@ -469,19 +470,37 @@ def validate_parsed_frontmatter(
                 )
             )
 
-    # Step 6: Validate values of present fields (dates, tags, status, authors).
-    for field in required:
+    # Step 6: Validate values of all present governed fields.
+    # We validate any field present in the frontmatter that is defined in the hub registry,
+    # regardless of whether it is marked as 'required' for this specific doc type.
+    # This ensures that optional fields (like 'id' in guides) still follow global format rules.
+    all_present_fields = set()
+    for k in frontmatter:
+        all_present_fields.add(k)
+    options = frontmatter.get("options")
+    if isinstance(options, dict):
+        for k in options:
+            all_present_fields.add(k)
+
+    for field in all_present_fields:
+        # Only validate fields that are governed (defined in hub registry)
+        if field not in hub.get("field_registry", {}):
+            continue
+
         value = _get_field_value(frontmatter, field)
         if value is None:
             continue
-        error = _validate_field_value(field, value, file_path, hub, spoke, content=content)
+        error = _validate_field_value(field, value, file_path, hub, spoke, doc_type, content=content)
         if error is not None:
             errors.append(error)
 
     # Step 7: Check options.* namespace compliance (warnings only until Phase 1.15).
     errors.extend(_check_options_namespace(frontmatter, file_path, hub))
 
-    # Step 8: Reject governed fields in non-governed blocks.
+    # Step 8: Unknown field detection ( forbid anything not in registry/infra )
+    errors.extend(_check_unknown_fields(frontmatter, file_path, hub))
+
+    # Step 9: Reject governed fields in non-governed blocks.
     if content is not None:
         errors.extend(_check_governed_field_placement(content, file_path, hub))
 
@@ -586,6 +605,7 @@ def _validate_field_value(
     file_path: Path,
     hub_config: dict,
     spoke_config: dict | None,
+    doc_type: str,
     content: str | None = None,
 ) -> FrontmatterError | None:
     """Check a single field's value against config rules.
@@ -598,6 +618,53 @@ def _validate_field_value(
     - Hub config: date_format regex, tag vocabulary, authors format, field_registry
     - Spoke config: allowed statuses, severity values (type-specific)
     """
+    # ID prefix validation (ADR-26042 / S-S-o-T)
+    if field == "id":
+        str_id = str(value)
+        type_def = hub_config.get("types", {}).get(doc_type, {})
+        expected_prefix = type_def.get("prefix")
+
+        # 1. Type has a defined prefix (e.g., ADR, A, S, R)
+        if expected_prefix:
+            if expected_prefix == "ADR":
+                # Special rule for ADRs: allow 'ADR-123' or '123'
+                if not re.match(r"^(ADR-)?\d+$", str_id):
+                    return FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_format",
+                        field="id",
+                        message=f"ADR ID '{str_id}' is invalid; expected 'ADR-NNN' or 'NNN' — To fix: change ID to follow 'ADR-NNN' or 'NNN' format",
+                        config_source=f"{HUB_CONFIG_REL} → types.adr.prefix",
+                    )
+            else:
+                # Standard prefix rule: must be 'PREFIX-NNN'
+                pattern = rf"^{expected_prefix}-\d+$"
+                if not re.match(pattern, str_id):
+                    return FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_format",
+                        field="id",
+                        message=f"ID '{str_id}' must start with '{expected_prefix}-NNN' for type '{doc_type}' — To fix: change ID to start with '{expected_prefix}-' followed by digits",
+                        config_source=f"{HUB_CONFIG_REL} → types.{doc_type}.prefix",
+                    )
+
+        # 2. Type has no prefix (prefix is null), but ID uses a reserved one
+        else:
+            reserved = {
+                t: def_.get("prefix") 
+                for t, def_ in hub_config.get("types", {}).items() 
+                if def_.get("prefix")
+            }
+            for res_type, res_pref in reserved.items():
+                if str_id.startswith(f"{res_pref}-"):
+                    return FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_value",
+                        field="id",
+                        message=f"ID '{str_id}' uses a reserved prefix '{res_pref}-' (associated with the '{res_type}' type) forbidden for type '{doc_type}' — To fix: remove the reserved prefix from the ID",
+                        config_source=f"{HUB_CONFIG_REL} → types.{res_type}.prefix",
+                    )
+
     # Token size accuracy check
     if field == "token_size":
         if content is None:
@@ -733,6 +800,74 @@ def _validate_field_value(
                 )
 
     return None
+
+
+def _check_unknown_fields(
+    frontmatter: dict, file_path: Path, hub_config: dict
+) -> list[FrontmatterError]:
+    """Forbid any fields not defined in the hub registry or permitted infra-list.
+
+    Checks both the top-level keys and the 'options' block.
+    - Top-level: Must be in FIELD_REGISTRY (myst_native=true) or ALLOWED_INFRA_KEYS.
+    - options.*: Must be in FIELD_REGISTRY.
+
+    Returns [FrontmatterError] with error_type='invalid_field'.
+    """
+    errors: list[FrontmatterError] = []
+    field_registry = hub_config.get("field_registry", {})
+    # Permitted infrastructure keys that can exist at top level but aren't governed
+    allowed_infra_keys = {"options", "jupytext", "kernelspec"}
+
+    # 1. Check top-level keys
+    for key in frontmatter:
+        if key in allowed_infra_keys:
+            continue
+        
+        if key not in field_registry:
+            # Field is completely unknown to the SSoT
+            # Use common_mistakes from config for dynamic suggestions
+            common_mistakes = hub_config.get("common_mistakes", {})
+            suggestion = "remove it"
+            if key in common_mistakes:
+                suggestion = f"replace it with the registered '{common_mistakes[key]}' field"
+            
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="invalid_field",
+                    field=key,
+                    message=f"field '{key}' is not defined in the hub registry — unknown fields are forbidden — To fix: {suggestion}",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry",
+                )
+            )
+        elif not field_registry[key].get("myst_native", False):
+            # Field is registered, but belongs in 'options' (non-MyST native)
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="invalid_namespace",
+                    field=key,
+                    message=f"field '{key}' is present at top level but is not a MyST-native governed field — To fix: move it under 'options'",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry",
+                )
+            )
+
+    # 2. Check keys inside 'options'
+    options = frontmatter.get("options")
+    if isinstance(options, dict):
+        for key in options:
+            if key not in field_registry:
+                errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_field",
+                        field=f"options.{key}",
+                        message=f"field 'options.{key}' is not defined in the hub registry — unknown fields are forbidden",
+                        config_source=f"{HUB_CONFIG_REL} → field_registry",
+                    )
+                )
+
+    return errors
 
 
 def _check_governed_field_placement(

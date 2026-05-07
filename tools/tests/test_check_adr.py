@@ -722,14 +722,25 @@ class TestCli:
         import logging
         caplog.set_level(logging.INFO)
         from tools.scripts.check_adr import main
-    
+        from tools.scripts.adr_utils import AdrFile
+
         with patch("tools.scripts.adr_utils.get_staged_adr_files") as mock_staged:
-            mock_staged.return_value = [Path("architecture/adr/adr_26001_first_feature.md")]
+            mock_staged.return_value = [
+                AdrFile(
+                    path=Path("architecture/adr/adr_26001_first_feature.md"),
+                    number=26001,
+                    title="First Feature",
+                    status="proposed",
+                    body_status="proposed",
+                    frontmatter_title="First Feature",
+                    frontmatter={},
+                    content=""
+                )
+            ]
             exit_code = main(["--check-staged", "--verbose"])
-    
+
         assert exit_code == 0
         assert caplog.text  # Verbose should produce output
-
     def test_check_staged_verbose_no_staged_files(self, adr_env, caplog):
         """Check-staged with verbose and no staged files should produce output."""
         import logging
@@ -750,31 +761,56 @@ class TestCli:
 
 
 class TestGetStagedAdrFiles:
-    """Tests for git staged file detection."""
+    """Tests for the git-staged ADR discovery process.
 
-    def test_returns_staged_adr_files(self, adr_env):
+    Contract:
+    - Returns only files that match the ADR naming pattern and are staged.
+    - Each returned item must be a fully parsed AdrFile object.
+    - Files that are invalid ADRs (wrong header, etc.) are skipped.
+    """
+
+    def test_returns_staged_adr_files(self, adr_env, monkeypatch):
         """Should return list of staged ADR files."""
         from tools.scripts.adr_utils import get_staged_adr_files
 
-        staged_output = "architecture/adr/adr_26001_test.md\narchitecture/adr/adr_26002_other.md\n"
+        # Create real files in the test environment
+        adr1 = create_adr_file(adr_env.adr_dir, 26001, "Test ADR 1", "test_1")
+        adr2 = create_adr_file(adr_env.adr_dir, 26002, "Test ADR 2", "test_2")
+        
+        # Determine relative paths as they would be returned by git
+        rel_path1 = "architecture/adr/" + adr1.name
+        rel_path2 = "architecture/adr/" + adr2.name
+
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value.stdout = staged_output
+            mock_run.return_value.stdout = f"{rel_path1}\n{rel_path2}\n"
+            # We need to make sure ROOT is monkeypatched to adr_env.root
+            monkeypatch.setattr("tools.scripts.adr_utils.ROOT", adr_env.root)
             files = get_staged_adr_files()
 
         assert len(files) == 2
-        assert files[0] == Path("architecture/adr/adr_26001_test.md")
+        assert files[0].number == 26001
+        assert files[1].number == 26002
 
-    def test_filters_non_adr_files(self, adr_env):
+    def test_filters_non_adr_files(self, adr_env, monkeypatch):
         """Should only return ADR files, not other staged files."""
         from tools.scripts.adr_utils import get_staged_adr_files
 
-        staged_output = "README.md\narchitecture/adr/adr_26001_test.md\narchitecture/adr_index.md\n"
+        # Create a real ADR file
+        adr1 = create_adr_file(adr_env.adr_dir, 26001, "Test ADR 1", "test_1")
+        rel_path1 = "architecture/adr/" + adr1.name
+
+        # Create a non-ADR file
+        non_adr = adr_env.root / "README.md"
+        non_adr.write_text("Not an ADR", encoding="utf-8")
+        rel_path_non = "README.md"
+
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value.stdout = staged_output
+            mock_run.return_value.stdout = f"{rel_path1}\n{rel_path_non}\n"
+            monkeypatch.setattr("tools.scripts.adr_utils.ROOT", adr_env.root)
             files = get_staged_adr_files()
 
         assert len(files) == 1
-        assert "adr_26001" in str(files[0])
+        assert files[0].number == 26001
 
     def test_handles_git_error(self, adr_env):
         """Should return empty list on git error."""

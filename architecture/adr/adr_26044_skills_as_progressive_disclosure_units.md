@@ -1,12 +1,11 @@
 
 ---
 title: Skills as Progressive Disclosure Units
-author: Vadim Rudakov, rudakow.wadim@gmail.com
 date: 2026-03-18
 tags:
 - context_management
 options:
-  token_size: 2702
+  token_size: 2686
   id: 26044
   status: proposed
   superseded_by: null

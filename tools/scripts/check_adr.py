@@ -410,6 +410,9 @@ def main(argv: list[str] | None = None) -> int:
     all_numbers = {adr.number for adr in adr_files}
     total_errors = 0
     for adr in adr_files:
+        if args.verbose:
+            logger.info(f"Checking ADR {adr.number}...")
+
         errors = []
         errors.extend(validate_sections(adr))
         errors.extend(validate_conditional_fields(adr, all_numbers))

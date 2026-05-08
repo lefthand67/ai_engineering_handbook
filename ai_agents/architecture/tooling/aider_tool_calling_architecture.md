@@ -14,9 +14,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.2.0
-  id: 26056
-  status: accepted
-  token_size: 1423
+  token_size: 1411
 ---
 # Aider Tool Calling Architecture Analysis
 

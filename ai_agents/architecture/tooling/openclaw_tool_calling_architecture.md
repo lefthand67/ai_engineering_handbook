@@ -13,9 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.2.0
-  id: 26060
-  status: accepted
-  token_size: 2004
+  token_size: 1992
 ---
 # OpenClaw Tool Calling Architecture Analysis
 

@@ -13,9 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.1.0
-  id: A-26061
-  status: accepted
-  token_size: 1093
+  token_size: 1080
 ---
 # Superpowers Tool Calling Architecture Analysis
 

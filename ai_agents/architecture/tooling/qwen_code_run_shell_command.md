@@ -1,3 +1,20 @@
+---
+title: Qwen Code `run_shell_command` — How It Works
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: 2026-05-06
+description: Deep-dive into the technical implementation of the run_shell_command
+  tool in Qwen Code, focusing on PTY emulation, process management, and safety.
+tags:
+- agents
+- architecture
+options:
+  type: guide
+  birth: 2026-05-06
+  version: 1.0.0
+  token_size: 1728
+---
 # Qwen Code `run_shell_command` — How It Works
 
 ## Overview

@@ -13,9 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.0.0
-  id: 26062
-  status: accepted
-  token_size: 2992
+  token_size: 2980
 ---
 # AI Agent Tooling Architecture Patterns
 

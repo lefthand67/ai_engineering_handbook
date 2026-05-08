@@ -13,8 +13,7 @@ options:
   type: guide
   birth: 2026-05-03
   version: 1.2.0
-  token_size: 1344
-  id: A-26026
+  token_size: 1336
 ---
 # Open WebUI Tool System Analysis
 

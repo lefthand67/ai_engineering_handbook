@@ -14,9 +14,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.1.0
-  id: 26058
-  status: accepted
-  token_size: 1522
+  token_size: 1510
 ---
 # OpenCode Tool Calling Architecture Analysis
 

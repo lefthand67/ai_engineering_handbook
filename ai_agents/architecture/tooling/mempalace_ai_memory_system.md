@@ -13,8 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.0.0
-  id: A-26061
-  token_size: 3938
+  token_size: 3939
 ---
 # MemPalace — AI Memory System
 

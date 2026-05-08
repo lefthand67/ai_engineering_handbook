@@ -13,9 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.2.0
-  id: 26059
-  status: accepted
-  token_size: 2650
+  token_size: 2638
 ---
 # OpenClaude Tool Calling Architecture Analysis
 

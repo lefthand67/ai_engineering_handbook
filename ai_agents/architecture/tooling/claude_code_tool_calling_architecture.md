@@ -13,9 +13,7 @@ options:
   type: guide
   birth: 2026-05-06
   version: 1.2.0
-  id: 26057
-  status: accepted
-  token_size: 1701
+  token_size: 1689
 ---
 # Claude Code Tool Calling Architecture Analysis
 

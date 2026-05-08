@@ -1,67 +1,37 @@
 ---
-title: Qwen Code Tool Calling Architecture Analysis
+title: Qwen Code Tool-Calling Architecture
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 date: 2026-05-06
-description: Source-level analysis of the tool calling mechanism in Qwen Code, covering
-  declarative definition, registry-based discovery, the reasoning loop, and negative
-  steering strategies.
+description: Deep-dive into the technical implementation of tool steering, selection,
+  and execution in Qwen Code, combining source-level evidence with architectural synthesis.
 tags:
 - agents
 - architecture
 options:
   type: guide
   birth: 2026-05-06
-  version: 1.0.0
-  id: A-26055
-  status: accepted
-  token_size: 1168
+  version: 1.1.0
+  token_size: 1588
 ---
-# Qwen Code Tool Calling Architecture Analysis
+# Qwen Code Tool-Calling Architecture
 
-This analysis examines the implementation of the tool calling system in Qwen Code, focusing on how the LLM discovers, invokes, and is constrained in its use of available tools.
+This document analyzes how Qwen Code implements its tool-calling system, focusing on the mechanism of "steering"—the process of guiding an LLM to select the correct tool and use it according to project and session constraints.
 
-## 1. Tool Definition Architecture
+## 1. The Tool-Calling Loop
 
-**Claim**: Qwen Code employs a declarative class-based system for tool definition.
+Qwen Code implements a classic **Reason $\rightarrow$ Act $\rightarrow$ Observe** loop orchestrated by `AgentCore`.
 
-**Evidence**: `/packages/core/src/tools/tools.ts`
-
-```typescript
-export abstract class BaseDeclarativeTool extends DeclarativeTool {
-  // Defines tool metadata and the JSON schema for LLM consumption
-  abstract get name(): string;
-  abstract get description(): string;
-  abstract get parameterSchema(): ZodSchema; 
-}
-```
-
-**Explanation**: Instead of imperative function calls, every tool is an object that carries its own identity, purpose, and a formal schema (using Zod). This allows the agent to dynamically aggregate capabilities and present them to any LLM provider in a standardized format.
-
-## 2. Tool Discovery and Provider Integration
-
-**Claim**: The system uses a central registry to transform internal tool definitions into provider-specific function declarations.
-
-**Evidence**: `/packages/core/src/tools/tool-registry.ts`
-
-```typescript
-export class ToolRegistry {
-  // Aggregates function declarations from all registered tools
-  getFunctionDeclarations(): FunctionDeclaration[] {
-    return Array.from(this.tools.values()).map(tool => tool.schema);
-  }
-}
-```
-
-**Explanation**: The `ToolRegistry` acts as the bridge between the TypeScript implementation and the LLM API. By iterating over registered tools and extracting their `schema`, the system ensures the LLM is always aware of the exact tools available in the current session. These declarations are then passed as the `tools` parameter in the API request within `AgentCore._runReasoningLoopInner()` (located in `/packages/core/src/agents/runtime/agent-core.ts`).
-
-## 3. The Invocation Loop (Reason $\rightarrow$ Act $\rightarrow$ Observe)
-
-**Claim**: Tool execution is orchestrated through a cyclic reasoning loop that separates the "decision to call" from the "execution of the call."
+### 1.1 Cycle Execution
+The core logic resides in `AgentCore._runReasoningLoopInner`:
+1. **Prompting**: The model is sent a prompt containing the conversation history and the current task.
+2. **Tool Selection**: The model produces either a text response or one or more `FunctionCall` requests.
+3. **Orchestration**: `AgentCore.processFunctionCalls` validates the requests against the available toolset.
+4. **Execution**: `CoreToolScheduler` executes the tools, handling permissions, user approvals, and concurrency.
+5. **Observation**: Tool outputs are fed back into the chat history as `functionResponse` parts, and the loop repeats.
 
 **Evidence**: `/packages/core/src/agents/runtime/agent-core.ts`
-
 ```typescript
 // 1. Send message with tools list
 const responseStream = await chat.sendMessageStream(model, messageParams, promptId);
@@ -72,41 +42,87 @@ if (response.functionCalls) {
 }
 ```
 
-**Explanation**: The agent does not execute tools directly. Instead, it processes the `functionCalls` returned by the LLM, delegates them to a scheduler, and then feeds the resulting `functionResponse` back into the conversation history. This allows the LLM to reason about the tool's output before deciding the next action.
+## 2. Tool Definition & Discovery
 
-## 4. Execution Guardrails and Validation
+### 2.1 Declarative Tool Surface
+Qwen Code uses a declarative approach to tool definition via `BaseDeclarativeTool`. This ensures that the "surface" presented to the LLM is always in sync with the underlying implementation.
 
-**Claim**: Qwen Code prevents "hallucinated" tool arguments by validating them against the tool's JSON schema before execution.
+- **Type Safety**: Zod schemas are used to define parameter types.
+- **Semantic Mapping**: Every tool provides a `description` and `displayName`, which serve as the primary signals for the LLM's semantic matching during selection.
 
-**Evidence**: `/packages/core/src/core/coreToolScheduler.ts`
-
+**Evidence**: `/packages/core/src/tools/tools.ts`
 ```typescript
-// Validates arguments using the tool's internal schema validator
-const invocation = tool.build(args); 
-// If validation fails, an error is returned to the LLM instead of executing the tool
+export abstract class BaseDeclarativeTool extends DeclarativeTool {
+  // Defines tool metadata and the JSON schema for LLM consumption
+  abstract get name(): string;
+  abstract get description(): string;
+  abstract get parameterSchema(): ZodSchema;
+}
 ```
 
-**Explanation**: The `CoreToolScheduler` ensures that the LLM's output strictly adheres to the `parameterSchema` defined in the `BaseDeclarativeTool`. By validating arguments via `tool.build(args)` before calling `.execute()`, the system prevents runtime crashes caused by missing or incorrectly typed parameters.
+### 2.2 Registry & Filtering
+Tools are managed by a `ToolRegistry`. `AgentCore.prepareTools()` determines the final set of tools available to a specific agent instance:
+- **Inheritance**: By default, agents inherit all registered tools.
+- **Explicit Config**: `ToolConfig` can restrict the agent to a specific subset of tools.
+- **Subagent Constraints**: To prevent recursive spawning and session instability, certain tools are hard-coded as `EXCLUDED_TOOLS_FOR_SUBAGENTS` (e.g., the `AgentTool` and `Cron` tools).
+- **Blocklisting**: `disallowedTools` allows for fine-grained removal of tools or MCP server-level patterns.
 
-## 5. Negative Steering and Usage Constraints
+**Evidence**: `/packages/core/src/tools/tool-registry.ts`
+```typescript
+export class ToolRegistry {
+  // Aggregates function declarations from all registered tools
+  getFunctionDeclarations(): FunctionDeclaration[] {
+    return Array.from(this.tools.values()).map(tool => tool.schema);
+  }
+}
+```
 
-**Claim**: Qwen Code steers the LLM away from incorrect tool usage by embedding operational constraints directly into the tool's `description` field.
+## 3. The Three-Tier Steering Model
+
+A key architectural insight in Qwen Code is the separation of steering into three distinct tiers. This prevents the system prompt from becoming a cluttered "list of rules" and instead organizes constraints by their scope.
+
+### Tier 1: Tool-Level Steering (Semantic)
+**Scope**: Specific Tool $\rightarrow$ Selection Logic.
+- **Mechanism**: Embedded directly in the `description` field of the `BaseDeclarativeTool`.
+- **Pattern**: **Negative Steering**. By explicitly stating what a tool *cannot* do, the model is steered away from common pitfalls.
+- **Example**: The `ShellTool` description explicitly forbids file operations, steering the model toward the `ReadTool` or `EditTool`.
 
 **Evidence**: `/packages/core/src/tools/shell.ts`
-
 ```typescript
 // Part of the ShellTool description
 "IMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead."
 ```
 
-**Explanation**: By placing "DO NOT" instructions in the description, the constraints are sent as part of every API call. This ensures that the LLM evaluates the restriction at the moment of tool selection, significantly reducing the likelihood of using a generic tool (like `shell`) for a specialized task (like `read_file`).
+### Tier 2: Operational Steering (Modality)
+**Scope**: Session $\rightarrow$ Behavioral Mode.
+- **Mechanism**: Dynamic suffixes appended to the system prompt in `AgentCore.buildChatSystemPrompt`.
+- **Pattern**: **Modality-Based Constraints**. The system adjusts the "rules of engagement" based on whether the agent is interactive or headless.
+- **Example**: In non-interactive mode, the prompt is appended with: *"You operate in non-interactive mode: do not ask the user questions; proceed with available context."*
 
-## 6. Runtime Concurrency and Safety
+### Tier 3: Contextual Steering (Conventions)
+**Scope**: Project $\rightarrow$ Architectural Identity.
+- **Mechanism**: Integration of "User Memory" (e.g., the content of `QWEN.md`) as a final block in the system prompt.
+- **Pattern**: **Convention Injection**. This ensures that the agent's tool use adheres to the specific coding standards of the repository.
+- **Example**: Guidance on using `pathlib.Path` instead of `os` is delivered via this tier, ensuring that the `ShellTool` or `EditTool` calls generate idiomatic code.
 
-**Claim**: The system enforces a safety check to prevent race conditions during tool execution.
+## 4. Execution & Scheduling
+
+The transition from "Model Intent" to "System Effect" is managed by the `CoreToolScheduler`.
+
+### 4.1 Validation Pipeline
+Qwen Code prevents "hallucinated" tool arguments by validating them against the tool's JSON schema before execution.
 
 **Evidence**: `/packages/core/src/core/coreToolScheduler.ts`
+```typescript
+// Validates arguments using the tool's internal schema validator
+const invocation = tool.build(args);
+// If validation fails, an error is returned to the LLM instead of executing the tool
+```
 
+### 4.2 Runtime Concurrency and Safety
+The system enforces a safety check to prevent race conditions during tool execution.
+
+**Evidence**: `/packages/core/src/core/coreToolScheduler.ts`
 ```typescript
 // Checks if the tool can be run in parallel with others
 if (!tool.isConcurrencySafe()) {
@@ -114,4 +130,10 @@ if (!tool.isConcurrencySafe()) {
 }
 ```
 
-**Explanation**: Certain tools (e.g., `EditTool`) modify the state of the filesystem. The `CoreToolScheduler` uses the `isConcurrencySafe()` flag to prevent multiple mutating tools from running simultaneously, ensuring the integrity of the codebase and preventing overlapping edits.
+## Summary Table: Steering Architecture
+
+| Tier | Target | Location | Primary Goal | Example |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tool** | Tool Selection | `Tool.description` | Accuracy / Prevention | "DO NOT use Shell for file edits" |
+| **Operational** | Agent Behavior | `buildChatSystemPrompt` | Modality / Loop Control | "Do not ask user questions" |
+| **Contextual** | Code Quality | `UserMemory` (`QWEN.md`) | Idiomaticity / Standards | "Use `pathlib.Path`" |

@@ -482,9 +482,22 @@ def validate_parsed_frontmatter(
         for k in options:
             all_present_fields.add(k)
 
+    allowed = _get_allowed_fields(doc_type, hub, spoke)
     for field in all_present_fields:
         # Only validate fields that are governed (defined in hub registry)
         if field not in hub.get("field_registry", {}):
+            continue
+        
+        if field not in allowed:
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="invalid_field",
+                    field=field,
+                    message=f"governed field '{field}' is not permitted for type '{doc_type}' — To fix: remove it or add it to the allow-list in the config",
+                    config_source=f"{HUB_CONFIG_REL} → types.{doc_type}",
+                )
+            )
             continue
 
         value = _get_field_value(frontmatter, field)
@@ -598,6 +611,38 @@ def _get_required_fields(
 
     return required
 
+def _get_allowed_fields(
+    doc_type: str, hub_config: dict, spoke_config: dict | None
+) -> set[str]:
+    """Compute the union of all permitted fields for this document type.
+
+    Permitted fields include:
+    1. Fields from all blocks assigned to this type in the hub.
+    2. Fields explicitly marked as 'required' or 'optional' in the hub type def.
+    3. Fields explicitly marked as 'required' or 'optional' in the spoke config.
+    """
+    blocks = hub_config.get("blocks", {})
+    types = hub_config.get("types", {})
+    type_def = types.get(doc_type, {})
+
+    allowed: set[str] = set()
+
+    # 1. Expand block composition
+    for block_name in type_def.get("blocks", []):
+        allowed.update(blocks.get(block_name, []))
+
+    # 2. Hub type-specific requirements/optionals
+    allowed.update(type_def.get("required", []))
+    allowed.update(type_def.get("optional", []))
+
+    # 3. Spoke requirements/optionals
+    if spoke_config is not None:
+        allowed.update(spoke_config.get("required_fields", []))
+        allowed.update(spoke_config.get("optional_fields", []))
+        allowed.update(spoke_config.get("common_required_fields", []))
+        allowed.update(spoke_config.get("common_optional_fields", []))
+
+    return allowed
 
 def _validate_field_value(
     field: str,

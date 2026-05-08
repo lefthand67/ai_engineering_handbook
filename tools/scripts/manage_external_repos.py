@@ -601,24 +601,32 @@ def setup_command(url: str, target_dir_name: str | None = None) -> int:
 
 
 def _pull_with_reset(repo_path: Path, reset: bool) -> tuple[bool, str]:
-    """Try to pull updates, and optionally reset if the repo is dirty.
+    """Try to pull updates, and optionally reset if the pull fails.
 
     Contract:
     - Input: repo_path (absolute path), reset (boolean flag)
     - Operation:
-        1. If reset=True and is_repo_dirty(repo_path):
+        1. execute pull_repo()
+        2. If pull fails AND reset=True:
             a. log warning about forced reset
             b. execute reset_repo()
-        2. execute pull_repo()
-        3. return result of pull_repo()
+            c. execute pull_repo() again
+        3. return result of the last pull_repo() or reset failure
     - Side Effects: May perform a hard reset of the git repository at repo_path.
     """
-    if reset and is_repo_dirty(repo_path):
-        logger.warning(f"Local changes detected in {repo_path.name}. Forcibly resetting to match remote...")
-        if not reset_repo(repo_path):
-            return False, f"Reset failed: Could not clear local changes in {repo_path.name}"
+    success, message = pull_repo(repo_path)
 
-    return pull_repo(repo_path)
+    if not success and reset:
+        logger.warning(
+            f"Pull failed for {repo_path.name}: {message.strip()}. "
+            "Attempting forced reset to recover..."
+        )
+        if reset_repo(repo_path):
+            return pull_repo(repo_path)
+        else:
+            return False, f"Reset failed after pull error: Could not clear local changes in {repo_path.name}"
+
+    return success, message
 
 
 def update_command(repo_names: List[str] = None, parallel: bool = False, reset: bool = False) -> int:
@@ -652,7 +660,7 @@ def update_command(repo_names: List[str] = None, parallel: bool = False, reset: 
             repos = discover_repos(full_path, parent_dir=dir_path)
             all_repos.extend(repos)
             if repos:
-                logger.debug(f"   Found {len(repos)} repo(s) in {dir_path}")
+                logger.info(f"   Found {len(repos)} repo(s) in {dir_path}")
 
     if not all_repos:
         logger.info("No git repositories found in registered directories")

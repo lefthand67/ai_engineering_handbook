@@ -311,7 +311,8 @@ def find_broken_term_references(files: list[Path]) -> list[adr_utils.BrokenTermR
                         file_path=filepath,
                         line_number=line_num,
                         adr_number=adr_number,
-                        original=match.group(0),
+                        original_text=match.group(0),
+                        suggested_fix=f"{{term}}`ADR{TERM_SEPARATOR}{adr_number}`",
                     )
                 )
     return broken_refs
@@ -328,7 +329,7 @@ def validate_term_references(files: list[Path]) -> list[ValidationError]:
                 error_type="broken_term_reference",
                 message=(
                     f"{ref.file_path}:{ref.line_number}: "
-                    f"'{ref.original}' should be '{ref.suggested_fix}'"
+                    f"'{ref.original_text}' should be '{ref.suggested_fix}'"
                 ),
             )
         )

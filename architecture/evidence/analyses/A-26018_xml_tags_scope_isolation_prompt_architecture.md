@@ -1,22 +1,27 @@
+
 ---
-id: A-26018
-title: "XML Tags as Scope Boundaries — Prompt Architecture and Injection Resistance"
+title: XML Tags as Scope Boundaries — Prompt Architecture and Injection Resistance
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "XML tags in prompts function as explicit scope boundaries and attention anchors, not structural noise. Covers tag-vs-noise trade-off, Markdown vs XML boundary semantics, the hybrid YAML+XML pattern, and the JSON-list injection boundary technique."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: XML tags in prompts function as explicit scope boundaries and attention
+  anchors, not structural noise. Covers tag-vs-noise trade-off, Markdown vs XML boundary
+  semantics, the hybrid YAML+XML pattern, and the JSON-list injection boundary technique.
+tags:
+- prompts
+- architecture
 date: 2026-03-28
-status: active
-sources: [S-26016]
-produces: []
 options:
   type: analysis
   birth: 2026-03-28
   version: 1.0.0
-  token_size: 800
+  token_size: 1215
+  id: A-26018
+  status: active
+  sources:
+  - S-26016
+  produces: []
 ---
-
 # A-26018: XML Tags as Scope Boundaries — Prompt Architecture and Injection Resistance
 
 +++

@@ -1,22 +1,27 @@
+
 ---
-id: A-26016
-title: "Causal Masking and Attention Mechanics — Implications for Prompt Format"
+title: Causal Masking and Attention Mechanics — Implications for Prompt Format
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Critical analysis of how causal masking, KV cache, softmax normalization, and the prefill/decode distinction affect prompt format choices. Grounds the 'attention anchors' and 'reasoning capacity' claims from the Format as Architecture article."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Critical analysis of how causal masking, KV cache, softmax normalization,
+  and the prefill/decode distinction affect prompt format choices. Grounds the 'attention
+  anchors' and 'reasoning capacity' claims from the Format as Architecture article.
+tags:
+- prompts
+- architecture
 date: 2026-03-27
-status: active
-sources: [S-26017]
-produces: []
 options:
   type: analysis
   birth: 2026-03-26
   version: 1.1.0
-  token_size: 5000
+  token_size: 2748
+  id: A-26016
+  status: active
+  sources:
+  - S-26017
+  produces: []
 ---
-
 # A-26016: Causal Masking and Attention Mechanics — Implications for Prompt Format
 
 +++

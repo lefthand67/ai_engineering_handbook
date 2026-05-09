@@ -1,18 +1,35 @@
----
-id: A-26006
-title: "Agent Runtime Architecture and RAG Infrastructure Decisions"
-date: 2026-03-08
-status: active
-tags: [architecture, context_management, model]
-sources: [S-26008, S-26009, S-26010]
-produces: []
----
 
+---
+title: Agent Runtime Architecture and RAG Infrastructure Decisions
+date: 2026-03-08
+tags:
+- architecture
+- context_management
+- model
+options:
+  token_size: 2925
+  id: A-26006
+  status: active
+  sources:
+  - S-26008
+  - S-26009
+  - S-26010
+  produces: []
+  type: analysis
+  version: 1.0.0
+  birth: '2026-03-08'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: The ecosystem roadmap (`misc/plan/implemented/plan_20260308_ecosystem_roadmap_vadocs_to_mentor.md`)
+  defines a three-phase path from governance tooling (vadocs) to a production mentor
+  agent.
+---
 # A-26006: Agent Runtime Architecture and RAG Infrastructure Decisions
 
 ## Problem Statement
 
-The ecosystem roadmap (`misc/plan/plan_20260308_ecosystem_roadmap_vadocs_to_mentor.md`) defines a three-phase path from governance tooling (vadocs) to a production mentor agent. Phase 2 (Runtime) requires concrete decisions about agent architecture, RAG infrastructure, and tool integration. Three Gemini dialogues (S-26008, S-26009, S-26010) provide external validation and implementation patterns for these decisions. This analysis extracts the actionable insights that inform Phase 2 ADRs and implementation.
+The ecosystem roadmap (`misc/plan/implemented/plan_20260308_ecosystem_roadmap_vadocs_to_mentor.md`) defines a three-phase path from governance tooling (vadocs) to a production mentor agent. Phase 2 (Runtime) requires concrete decisions about agent architecture, RAG infrastructure, and tool integration. Three Gemini dialogues (S-26008, S-26009, S-26010) provide external validation and implementation patterns for these decisions. This analysis extracts the actionable insights that inform Phase 2 ADRs and implementation.
 
 ## Key Insights
 
@@ -158,7 +175,7 @@ The validated stack: **litellm (models) + FastMCP (tools) + custom master loop (
 ### Internal
 - [ADR-26038: Context Engineering as Core Design Principle](/architecture/adr/adr_26038_context_engineering_as_core_design_principle.md)
 - [ADR-26030: Stateless JIT Context Injection for Agentic Git Workflows](/architecture/adr/adr_26030_stateless_jit_context_injection_for_agentic_git_workflow.md)
-- [Ecosystem Roadmap](/misc/plan/plan_20260308_ecosystem_roadmap_vadocs_to_mentor.md) — Phase 2 decisions
+- `misc/plan/plan_20260308_ecosystem_roadmap_vadocs_to_mentor.md` — Phase 2 decisions
 - [A-26005: Agentic OS Filesystem Architecture](/architecture/evidence/analyses/A-26005_doc_type_interfaces_unified_validation.md) — Postgres namespace model
 - [Format as Architecture: Signal-to-Noise in Prompt Delivery](/ai_system_layers/3_prompts/format_as_architecture_signal_noise_in_prompt_delivery.ipynb)
 - `S-26008: Gemini — LangChain vs Production Agent Architecture`

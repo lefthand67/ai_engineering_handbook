@@ -1,22 +1,26 @@
+
 ---
-id: A-26020
-title: "AI-Native Development — Code as Primary Documentation"
+title: AI-Native Development — Code as Primary Documentation
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Code structure is the documentation layer in AI-native ecosystems. Contract docstrings, structured tests, and machine-readable metadata replace prose documentation for both human and agent consumers. Language-agnostic, ecosystem-wide."
-tags: [governance, documentation]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Code structure is the documentation layer in AI-native ecosystems. Contract
+  docstrings, structured tests, and machine-readable metadata replace prose documentation
+  for both human and agent consumers. Language-agnostic, ecosystem-wide.
+tags:
+- governance
+- documentation
 date: 2026-04-01
-status: active
-sources: []
-produces: []
 options:
   type: analysis
   birth: 2026-04-01
   version: 1.0.0
-  token_size: 2500
+  token_size: 2826
+  id: A-26020
+  status: active
+  sources: []
+  produces: []
 ---
-
 # A-26020: AI-Native Development — Code as Primary Documentation
 
 +++

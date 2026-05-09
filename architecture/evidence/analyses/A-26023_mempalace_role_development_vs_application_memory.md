@@ -1,23 +1,28 @@
+
 ---
-id: A-26023
-title: "MemPalace Role Clarification — Development Memory vs. Application Memory"
+title: MemPalace Role Clarification — Development Memory vs. Application Memory
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "MemPalace is unsuitable for mentor_generator application memory (WRC 0.290) but valuable as development conversation memory. The clean ecosystem split: pgvector for course materials, ADRs for decisions, MemPalace for the reasoning that didn't make it into formal artifacts."
-tags: [context_management, architecture]
-date: "2026-04-08"
-status: active
-sources:
-  - S-26022
-produces: []
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 'MemPalace is unsuitable for mentor_generator application memory (WRC
+  0.290) but valuable as development conversation memory. The clean ecosystem split:
+  pgvector for course materials, ADRs for decisions, MemPalace for the reasoning that
+  didn''t make it into formal artifacts.'
+tags:
+- context_management
+- architecture
+date: '2026-04-08'
 options:
   type: analysis
-  birth: "2026-04-08"
-  version: "1.0.0"
-  token_size: 1400
+  birth: '2026-04-08'
+  version: 1.0.0
+  token_size: 2132
+  id: A-26023
+  status: active
+  sources:
+  - S-26022
+  produces: []
 ---
-
 # MemPalace Role Clarification — Development Memory vs. Application Memory
 
 **Analysis date:** 2026-04-08

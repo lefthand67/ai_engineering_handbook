@@ -1,20 +1,24 @@
+
 ---
-id: A-26024
-title: "Config-Driven Ignore Architecture Analysis"
+title: Config-Driven Ignore Architecture Analysis
 authors:
-  - name: Qwen Code
-    email: rudakow.wadim@gmail.com
+- name: Qwen Code
+  email: rudakow.wadim@gmail.com
 date: 2026-04-27
-description: "Architectural analysis and validation of the migration from hardcoded exclusions in paths.py to a unified, structured ignore manifest in .vadocs/."
-tags: [architecture, governance, documentation]
-status: active
+description: Architectural analysis and validation of the migration from hardcoded
+  exclusions in paths.py to a unified, structured ignore manifest in .vadocs/.
+tags:
+- architecture
+- governance
+- documentation
 options:
-  token_size: 2485
   type: analysis
   birth: 2026-04-27
   version: 1.3.0
+  token_size: 2488
+  id: A-26024
+  status: active
 ---
-
 # Config-Driven Ignore Architecture Analysis
 
 ## Problem Statement

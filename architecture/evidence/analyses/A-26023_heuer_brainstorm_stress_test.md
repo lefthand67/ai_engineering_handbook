@@ -1,21 +1,26 @@
+
 ---
-id: A-26023
-title: "Heuer Brainstorm: Stress-Testing Integration Conclusions"
+title: 'Heuer Brainstorm: Stress-Testing Integration Conclusions'
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Stress-test of A-26019: Heuer Methodology Integration for Consultant Prompts using a hybrid consultant persona. Identifies the 'Consistency Trap' in single-session LLM reasoning and proposes a 4-agent sequential pipeline to create a cognitive firewall against confirmation bias."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 'Stress-test of A-26019: Heuer Methodology Integration for Consultant
+  Prompts using a hybrid consultant persona. Identifies the ''Consistency Trap'' in
+  single-session LLM reasoning and proposes a 4-agent sequential pipeline to create
+  a cognitive firewall against confirmation bias.'
+tags:
+- prompts
+- architecture
 date: 2026-04-19
-status: active
-produces: []
 options:
   type: analysis
   birth: 2026-04-19
   version: 1.0.0
-  token_size: 800
+  token_size: 1206
+  id: A-26023
+  status: active
+  produces: []
 ---
-
 # A-26023: Heuer Brainstorm: Stress-Testing Integration Conclusions
 
 +++

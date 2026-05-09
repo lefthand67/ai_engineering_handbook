@@ -1,20 +1,26 @@
+
 ---
-id: A-26012
-title: "ADR Index Restructuring — Two-Level Sectioning and Tag Vocabulary Audit"
+title: ADR Index Restructuring — Two-Level Sectioning and Tag Vocabulary Audit
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Analysis of ADR index navigation problems and tag vocabulary effectiveness. Proposes two-level index (status × primary tag), identifies `architecture` tag as tautological on ADRs, and establishes first-tag-is-primary convention. Data-driven: quantitative tag distribution across 44 ADRs."
-tags: [governance, documentation]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 'Analysis of ADR index navigation problems and tag vocabulary effectiveness.
+  Proposes two-level index (status × primary tag), identifies `architecture` tag as
+  tautological on ADRs, and establishes first-tag-is-primary convention. Data-driven:
+  quantitative tag distribution across 44 ADRs.'
+tags:
+- governance
+- documentation
 date: 2026-03-23
-status: active
-produces: []
 options:
   type: analysis
   birth: 2026-03-23
   version: 1.0.0
+  token_size: 1461
+  id: A-26012
+  status: active
+  produces: []
 ---
-
 # A-26012: ADR Index Restructuring — Two-Level Sectioning and Tag Vocabulary Audit
 
 +++

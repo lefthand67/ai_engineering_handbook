@@ -1,20 +1,25 @@
+
 ---
-id: A-26014
-title: "Script Suite Documentation Redundancy — Triad to Dyad Evolution"
+title: Script Suite Documentation Redundancy — Triad to Dyad Evolution
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Analysis of the ADR-26011 script+test+doc triad. Per-script instruction docs are now redundant with contract docstrings and test suites. Recommends relaxing the triad to a dyad (script+test) and letting existing docs age out."
-tags: [governance, documentation]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Analysis of the ADR-26011 script+test+doc triad. Per-script instruction
+  docs are now redundant with contract docstrings and test suites. Recommends relaxing
+  the triad to a dyad (script+test) and letting existing docs age out.
+tags:
+- governance
+- documentation
 date: 2026-03-23
-status: active
-produces: []
 options:
   type: analysis
   birth: 2026-03-23
   version: 1.0.0
+  token_size: 1265
+  id: A-26014
+  status: active
+  produces: []
 ---
-
 # A-26014: Script Suite Documentation Redundancy — Triad to Dyad Evolution
 
 +++

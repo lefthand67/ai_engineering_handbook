@@ -1,13 +1,27 @@
----
-id: A-26001
-title: "Architecture Knowledge Base Taxonomy"
-date: 2026-02-26
-status: active
-tags: [governance, documentation, architecture]
-sources: []
-produces: [ADR-26035]
----
 
+---
+title: Architecture Knowledge Base Taxonomy
+date: 2026-02-26
+tags:
+- governance
+- documentation
+- architecture
+options:
+  token_size: 2505
+  id: A-26001
+  status: active
+  sources: []
+  produces:
+  - ADR-26035
+  type: analysis
+  version: 1.0.0
+  birth: '2026-02-26'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 'Architectural knowledge is generated through a pipeline: conversations
+  produce insights, insights produce analyses, analyses produce decisions (ADRs).'
+---
 # A-26001: Architecture Knowledge Base Taxonomy
 
 ## Problem Statement

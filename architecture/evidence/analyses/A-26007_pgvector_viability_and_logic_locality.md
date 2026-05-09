@@ -1,13 +1,27 @@
----
-id: A-26007
-title: "pgvector Viability Assessment and Logic Locality Decision"
-date: 2026-03-09
-status: active
-tags: [architecture, context_management, devops]
-sources: [S-26011]
-produces: [ADR-26039]
----
 
+---
+title: pgvector Viability Assessment and Logic Locality Decision
+date: 2026-03-09
+tags:
+- architecture
+- context_management
+- devops
+options:
+  token_size: 1930
+  id: A-26007
+  status: active
+  sources:
+  - S-26011
+  produces:
+  - ADR-26039
+  type: analysis
+  version: 1.0.0
+  birth: '2026-03-09'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: ADR-26039 proposes pgvector as the ecosystem database standard.
+---
 # A-26007: pgvector Viability Assessment and Logic Locality Decision
 
 ## Problem Statement

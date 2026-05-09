@@ -1,22 +1,28 @@
+
 ---
-id: A-26019
-title: "Heuer Methodology Integration for Consultant Prompts"
+title: Heuer Methodology Integration for Consultant Prompts
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Heuer's intelligence tradecraft is procedural enforcement for LLM output, not cognitive correction for AI. Transformer satisficing mirrors human bias (Chapter 4). ACH, Linchpin Analysis, and Disconfirmation must be embedded as instructions, not RAG."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Heuer's intelligence tradecraft is procedural enforcement for LLM output,
+  not cognitive correction for AI. Transformer satisficing mirrors human bias (Chapter
+  4). ACH, Linchpin Analysis, and Disconfirmation must be embedded as instructions,
+  not RAG.
+tags:
+- prompts
+- architecture
 date: 2026-03-29
-status: active
-sources: [S-26019]
-produces: []
 options:
   type: analysis
   birth: 2026-03-29
   version: 1.0.0
-  token_size: 1200
+  token_size: 5923
+  id: A-26019
+  status: active
+  sources:
+  - S-26019
+  produces: []
 ---
-
 # A-26019: Heuer Methodology Integration for Consultant Prompts
 
 +++

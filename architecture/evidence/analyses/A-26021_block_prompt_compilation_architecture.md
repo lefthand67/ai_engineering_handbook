@@ -1,23 +1,28 @@
+
 ---
-id: A-26021
-title: "Block Prompt Compilation Architecture"
+title: Block Prompt Compilation Architecture
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Consultant prompts share 85-90% structure. Block compilation architecture extracts decision kernel as shared JSON, persona blocks as thin skins, assembled JIT by prepare_prompt.py and converted to YAML for runtime delivery. Heuer methodology becomes a composable decision block, not consultant-specific."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Consultant prompts share 85-90% structure. Block compilation architecture
+  extracts decision kernel as shared JSON, persona blocks as thin skins, assembled
+  JIT by prepare_prompt.py and converted to YAML for runtime delivery. Heuer methodology
+  becomes a composable decision block, not consultant-specific.
+tags:
+- prompts
+- architecture
 date: 2026-04-03
-status: active
-sources:
-  - S-26020
-produces: []
 options:
   type: analysis
   birth: 2026-04-03
   version: 1.0.0
-  token_size: 1100
+  token_size: 1605
+  id: A-26021
+  status: active
+  sources:
+  - S-26020
+  produces: []
 ---
-
 # A-26021: Block Prompt Compilation Architecture
 
 +++

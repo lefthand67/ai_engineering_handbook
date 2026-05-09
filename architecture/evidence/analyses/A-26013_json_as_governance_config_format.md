@@ -1,20 +1,27 @@
+
 ---
-id: A-26013
-title: "JSON as Governance Config Format — Migration from YAML"
+title: JSON as Governance Config Format — Migration from YAML
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "Analysis of config file format options for the vadocs governance engine. YAML identified as an inertia-driven default with growing friction: no native schema, parsing ambiguities, external dependency. JSON + JSON Schema selected as the target format for .vadocs/ configs."
-tags: [governance, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: 'Analysis of config file format options for the vadocs governance engine.
+  YAML identified as an inertia-driven default with growing friction: no native schema,
+  parsing ambiguities, external dependency. JSON + JSON Schema selected as the target
+  format for .vadocs/ configs.'
+tags:
+- governance
+- architecture
 date: 2026-03-23
-status: active
-produces: [ADR-26054]
 options:
   type: analysis
   birth: 2026-03-23
   version: 1.0.0
+  token_size: 1672
+  id: A-26013
+  status: active
+  produces:
+  - ADR-26054
 ---
-
 # A-26013: JSON as Governance Config Format — Migration from YAML
 
 +++

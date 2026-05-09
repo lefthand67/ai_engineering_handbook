@@ -1,22 +1,27 @@
+
 ---
-id: A-26015
-title: "Frontmatter Validator Architecture — Config-Code Divergence and Resolution"
+title: Frontmatter Validator Architecture — Config-Code Divergence and Resolution
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "SVA-grounded analysis of three approaches to hub-level frontmatter validation. Identifies config-code divergence as root cause. Recommends config-driven module with CLI entry point (Approach C)."
-tags: [governance, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: SVA-grounded analysis of three approaches to hub-level frontmatter validation.
+  Identifies config-code divergence as root cause. Recommends config-driven module
+  with CLI entry point (Approach C).
+tags:
+- governance
+- architecture
 date: 2026-03-25
-status: active
-sources: [S-26014]
-produces: []
 options:
   type: analysis
   birth: 2026-03-25
   version: 1.0.0
-  token_size: 4500
+  token_size: 2467
+  id: A-26015
+  status: active
+  sources:
+  - S-26014
+  produces: []
 ---
-
 # A-26015: Frontmatter Validator Architecture — Config-Code Divergence and Resolution
 
 +++

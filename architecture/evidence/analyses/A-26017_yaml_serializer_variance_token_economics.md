@@ -1,22 +1,27 @@
+
 ---
-id: A-26017
-title: "YAML Serializer Variance — Token Economics of Format Choice"
+title: YAML Serializer Variance — Token Economics of Format Choice
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "The token cost of a YAML-formatted prompt is a function of (format, serializer, tokenizer) — three variables, not one. PyYAML's default line-wrapping and yq's boolean coercion flip the YAML Literal vs Pretty JSON ranking."
-tags: [prompts, architecture]
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: The token cost of a YAML-formatted prompt is a function of (format, serializer,
+  tokenizer) — three variables, not one. PyYAML's default line-wrapping and yq's boolean
+  coercion flip the YAML Literal vs Pretty JSON ranking.
+tags:
+- prompts
+- architecture
 date: 2026-03-27
-status: active
-sources: [S-26018]
-produces: []
 options:
   type: analysis
   birth: 2026-03-27
   version: 1.1.0
-  token_size: 500
+  token_size: 689
+  id: A-26017
+  status: active
+  sources:
+  - S-26018
+  produces: []
 ---
-
 # A-26017: YAML Serializer Variance — Token Economics of Format Choice
 
 +++

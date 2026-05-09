@@ -1,23 +1,28 @@
+
 ---
-id: A-26022
-title: "Agents Break the Layer Model — Repo Restructuring Decision"
+title: Agents Break the Layer Model — Repo Restructuring Decision
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
-description: "AI coding agents are the assembled product, not a component — they consume all layers 1-5. This analysis documents the category error, explores alternatives via Heuer-style hypothesis testing, and justifies moving ai_system/ to ai_system_layers/ and 6_agents/ to ai_agents/ at repo root."
-tags: [architecture, agents]
-date: "2026-04-05"
-status: active
-sources:
-  - S-26021
-produces: []
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: AI coding agents are the assembled product, not a component — they consume
+  all layers 1-5. This analysis documents the category error, explores alternatives
+  via Heuer-style hypothesis testing, and justifies moving ai_system/ to ai_system_layers/
+  and 6_agents/ to ai_agents/ at repo root.
+tags:
+- architecture
+- agents
+date: '2026-04-05'
 options:
   type: analysis
-  birth: "2026-04-05"
-  version: "1.0.0"
-  token_size: 1200
+  birth: '2026-04-05'
+  version: 1.0.0
+  token_size: 1269
+  id: A-26022
+  status: active
+  sources:
+  - S-26021
+  produces: []
 ---
-
 # Agents Break the Layer Model — Repo Restructuring Decision
 
 **Analysis date:** 2026-04-05

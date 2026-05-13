@@ -1,19 +1,23 @@
+
 ---
-id: S-26024
-title: "Causal Masking and KV Cache Momentum"
+title: Causal Masking and KV Cache Momentum
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-03-24
-description: "Technical deconstruction of 'causal reading' metaphors, explaining causal masking, triangular attention matrices, and the role of KV cache in autoregressive inference"
-tags: [model, architecture]
-token_size: 6000
+description: Technical deconstruction of 'causal reading' metaphors, explaining causal
+  masking, triangular attention matrices, and the role of KV cache in autoregressive
+  inference
+tags:
+- model
+- architecture
 options:
   type: source
-model: Qwen3.5-Plus
-extracted_into: null
+  token_size: 9322
+  id: S-26024
+  model: Qwen3.5-Plus
+  extracted_into: null
 ---
-
 ### User
 
 Peer review this post: 

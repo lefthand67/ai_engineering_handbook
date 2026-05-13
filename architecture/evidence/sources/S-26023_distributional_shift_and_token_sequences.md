@@ -1,19 +1,22 @@
+
 ---
-id: S-26023
-title: "Distributional Shift and Token Sequences"
+title: Distributional Shift and Token Sequences
 authors:
-  - name: Vadim Rudakov
-    email: rudakow.wadim@gmail.com
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 date: 2026-03-26
-description: "Technical clarification on the distinction between token vocabulary membership and sequence distribution, focusing on how whitespace removal causes distributional shift"
-tags: [model]
-token_size: 4000
+description: Technical clarification on the distinction between token vocabulary membership
+  and sequence distribution, focusing on how whitespace removal causes distributional
+  shift
+tags:
+- model
 options:
   type: source
-model: Qwen3.5-Plus
-extracted_into: null
+  token_size: 2019
+  id: S-26023
+  model: Qwen3.5-Plus
+  extracted_into: null
 ---
-
 ### User
 
 > Attached: A-26016_causal_masking_attention_mechanics_for_prompt_engineering.md (text/markdown)

@@ -5,12 +5,20 @@ jupytext:
     format_name: myst
     format_version: 0.13
     jupytext_version: 1.19.1
+---
+
+jupytext:
+  text_representation:
+    extension: .md
+    format_name: myst
+    format_version: 0.13
+    jupytext_version: 1.19.1
 kernelspec:
   name: bash
   display_name: Bash
   language: bash
----
-
+options:
+  type: source
 ---
 title: Evidence Sources
 author: Vadim Rudakov, rudakow.wadim@gmail.com
@@ -19,6 +27,7 @@ options:
   type: guide
   version: 0.1.0
   birth: 2026-03-07
+  token_size: 761
 ---
 
 +++
@@ -61,12 +70,14 @@ The commit 1 and 2 can be combined into 1 commit if the analysis is done in the 
 +++
 
 ``` yaml
----
-id: S-26001
-title: "Claude — AKB Taxonomy Discussion"
+
+title: Claude — AKB Taxonomy Discussion
 date: 2026-02-26
-model: claude-opus-4     # AI model used, or "human" for meeting notes
-extracted_into: A-26001  # null until analysis exists
+options:
+  id: S-26001
+  model: claude-opus-4
+  extracted_into: A-26001
+  type: source
 ---
 ```
 

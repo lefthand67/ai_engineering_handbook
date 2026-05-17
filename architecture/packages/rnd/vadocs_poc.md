@@ -4,13 +4,31 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
+    jupytext_version: 1.19.1
 kernelspec:
   display_name: Bash
   language: bash
   name: bash
 ---
 
+---
+title: vadocs v0.1.0 - Proof of Concept
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Proof of Concept for the vadocs package, demonstrating automated frontmatter
+  and ADR validation.
+tags:
+- architecture
+- development
+- governance
+options:
+  type: guide
+  version: 0.1.0
+  birth: '2026-02-04'
+  token_size: 1816
+---
 # vadocs v0.1.0 - Proof of Concept
 
 +++

@@ -1,77 +1,61 @@
+---
+title: "Architectural Flaws in the nbdiff-Centric Jupyter Version Control Handbook"
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2025-12-28"
+description: "Analyzes structural failures of the nbdiff-centric workflow for AI-augmented development, citing SVA and ISO 29148 violations."
+tags: [architecture, documentation, devops]
+---
+---
+options:
+  type: retrospective
+  id: R-26001
+  status: closed
+  severity: critical
+  version: 1.0.0
+  birth: '2025-12-28'
+  token_size: 1589
+---
 # Post-Mortem: Architectural Flaws in the `nbdiff`-Centric Jupyter Version Control Handbook
-
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Document: nbdiff: "git diff" for Jupyter Notebooks Version Control (v0.3.0, 2025-12-28)  
-Reviewer: [slm_system_consultant](/ai_system_layers/3_prompts/consultants/ai_systems_consultant.json) v0.12.0  
-2025-12-28  
-
----
-
-+++
 
 ## 1. Executive Summary
 
-+++
-
 The handbook presents a technically sound, user-friendly workflow for **human-oriented notebook review** using `nbdiff` and `nbdime`. However, it **fails as a production-grade MLOps strategy** for AI-augmented development (e.g., `aider` + SLMs) due to fundamental violations of **Smallest Viable Architecture (SVA)** and **ISO 29148 verifiability** principles.
 
-While the “Keep the Data, Filter the View” philosophy is valid for archival or audit contexts, it introduces 
-- non-determinism, 
-- security exposure, and 
+While the “Keep the Data, Filter the View” philosophy is valid for archival or audit contexts, it introduces
+- non-determinism,
+- security exposure, and
 - unversionable prompt contexts
 
 when applied to SLM-driven workflows. The result is a **PoC-only architecture** (WRC = 0.60) masquerading as production-ready.
 
-+++
-
 ## 2. Root Cause Analysis
 
-+++
-
 ### 2.1. Conflation of Storage and Processing Layers
-
-+++
 
 The handbook treats Git as a **data lake** (store everything) rather than a **versioned source of truth** for logic. This leads to:
 - **Versioned artifacts ≠ processed artifacts**: What `aider` sees (`nbdiff` output) is not what is stored in Git.
 - **Violation of ISO 29148: Verifiability**: Requirements (e.g., “only logic changes are committed”) cannot be verified from the repository alone—external tooling (`nbdiff`) is required.
 
-+++
-
 ### 2.2. Misalignment with SLM Constraints
-
-+++
 
 Small Language Models (1B–14B) operate under strict CPU/RAM/VRAM limits and **lack structural awareness** of `.ipynb` semantics. The handbook assumes:
 > “Feed it a clean text stream via `/run nbdiff`.”
-
-+++
 
 But this:
 - **Requires manual orchestration** (SVA violation C4)
 - **Produces non-Git-native input** (SVA violation C2)
 - **Cannot be versioned or traced** (SVA violation C3)
 
-+++
-
 ### 2.3. Security by Hope, Not by Design
-
-+++
 
 The handbook acknowledges the “False Clean” risk but treats it as a **user education problem**, not an architectural one. Storing full outputs in Git:
 - Violates **zero-trust data handling**
 - Creates high-risk vectors for **credential leakage** (e.g., `print(API_KEY)`)
 - Contradicts **MLOps Principle: “Never commit ephemeral state”**
 
-+++
-
 ## 3. WRC-Based Failure Diagnosis
-
-+++
 
 | Component | Score | Rationale |
 |---------|-------|----------|
@@ -82,11 +66,7 @@ The handbook acknowledges the “False Clean” risk but treats it as a **user e
 
 > **Key Insight**: The workflow is **optimized for the wrong persona**—the researcher reviewing plots, not the engineer building verifiable, SLM-augmented pipelines.
 
-+++
-
 ## 4. Critical Flaws by ISO 29148 / SVA Criteria
-
-+++
 
 | Flaw | ISO 29148 Tag | SVA Violation | Impact |
 |------|----------------|----------------|--------|
@@ -96,19 +76,11 @@ The handbook acknowledges the “False Clean” risk but treats it as a **user e
 | “False Clean” risk accepted as UX trade-off | **Correctness** | — | Security and bloat risks |
 | Incompatible with `git add -p` | **Maintainability** | C1 | Breaks standard Git workflows |
 
-+++
-
 ## 5. Viable Path Forward: Hybrid SVA-Compliant Strategy
-
-+++
 
 The handbook’s **core insight—notebook outputs matter in research—is valid**, but must be decoupled from Git versioning of logic.
 
-+++
-
 ### Recommended Architecture
-
-+++
 
 | Layer | Tool | Purpose | SVA Status |
 |------|------|--------|-----------|
@@ -123,11 +95,7 @@ This achieves:
 - **Full Git compatibility** (`add -p`, merges, CI)
 - **ISO 29148 compliance**: Logic = versioned artifact
 
-+++
-
 ## 6. Lessons Learned
-
-+++
 
 | Mistake | Correction |
 |--------|-----------|
@@ -136,14 +104,10 @@ This achieves:
 | Assuming “filtering” suffices for AI context | SLMs require **native, versionable input**—no intermediate representations |
 | Ignoring Git-native workflow compatibility | Production MLOps must support `add -p`, merges, and CI without custom drivers |
 
-+++
-
 ## 7. Conclusion
-
-+++
 
 The handbook is **well-written and contextually appropriate for solo research notebooks**, but **architecturally unsound for collaborative, AI-augmented, or production environments**. By decoupling **logic versioning** (`nbstripout`) from **evidence archiving** (exported artifacts), you retain the benefits of notebook interactivity while achieving SVA compliance, security, and SLM efficiency.
 
-**Final Verdict**:  
+**Final Verdict**:
 
 > **Decommission the `nbdiff`-as-primary-diff strategy for SLM workflows. Adopt `nbstripout` as the foundation, and layer `nbdiff-web` only for optional human audits of exported reports.**

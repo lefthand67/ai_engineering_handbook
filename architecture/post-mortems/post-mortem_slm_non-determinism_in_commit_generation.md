@@ -1,14 +1,22 @@
-# Post-Mortem Report: SLM Non-Determinism in Stage 1
-
 ---
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.5  
-Birth: 2025-12-02  
-Last Modified: 2026-01-14
-
+title: "Post-Mortem Report: SLM Non-Determinism in Stage 1"
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Analysis of SLM non-determinism during commit message generation and the resulting architectural mandate for deterministic output."
+tags: [architecture, model, development, git]
 ---
-
+---
+options:
+  type: retrospective
+  id: R-26000
+  status: closed
+  severity: critical
+  version: 0.1.5
+  birth: '2025-12-02'
+  token_size: 3011
+---
 ## 1. Executive Summary and Architectural Mandate
 
 This report documents the architectural failure observed during the deployment of the **Small Language Model (SLM)** (1B-3B parameter class) for the highly frequent and highly constrained task of generating structured Conventional Commit messages (Pipeline **Stage 1**).
@@ -171,7 +179,7 @@ Tested in `aider` with models:
 
 ```
 >/ask You are a Git commit generator. Your sole output is a JSON object conforming to the schema I am about to give you. The rules are: (1) Title is max 50 chars, imperative mood. (2) ArchTag is mandatory only for `refactor`, `perf`, or `remove`. (3) Valid tags are: `DEPRECATION-PLANNED`, `TECHDEBT-PAYMENT`, `REFACTOR-MIGRATION`, `PERF-OPTIMIZATION`. **Acknowledge the rules by replying ONLY with the JSON schema below.*
->/ ask 
+>/ ask
 >/ ask ```json
 >/ ask {
 >/ ask   "commit_title": "<type>(<scope>): <description>",

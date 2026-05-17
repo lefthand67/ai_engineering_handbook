@@ -1,16 +1,19 @@
-# Architecture Decision Workflow
-
 ---
-
 title: "Architecture Decision Workflow"
-author: rudakow.wadim@gmail.com
-date: 2026-04-01
-options:
-  version: 1.1.0
-  birth: 2026-03-02
-
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Describes the full lifecycle of architectural decisions, from evidence gathering to ADR promotion and validation."
+tags: [architecture, governance, workflow]
 ---
-
+---
+options:
+  type: guide
+  version: 1.1.0
+  birth: '2026-03-02'
+  token_size: 4575
+---
 This guide covers the full lifecycle of an architectural decision — from understanding what an ADR is, through evidence gathering and writing, to validation. It complements the [ADR template](/architecture/adr/adr_template.md) (structure and fields) and `adr.conf.json` (validation rules).
 
 **Guiding principle:** Write for the reader 3 years from now who has no context about today's implementation.
@@ -234,7 +237,7 @@ Separation of concerns in ADRs mirrors separation of concerns in code. When two 
 
 Review every ADR against these eleven anti-patterns before promotion:
 
-1. **Undefined domain vocabulary** — Terms used without definition in this repository or a referenced standard
+1. **Undefined domain vocabulary** — Terms used without definition in this repository or in a referenced standard
 2. **Unexpanded abbreviations** — Abbreviations used without expansion on first occurrence
 3. **Ephemeral implementation details** — Migration steps, file lists, or tooling specifics embedded in the ADR body instead of evidence artifacts
 4. **Artifact-tied consequences** — Consequences that reference current filenames or tools instead of durable principles

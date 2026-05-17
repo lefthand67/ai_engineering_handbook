@@ -1,19 +1,34 @@
+---
+title: "nbdiff: 'git diff' for Jupyter Notebooks Version Control"
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-13"
+description: "Guide on using nbdime and nbdiff to manage and review Jupyter Notebook changes while filtering JSON noise."
+tags: [development, documentation, architecture]
+---
+---
+options:
+  type: guide
+  version: 0.3.1
+  birth: '2025-12-28'
+  token_size: 2425
+---
 # nbdiff: "git diff" for Jupyter Notebooks Version Control
 
----
 
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.3.1  
-Birth: 2025-12-28  
+Owner: Vadim Rudakov, lefthand67@gmail.com
+Version: 0.3.1
+Birth: 2025-12-28
 Last Modified: 2025-12-31
-
+options:
+  token_size: 2275
 ---
-
 This guide explains how to use `nbdime` (specifically `nbdiff`) to manage Jupyter Notebooks effectively. Standard git diffs are notoriously difficult to read because notebooks are stored as dense JSON files containing metadata, cell IDs, and execution counts that obscure actual logic changes.
 
 ## 1. What is `nbdiff` and Why We Use It
 
-Jupyter Notebooks (.ipynb) are JSON documents. When you change a single line of code or simply re-run a cell, a standard `git diff` shows a mess of structural changes. 
+Jupyter Notebooks (.ipynb) are JSON documents. When you change a single line of code or simply re-run a cell, a standard `git diff` shows a mess of structural changes.
 
 We use `nbdiff` because it is **content-aware**. It understands the notebook structure and filters out the "noise" to show you only what matters:
 
@@ -61,7 +76,7 @@ This installs the following CLI tools:
 /run nbdiff --ignore-metadata HEAD path/to/notebook.ipynb
 ```
  or even cleaner:
- 
+
 ```bash
 # Within aider, use /run to provide context
 /run nbdiff --ignore-metadata --ignore-outputs HEAD path/to/notebook.ipynb
@@ -147,6 +162,9 @@ You can always see the nbdime configuration like this:
 nbdime --config
 ```
 
+> [!NOTE]
+> This configuration effectively makes `git diff` behave like your `nbclean` alias by default.
+
 ### 2. Configure "No-Noise" Git Defaults
 
 To ensure your Git history remains clean and your diffs focus only on code changes, configure `nbdime` to ignore noise globally.
@@ -189,7 +207,7 @@ In many data science contexts, the **output is the evidence**.
 Merging is more dangerous than diffing with these flags.
 
 * **The Problem:** If two people change the kernel metadata (e.g., one uses Python 3.9 and another 3.10), Git will flag a conflict.
-* **The Risk:** Since your diff tool ignores these fields, `git diff` might show "No differences," but Git will refuse to merge. You'll be stuck in a "phantom conflict" where your tools say everything is fine, but the repository is locked.
+* **The Risk:** Since your diff tool ignores these fields, `git diff` might show "No differences," but the repository is locked. You'll be stuck in a "phantom conflict" where your tools say everything is fine, but the repository is locked.
 
 #### 4. Broken Interactive Workflows (`git add -p`)
 

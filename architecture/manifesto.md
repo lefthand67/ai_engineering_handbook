@@ -1,12 +1,23 @@
 ---
-title: "Documentation as Source Code for AI"
-author: rudakow.wadim@gmail.com
-date: 2026-02-16
-options:
-  version: 1.0.0
-  birth: 2026-02-16
+title: Documentation as Source Code for AI
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: "2026-05-02"
+description: Declaration of principles for treating documentation as production source code for AI consumption.
+tags:
+- architecture
+- documentation
+- development
+- governance
 ---
-
+---
+options:
+  type: guide
+  version: "1.0.1"
+  birth: "2026-02-16"
+  token_size: 1123
+---
 # Documentation as Source Code for AI
 
 ## The Problem

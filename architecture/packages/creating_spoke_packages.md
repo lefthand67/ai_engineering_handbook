@@ -1,3 +1,19 @@
+---
+title: "Moving a Package to a Dedicated Repository"
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Guide for extracting a spoke package from the monorepo into a dedicated repository."
+tags: [development, governance, workflow]
+---
+---
+options:
+  type: guide
+  version: 1.0.0
+  birth: '2026-03-02'
+  token_size: 721
+---
 # Moving a Package to a Dedicated Repository
 
 A step-by-step guide for extracting a spoke package from the monorepo into its own repository.

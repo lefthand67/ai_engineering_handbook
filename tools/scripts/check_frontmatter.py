@@ -272,7 +272,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         content = file_path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content, file_path=file_path)
+        frontmatter, block_count = parse_frontmatter(content, file_path=file_path)
 
         # Files without frontmatter are checked against governed extensions.
         # If a file has a governed extension but no frontmatter, it's a blocking error.
@@ -302,13 +302,13 @@ def main(argv: list[str] | None = None) -> int:
                     file_path=file_path,
                     error_type="missing_type",
                     field="options.type",
-                    message="frontmatter present but missing required 'options.type' — type determines which validation rules apply and is required for governance",
+                    message="frontmatter present but missing required 'options.type' — type determines which validation rules apply and is required for governance. To fix: add 'options:\\n  type: <type>' to the frontmatter. If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
                     config_source=f"{HUB_CONFIG_REL} → field_registry.type",
                 )
             )
             continue
 
-        errors = validate_parsed_frontmatter(frontmatter, file_path, REPO_ROOT, content=content)
+        errors = validate_parsed_frontmatter(frontmatter, file_path, REPO_ROOT, content=content, block_count=block_count)
         all_errors.extend(errors)
 
     # -- Report errors to stdout ------------------------------------------
@@ -380,7 +380,7 @@ def validate_frontmatter(
     Returns empty list if valid or if file is not governed.
     """
     content = file_path.read_text(encoding="utf-8")
-    frontmatter = parse_frontmatter(content, file_path=file_path)
+    frontmatter, block_count = parse_frontmatter(content, file_path=file_path)
     if frontmatter is None:
         # If file has a governed extension but no frontmatter, it's a blocking error.
         governed_exts = HUB_CONFIG.get("governed_extensions", [])
@@ -395,11 +395,15 @@ def validate_frontmatter(
                 )
             ]
         return []
-    return validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content)
+    return validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content, block_count=block_count)
 
 
 def validate_parsed_frontmatter(
-    frontmatter: dict, file_path: Path, repo_root: Path, content: str | None = None
+    frontmatter: dict,
+    file_path: Path,
+    repo_root: Path,
+    content: str | None = None,
+    block_count: int = 1,
 ) -> list[FrontmatterError]:
     """Validate already-parsed frontmatter dict against hub + spoke rules.
 
@@ -414,6 +418,22 @@ def validate_parsed_frontmatter(
     which status/severity values are allowed. Without a type, validation
     cannot proceed meaningfully.
     """
+    errors: list[FrontmatterError] = []
+
+    # Step 0: Enforce Dual-Block pattern if Jupytext metadata is present.
+    # If 'jupytext' is found in the merged frontmatter but only one block was parsed,
+    # the governance metadata has been merged into the Jupytext block.
+    if "jupytext" in frontmatter and block_count < 2:
+        errors.append(
+            FrontmatterError(
+                file_path=file_path,
+                error_type="merged_blocks",
+                field=None,
+                message="Jupytext metadata and project governance metadata are merged into a single block — this violates the Dual-Block pattern and will cause data loss during Jupytext sync. To fix: separate the jupytext block from the project metadata with '--- \\n ---'",
+                config_source=f"{HUB_CONFIG_REL} → structural_spec",
+            )
+        )
+
     # Step 1: Determine document type from options.type field.
     # Files without options.type are not governed — this is now a blocking error.
     # Every file with frontmatter MUST declare its type so that:
@@ -423,15 +443,16 @@ def validate_parsed_frontmatter(
     # Without a type, schema validation cannot proceed meaningfully.
     doc_type = resolve_type(frontmatter)
     if doc_type is None:
-        return [
+        errors.append(
             FrontmatterError(
                 file_path=file_path,
                 error_type="missing_type",
                 field="options.type",
-                message=f"frontmatter present but missing required 'options.type' — type determines which validation rules apply. To fix: add 'options:\\n  type: <type>' to the frontmatter (valid types: {', '.join(sorted(VALID_TYPES))})",
+                message=f"frontmatter present but missing required 'options.type' — type determines which validation rules apply. To fix: add 'options:\\n  type: <type>' to the frontmatter (valid types: {', '.join(sorted(VALID_TYPES))}). If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
                 config_source=".vadocs/conf.json → field_registry.type",
             )
-        ]
+        )
+        return errors
 
     # Step 2: Reject unknown types early — all 10 valid types are in conf.json.
     if doc_type not in VALID_TYPES:
@@ -454,7 +475,6 @@ def validate_parsed_frontmatter(
     # Step 4: Compute the full required field set from three sources (union merge).
     # See _get_required_fields docstring for the merge semantics (ADR-26042).
     required = _get_required_fields(doc_type, hub, spoke)
-    errors: list[FrontmatterError] = []
 
     # Step 5: Check required field presence (at top level OR under options.*).
     for field in required:
@@ -1045,24 +1065,24 @@ def _check_options_namespace(
 # ======================
 
 
-def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | None:
+def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict | None, int]:
     """Extract YAML frontmatter from markdown or notebook content.
 
     Supports multiple frontmatter blocks at the start of the file (e.g. Jupytext
     metadata followed by governed document frontmatter). Merges all consecutive
     YAML blocks found at the start of the file into a single dictionary.
 
-    Returns parsed dict, or None if no frontmatter found.
+    Returns (merged_dict, block_count), or (None, 0) if no frontmatter found.
     """
     # .ipynb files store frontmatter in the first markdown cell's source.
     if file_path is not None and file_path.suffix == ".ipynb":
         try:
             notebook = json.loads(content)
         except (json.JSONDecodeError, ValueError):
-            return None
+            return None, 0
         cells = notebook.get("cells", [])
         if not cells or cells[0].get("cell_type") != "markdown":
-            return None
+            return None, 0
         source = cells[0].get("source", [])
         content = "".join(source) if isinstance(source, list) else source
 
@@ -1074,7 +1094,6 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
         parts = re.split(r"^\s*---\s*$", content, flags=re.MULTILINE)
         # The first part must be empty for the file to start with a fence.
         if not parts[0].strip():
-            blocks = []
             # Collect the first block
             if len(parts) > 1:
                 blocks.append(parts[1].strip("\n"))
@@ -1085,9 +1104,8 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
             # We only support up to 2 blocks (Jupytext + Project) at the start.
             # Anything after that is treated as body content.
 
-
     if not blocks:
-        return None
+        return None, 0
 
     # Parser Transparency: log discovered blocks for debuggability
     file_id = str(file_path) if file_path else "content"
@@ -1113,7 +1131,7 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> dict | Non
             logger.warning(f"YAML syntax error in block {i} of {file_id}: {e}")
             continue
 
-    return merged_data if has_valid_block else None
+    return (merged_data if has_valid_block else None), len(blocks)
 
 def resolve_type(frontmatter: dict) -> str | None:
     """Read options.type from parsed frontmatter.

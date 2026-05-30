@@ -401,7 +401,7 @@ class TestParseFrontmatter:
     def test_extracts_yaml_from_md(self):
         """Standard markdown with YAML fences → parsed dict."""
         content = "---\ntitle: Test\ndate: 2026-01-01\n---\n\n# Body\n"
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert result["title"] == "Test"
         # yaml.safe_load converts date strings to datetime.date
@@ -410,25 +410,25 @@ class TestParseFrontmatter:
     def test_returns_none_when_no_frontmatter(self):
         """Markdown without --- fences → None."""
         content = "# Just a heading\n\nSome text.\n"
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert result is None
 
     def test_returns_none_for_empty_content(self):
         """Empty string → None."""
-        result = _module.parse_frontmatter("")
+        result, _ = _module.parse_frontmatter("")
         assert result is None
 
     def test_handles_nested_options(self):
         """Frontmatter with options.type → nested dict preserved."""
         content = "---\ntitle: Test\noptions:\n  type: adr\n  birth: 2026-01-01\n---\n\n# Body\n"
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert result["options"]["type"] == "adr"
         assert result["options"]["birth"] == date(2026, 1, 1)
 
     def test_handles_list_fields(self):
         """Tags as list → preserved as list."""
         content = "---\ntitle: Test\ntags: [governance, ci]\n---\n\n# Body\n"
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert result["tags"] == ["governance", "ci"]
 
     def test_ipynb_extracts_from_first_markdown_cell(self):
@@ -453,7 +453,7 @@ class TestParseFrontmatter:
             "nbformat_minor": 5,
         }
         content = json.dumps(notebook)
-        result = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert isinstance(result, dict)
         assert result["title"] == "Notebook Test"
 
@@ -461,7 +461,7 @@ class TestParseFrontmatter:
         """ipynb with no cells → None."""
         notebook = {"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
         content = json.dumps(notebook)
-        result = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert result is None
 
     def test_ipynb_returns_none_when_no_frontmatter(self):
@@ -479,7 +479,7 @@ class TestParseFrontmatter:
             "nbformat_minor": 5,
         }
         content = json.dumps(notebook)
-        result = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert result is None
 
     def test_merges_multiple_frontmatter_blocks(self):
@@ -498,11 +498,32 @@ class TestParseFrontmatter:
             "\n"
             "# Body\n"
         )
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert "jupytext" in result, "Jupytext block missing from merged result"
         assert "title" in result, "Governed block missing from merged result"
         assert result["title"] == "Governed Doc"
+        assert result["options"]["type"] == "guide"
+
+    def test_merges_dual_blocks_with_whitespace_gap(self):
+        """Dual-block frontmatter with a whitespace gap should be merged."""
+        content = (
+            "---\n"
+            "jupytext: {format_name: myst}\n"
+            "---\n"
+            "\n  \n"
+            "---\n"
+            "title: Governed Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        result, _ = _module.parse_frontmatter(content)
+        assert result is not None
+        assert "jupytext" in result
+        assert "title" in result
         assert result["options"]["type"] == "guide"
 
     def test_rejects_governed_field_in_non_governed_block(self, frontmatter_env):
@@ -588,7 +609,7 @@ class TestParseFrontmatter:
             "This should be ignored."
         )
         
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         # Verify the top block was parsed
         assert result["title"] == valid_fm["title"]
@@ -610,7 +631,7 @@ class TestParseFrontmatter:
             "---\n"
         )
         # The current implementation logs an error and returns None if only one block exists and it fails
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert result is None
 
     @pytest.mark.parametrize("separator", [
@@ -636,7 +657,7 @@ class TestParseFrontmatter:
             "\n"
             "# Body\n"
         )
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert "jupytext" in result, f"Failed to merge with separator {repr(sep)}"
         assert "title" in result, f"Failed to merge with separator {repr(sep)}"
@@ -1387,13 +1408,13 @@ class TestParseEdgeCases:
 
     def test_ipynb_invalid_json(self):
         """Broken JSON in .ipynb → None (not an exception)."""
-        result = _module.parse_frontmatter("not json at all", file_path=Path("test.ipynb"))
+        result, _ = _module.parse_frontmatter("not json at all", file_path=Path("test.ipynb"))
         assert result is None
 
     def test_malformed_yaml_returns_none(self):
         """Invalid YAML between --- fences → None."""
         content = "---\n[invalid yaml: {\n---\n\n# Body\n"
-        result = _module.parse_frontmatter(content)
+        result, _ = _module.parse_frontmatter(content)
         assert result is None
 
 
@@ -1779,3 +1800,77 @@ class TestTokenSizeExclusions:
         errors = _module.validate_frontmatter(file_path, frontmatter_env)
         # Should NOT find a token_size error for .ipynb
         assert not any(e.field == "token_size" for e in errors)
+
+class TestFieldAllowList:
+    """Contract: Governed fields must be listed in required or optional for the doc type.
+    
+    If a field exists in the hub registry but is not permitted for the specific 
+    doc_type, it should be rejected as 'invalid_field'.
+    """
+    def test_rejects_governed_field_not_permitted_for_type(self, frontmatter_env):
+        """Field in registry but not in type's allow-list → invalid_field error."""
+        # 'guide' has blocks: ["identity", "discovery", "lifecycle"]
+        # 'id' is governed (in registry) but NOT in those blocks, 
+        # nor in required/optional for 'guide' (see conf.json)
+        fm = _build_valid_frontmatter("guide")
+        fm["options"]["id"] = 26062
+        
+        # We need to use validate_parsed_frontmatter since we have a dict
+        errors = _module.validate_parsed_frontmatter(fm, Path("test.md"), frontmatter_env)
+        
+        invalid_field_errors = [e for e in errors if e.error_type == "invalid_field"]
+        assert len(invalid_field_errors) > 0, "Should have found an invalid_field error for 'id' in 'guide'"
+        assert any(e.field == "id" for e in invalid_field_errors)
+
+# ======================
+# Tests: Dual-Block Enforcement
+# ======================
+
+class TestDualBlockEnforcement:
+    """Contract: Files containing Jupytext metadata MUST use the Dual-Block pattern."""
+
+    def test_rejects_merged_blocks_when_jupytext_present(self, frontmatter_env):
+        """If Jupytext metadata is present, it must be in a separate block from the type."""
+        # Merged block: contains both Jupytext and project metadata in ONE block
+        content = (
+            "---\n"
+            "jupytext: {format_name: myst}\n"
+            "title: Merged Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n# Body\n"
+        )
+        file_path = frontmatter_env / "merged_jupytext.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        
+        has_merged_error = any(
+            e.error_type == "merged_blocks" 
+            for e in errors
+        )
+        assert has_merged_error, "Jupytext metadata merged into governance block should be rejected"
+
+    def test_accepts_single_block_without_jupytext(self, frontmatter_env):
+        """Standard governed files without Jupytext should be fine with a single block."""
+        content = (
+            "---\n"
+            "title: Standard Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n# Body\n"
+        )
+        file_path = frontmatter_env / "standard.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        
+        has_merged_error = any(
+            e.error_type == "merged_blocks" 
+            for e in errors
+        )
+        assert not has_merged_error, "Single block without Jupytext should NOT be flagged as merged"
+
+

@@ -279,7 +279,7 @@ def fix_invalid_status(adr_file: AdrFile) -> bool:
     if not new_status or new_status not in VALID_STATUSES:
         return False
     content = adr_file.path.read_text(encoding="utf-8")
-    fm = check_frontmatter.parse_frontmatter(content)
+    fm, *rest = check_frontmatter.parse_frontmatter(content)
     if fm:
         # Use a regex that captures leading whitespace to preserve indentation
         # This handles both top-level (no indent) and options block (indented)
@@ -355,7 +355,7 @@ def fix_duplicate_sections(adr_files: list[AdrFile]) -> bool:
 def migrate_legacy_adr(filepath: Path) -> bool:
     """Add YAML frontmatter to legacy ADR file without it."""
     content = filepath.read_text(encoding="utf-8")
-    if check_frontmatter.parse_frontmatter(content) is not None:
+    if check_frontmatter.parse_frontmatter(content)[0] is not None:
         return False
     header_match = ADR_HEADER_PATTERN.search(content)
     if not header_match: return False

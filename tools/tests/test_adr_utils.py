@@ -26,8 +26,8 @@ class TestStatusExtraction:
         """Should prefer YAML frontmatter for status extraction."""
         def mock_parse(content):
             if "---" in content:
-                return {"status": "accepted"}
-            return None
+                return {"status": "accepted"}, 1, []
+            return None, 0, []
         monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", mock_parse)
 
         content = "---\nstatus: accepted\n---\n# ADR-1: Test"
@@ -35,8 +35,8 @@ class TestStatusExtraction:
 
     def test_extract_status_from_body(self, tmp_path, monkeypatch):
         """Should fall back to body status if frontmatter is absent."""
-        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: None)
-
+        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: (None, 0, []))
+    
         content = "# ADR-1: Test\n## Status\n\nproposed"
         assert adr_utils.extract_status(content) == "proposed"
 
@@ -64,7 +64,7 @@ class TestAdrFileDiscovery:
         template = tmp_path / "adr_template.md"
         template.write_text("# ADR-0: Template\n## Status\n\nproposed", encoding="utf-8")
 
-        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: {"title": "Test"})
+        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: ({"title": "Test"}, 1, []))
 
         files = adr_utils.get_adr_files()
 
@@ -159,7 +159,7 @@ class TestStagedAdrDiscovery:
         monkeypatch.setattr("subprocess.run", mock_run)
         monkeypatch.setattr(adr_utils, "ADR_DIR", adr_dir)
         monkeypatch.setattr(adr_utils, "ROOT", tmp_path)
-        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: {"title": "Test"})
+        monkeypatch.setattr("tools.scripts.check_frontmatter.parse_frontmatter", lambda c: ({"title": "Test"}, 1, []))
 
         files = adr_utils.get_staged_adr_files()
 

@@ -142,6 +142,7 @@ class FrontmatterError:
         "invalid_value"      — field value not in allowed set, e.g. unknown tag (blocking)
         "unknown_type"       — options.type not in conf.json types registry (blocking)
         "missing_type"       — frontmatter present but options.type absent (blocking)
+        "broken_dual_block"     — missing separator fence between jupytext and project blocks (blocking)
         "invalid_field"      — field present but not defined in hub registry (blocking)
         "invalid_namespace"  — non-myst_native field at top level instead of options.* (blocking)
 
@@ -272,7 +273,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         content = file_path.read_text(encoding="utf-8")
-        frontmatter, block_count = parse_frontmatter(content, file_path=file_path)
+        frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
 
         # Files without frontmatter are checked against governed extensions.
         # If a file has a governed extension but no frontmatter, it's a blocking error.
@@ -290,6 +291,19 @@ def main(argv: list[str] | None = None) -> int:
                 )
             continue
 
+        # Structural anomalies detected during parsing (e.g. broken Dual-Block pattern)
+        for anomaly in anomalies:
+            if anomaly == "broken_dual_block":
+                all_errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="broken_dual_block",
+                        field=None,
+                        message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
+                        config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                    )
+                )
+
         # Files with frontmatter but no options.type: this is now a blocking error.
         # All governed files MUST declare their type to be subject to validation.
         # Without a type, the correct spoke config cannot be loaded and type-specific
@@ -297,13 +311,14 @@ def main(argv: list[str] | None = None) -> int:
         doc_type = resolve_type(frontmatter)
         if doc_type is None:
             logger.debug(f"Missing type for {file_path}: parsed frontmatter was {frontmatter}")
+            type_field = _get_type_field_name()
             all_errors.append(
                 FrontmatterError(
                     file_path=file_path,
                     error_type="missing_type",
-                    field="options.type",
-                    message="frontmatter present but missing required 'options.type' — type determines which validation rules apply and is required for governance. To fix: add 'options:\\n  type: <type>' to the frontmatter. If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
-                    config_source=f"{HUB_CONFIG_REL} → field_registry.type",
+                    field=f"options.{type_field}",
+                    message=f"frontmatter present but missing required 'options.{type_field}' — type determines which validation rules apply and is required for governance. To fix: add 'options:\\n  {type_field}: <type>' to the frontmatter. If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
+                    config_source=f"{HUB_CONFIG_REL} → field_registry.{type_field}",
                 )
             )
             continue
@@ -380,7 +395,7 @@ def validate_frontmatter(
     Returns empty list if valid or if file is not governed.
     """
     content = file_path.read_text(encoding="utf-8")
-    frontmatter, block_count = parse_frontmatter(content, file_path=file_path)
+    frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
     if frontmatter is None:
         # If file has a governed extension but no frontmatter, it's a blocking error.
         governed_exts = HUB_CONFIG.get("governed_extensions", [])
@@ -395,7 +410,23 @@ def validate_frontmatter(
                 )
             ]
         return []
-    return validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content, block_count=block_count)
+
+    errors = []
+    # Add structural anomalies from parsing
+    for anomaly in anomalies:
+        if anomaly == "broken_dual_block":
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="broken_dual_block",
+                    field=None,
+                    message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
+                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                )
+            )
+
+    errors.extend(validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content, block_count=block_count))
+    return errors
 
 
 def validate_parsed_frontmatter(
@@ -434,8 +465,8 @@ def validate_parsed_frontmatter(
             )
         )
 
-    # Step 1: Determine document type from options.type field.
-    # Files without options.type are not governed — this is now a blocking error.
+    # Step 1: Determine document type from the configured type field.
+    # Files without this field are not governed — this is now a blocking error.
     # Every file with frontmatter MUST declare its type so that:
     #   1. The correct spoke config (.vadocs/types/<type>.conf.json) is loaded
     #   2. Type-specific required fields, statuses, and rules are enforced
@@ -443,25 +474,27 @@ def validate_parsed_frontmatter(
     # Without a type, schema validation cannot proceed meaningfully.
     doc_type = resolve_type(frontmatter)
     if doc_type is None:
+        type_field = _get_type_field_name()
         errors.append(
             FrontmatterError(
                 file_path=file_path,
                 error_type="missing_type",
-                field="options.type",
-                message=f"frontmatter present but missing required 'options.type' — type determines which validation rules apply. To fix: add 'options:\\n  type: <type>' to the frontmatter (valid types: {', '.join(sorted(VALID_TYPES))}). If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
-                config_source=".vadocs/conf.json → field_registry.type",
+                field=f"options.{type_field}",
+                message=f"frontmatter present but missing required 'options.{type_field}' — type determines which validation rules apply. To fix: add 'options:\\n  {type_field}: <type>' to the frontmatter (valid types: {', '.join(sorted(VALID_TYPES))}). If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
+                config_source=f"{HUB_CONFIG_REL} → field_registry.{type_field}",
             )
         )
         return errors
 
     # Step 2: Reject unknown types early — all 10 valid types are in conf.json.
     if doc_type not in VALID_TYPES:
+        type_field = _get_type_field_name()
         return [
             FrontmatterError(
                 file_path=file_path,
                 error_type="unknown_type",
-                field="options.type",
-                message=f"unknown type '{doc_type}', expected one of {sorted(VALID_TYPES)}. To fix: check for typos in 'options.type'",
+                field=f"options.{type_field}",
+                message=f"unknown type '{doc_type}', expected one of {sorted(VALID_TYPES)}. To fix: check for typos in 'options.{type_field}'",
                 config_source=f"{HUB_CONFIG_REL} → types",
             )
         ]
@@ -1065,28 +1098,29 @@ def _check_options_namespace(
 # ======================
 
 
-def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict | None, int]:
+def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict | None, int, list[str]]:
     """Extract YAML frontmatter from markdown or notebook content.
 
     Supports multiple frontmatter blocks at the start of the file (e.g. Jupytext
     metadata followed by governed document frontmatter). Merges all consecutive
     YAML blocks found at the start of the file into a single dictionary.
 
-    Returns (merged_dict, block_count), or (None, 0) if no frontmatter found.
+    Returns (merged_dict, block_count, anomalies), or (None, 0, []) if no frontmatter found.
     """
     # .ipynb files store frontmatter in the first markdown cell's source.
     if file_path is not None and file_path.suffix == ".ipynb":
         try:
             notebook = json.loads(content)
         except (json.JSONDecodeError, ValueError):
-            return None, 0
+            return None, 0, []
         cells = notebook.get("cells", [])
         if not cells or cells[0].get("cell_type") != "markdown":
-            return None, 0
+            return None, 0, []
         source = cells[0].get("source", [])
         content = "".join(source) if isinstance(source, list) else source
 
     blocks = []
+    anomalies = []
     current_pos = 0
     # Use split to find all blocks between fences. Fences must be on their own line.
     # If the file starts with a fence, parts[0] is empty, and parts[1, 3, ...] are the blocks.
@@ -1096,16 +1130,36 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
         if not parts[0].strip():
             # Collect the first block
             if len(parts) > 1:
-                blocks.append(parts[1].strip("\n"))
-                # Collect the second block ONLY if the gap between first and second is empty
-                # (Dual-Block Pattern: Block 1 -> fence -> Block 2)
-                if len(parts) > 3 and not parts[2].strip():
-                    blocks.append(parts[3].strip("\n"))
+                first_block_text = parts[1].strip("\n")
+                blocks.append(first_block_text)
+
+                # Determine if this is a Jupytext-only block (expects a second governance block)
+                # or a full governance block (single-block file).
+                try:
+                    first_block_data = yaml.safe_load(first_block_text)
+                    is_jupytext_only = (
+                        isinstance(first_block_data, dict) and
+                        "jupytext" in first_block_data and
+                        "title" not in first_block_data and
+                        "options" not in first_block_data
+                    )
+                except yaml.YAMLError:
+                    is_jupytext_only = False
+
+                if is_jupytext_only:
+                    # Collect the second block ONLY if the gap between first and second is empty
+                    if len(parts) > 3 and not parts[2].strip():
+                        blocks.append(parts[3].strip("\n"))
+                    elif len(parts) > 2 and parts[2].strip():
+                        # BROKEN DUAL-BLOCK: Jupytext block found, but metadata exists
+                        # without an opening fence.
+                        blocks.append(parts[2].strip("\n"))
+                        anomalies.append("broken_dual_block")
             # We only support up to 2 blocks (Jupytext + Project) at the start.
             # Anything after that is treated as body content.
 
     if not blocks:
-        return None, 0
+        return None, 0, []
 
     # Parser Transparency: log discovered blocks for debuggability
     file_id = str(file_path) if file_path else "content"
@@ -1131,21 +1185,55 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
             logger.warning(f"YAML syntax error in block {i} of {file_id}: {e}")
             continue
 
-    return (merged_data if has_valid_block else None), len(blocks)
+    return (merged_data if has_valid_block else None), len(blocks), anomalies
+
+def _get_type_field_name() -> str:
+    """Resolve the field name used for document type from the hub config.
+
+    CONTRACT:
+    1. The validator identifies the document type via a field in the 'options' block.
+    2. To avoid hardcoding 'type', this function looks at HUB_CONFIG['blocks']['identity'].
+    3. It returns the first field in that list that is NOT 'title' or 'authors'.
+    4. ASSUMPTION: 'title' and 'authors' are stable identity fields; any other
+       identity field is the document type discriminator.
+    5. FALLBACK: Defaults to 'type' if the identity block is empty or only contains
+       stable fields.
+
+    Returns:
+        The resolved field name (e.g., 'type' or 'doc_type').
+    """
+    identity_fields = HUB_CONFIG.get("blocks", {}).get("identity", [])
+    for field in identity_fields:
+        if field not in {"title", "authors"}:
+            return field
+    return "type"
 
 def resolve_type(frontmatter: dict) -> str | None:
-    """Read options.type from parsed frontmatter.
+    """Read the document type field from parsed frontmatter dynamically.
 
-    Returns type string, or None if not present.
+    CONTRACT:
+    1. This is the primary 'switch' for Hub-and-Spoke validation.
+    2. The field name is resolved dynamically via _get_type_field_name() to ensure
+       consistency with HUB_CONFIG.
+    3. If the resolved field is missing from 'options', returns None.
+    4. A return value of None marks the file as 'ungoverned' or 'missing type',
+       which is a blocking error for all files with frontmatter.
+
+    Args:
+        frontmatter: The parsed YAML dictionary.
+
+    Returns:
+        The type string (e.g., 'adr', 'guide') or None if not found.
     """
     logger.debug(f"Resolving type from frontmatter: {frontmatter}")
+    type_field = _get_type_field_name()
     options = frontmatter.get("options")
     if not isinstance(options, dict):
         logger.debug("Field 'options' is missing or not a dictionary")
         return None
-    doc_type = options.get("type")
+    doc_type = options.get(type_field)
     if doc_type is None:
-        logger.debug("Field 'options.type' is missing")
+        logger.debug(f"Field 'options.{type_field}' is missing")
     return doc_type
 
 

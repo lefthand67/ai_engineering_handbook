@@ -1224,7 +1224,7 @@ class TestTitleMismatchHandling:
         assert result is True
         # Verify the file was updated by parsing the frontmatter
         content = adr_file.path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert frontmatter.get("title") == "Header Title"
 
@@ -1254,7 +1254,7 @@ class TestTitleMismatchHandling:
         assert result is False
         # Verify the file was NOT updated by parsing the frontmatter
         content = adr_file.path.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert frontmatter.get("title") == "Wrong Title"
 
@@ -1714,7 +1714,7 @@ class TestMigrateLegacyAdr:
 
         assert result is True
         content = filepath.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert "title" in frontmatter
         assert "status" in frontmatter
@@ -1756,7 +1756,7 @@ class TestMigrateLegacyAdr:
 
         assert result is True
         content = filepath.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert frontmatter.get("status") == "accepted"
 
@@ -1801,7 +1801,7 @@ class TestMigrateLegacyAdr:
 
         assert result is True
         content = filepath.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert frontmatter.get("status") == "proposed"  # Corrected
 
@@ -1824,7 +1824,7 @@ class TestMigrateLegacyAdr:
 
         assert result is True
         content = filepath.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(content)
+        frontmatter, *rest = parse_frontmatter(content)
         assert frontmatter is not None
         assert frontmatter.get("status") == DEFAULT_STATUS
 
@@ -1849,7 +1849,7 @@ Some context.
 
         assert result is True
         new_content = filepath.read_text(encoding="utf-8")
-        frontmatter = parse_frontmatter(new_content)
+        frontmatter, *rest = parse_frontmatter(new_content)
         assert frontmatter is not None
         assert frontmatter.get("status") == DEFAULT_STATUS
 
@@ -2038,7 +2038,7 @@ class TestFixModeEdgeCases:
         # Semantic check: Verify titles are now synchronized
         content = filepath.read_text(encoding="utf-8")
         from tools.scripts.check_frontmatter import parse_frontmatter
-        fm = parse_frontmatter(content)
+        fm, *rest = parse_frontmatter(content)
         assert fm is not None
         assert fm.get("title") == "Header Title"
 

@@ -401,7 +401,7 @@ class TestParseFrontmatter:
     def test_extracts_yaml_from_md(self):
         """Standard markdown with YAML fences → parsed dict."""
         content = "---\ntitle: Test\ndate: 2026-01-01\n---\n\n# Body\n"
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert result["title"] == "Test"
         # yaml.safe_load converts date strings to datetime.date
@@ -410,25 +410,25 @@ class TestParseFrontmatter:
     def test_returns_none_when_no_frontmatter(self):
         """Markdown without --- fences → None."""
         content = "# Just a heading\n\nSome text.\n"
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result is None
 
     def test_returns_none_for_empty_content(self):
         """Empty string → None."""
-        result, _ = _module.parse_frontmatter("")
+        result, *rest = _module.parse_frontmatter("")
         assert result is None
 
     def test_handles_nested_options(self):
         """Frontmatter with options.type → nested dict preserved."""
         content = "---\ntitle: Test\noptions:\n  type: adr\n  birth: 2026-01-01\n---\n\n# Body\n"
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result["options"]["type"] == "adr"
         assert result["options"]["birth"] == date(2026, 1, 1)
 
     def test_handles_list_fields(self):
         """Tags as list → preserved as list."""
         content = "---\ntitle: Test\ntags: [governance, ci]\n---\n\n# Body\n"
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result["tags"] == ["governance", "ci"]
 
     def test_ipynb_extracts_from_first_markdown_cell(self):
@@ -453,7 +453,7 @@ class TestParseFrontmatter:
             "nbformat_minor": 5,
         }
         content = json.dumps(notebook)
-        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, *rest = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert isinstance(result, dict)
         assert result["title"] == "Notebook Test"
 
@@ -461,7 +461,7 @@ class TestParseFrontmatter:
         """ipynb with no cells → None."""
         notebook = {"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}
         content = json.dumps(notebook)
-        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, *rest = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert result is None
 
     def test_ipynb_returns_none_when_no_frontmatter(self):
@@ -479,7 +479,7 @@ class TestParseFrontmatter:
             "nbformat_minor": 5,
         }
         content = json.dumps(notebook)
-        result, _ = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
+        result, *rest = _module.parse_frontmatter(content, file_path=Path("test.ipynb"))
         assert result is None
 
     def test_merges_multiple_frontmatter_blocks(self):
@@ -498,7 +498,7 @@ class TestParseFrontmatter:
             "\n"
             "# Body\n"
         )
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert "jupytext" in result, "Jupytext block missing from merged result"
         assert "title" in result, "Governed block missing from merged result"
@@ -520,7 +520,7 @@ class TestParseFrontmatter:
             "\n"
             "# Body\n"
         )
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result is not None
         assert "jupytext" in result
         assert "title" in result
@@ -585,6 +585,48 @@ class TestParseFrontmatter:
         )
         assert has_placement_error, "Duplicate governed field should be rejected as misplaced"
 
+class TestBrokenDualBlock:
+    """Contract: Detect missing separator fence in Dual-Block pattern.
+
+    If a file has Jupytext metadata but the project metadata block starts
+    without its own opening '---' fence, it must be reported as a
+    'broken_dual_block' error, not a 'missing_type' error.
+    """
+
+    def test_detects_missing_separator_fence(self, frontmatter_env):
+        """Missing fence between blocks → broken_dual_block error."""
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "---\n"
+            "\n"
+            "title: Broken Dual Block\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "broken_dual.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        # It should explicitly identify the broken dual block
+        has_structural_error = any(
+            e.error_type == "broken_dual_block"
+            for e in errors
+        )
+        assert has_structural_error, "Should report 'broken_dual_block' when separator fence is missing"
+
+        # It should NOT report 'missing_type' as the primary reason
+        has_missing_type = any(
+            e.error_type == "missing_type"
+            for e in errors
+        )
+        assert not has_missing_type, "Should not report 'missing_type' when the block is structurally broken"
+
     def test_ignores_yaml_blocks_in_body(self, frontmatter_env):
         """YAML blocks occurring in the body of the document must be ignored.
         
@@ -609,7 +651,7 @@ class TestParseFrontmatter:
             "This should be ignored."
         )
         
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         # Verify the top block was parsed
         assert result["title"] == valid_fm["title"]
@@ -631,7 +673,7 @@ class TestParseFrontmatter:
             "---\n"
         )
         # The current implementation logs an error and returns None if only one block exists and it fails
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result is None
 
     @pytest.mark.parametrize("separator", [
@@ -657,7 +699,7 @@ class TestParseFrontmatter:
             "\n"
             "# Body\n"
         )
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert isinstance(result, dict)
         assert "jupytext" in result, f"Failed to merge with separator {repr(sep)}"
         assert "title" in result, f"Failed to merge with separator {repr(sep)}"
@@ -690,6 +732,29 @@ class TestResolveType:
         """options exists but no type key → None."""
         fm = {"title": "Test", "options": {"birth": "2026-01-01"}}
         assert _module.resolve_type(fm) is None
+
+
+class TestResolveTypeDynamic:
+    """Contract: resolve_type dynamically resolves field name from hub config.
+
+    If HUB_CONFIG['blocks']['identity'] defines a different field for type,
+    resolve_type must use that field.
+    """
+
+    def test_resolves_custom_type_field(self, frontmatter_env, monkeypatch):
+        """Hub config defines 'doc_type' as type field → resolve_type uses it."""
+        # Setup custom hub config
+        custom_hub = _module.HUB_CONFIG.copy()
+        custom_hub["blocks"] = {"identity": ["title", "doc_type", "authors"]}
+        monkeypatch.setattr(_module, "HUB_CONFIG", custom_hub)
+
+        fm = {"options": {"doc_type": "guide"}}
+        assert _module.resolve_type(fm) == "guide"
+
+        # Should return None if the custom field is missing, even if 'type' is present
+        fm_wrong = {"options": {"type": "guide"}}
+        assert _module.resolve_type(fm_wrong) is None
+
 
     def test_returns_none_for_empty_frontmatter(self):
         """Empty dict → None."""
@@ -1408,13 +1473,13 @@ class TestParseEdgeCases:
 
     def test_ipynb_invalid_json(self):
         """Broken JSON in .ipynb → None (not an exception)."""
-        result, _ = _module.parse_frontmatter("not json at all", file_path=Path("test.ipynb"))
+        result, *rest = _module.parse_frontmatter("not json at all", file_path=Path("test.ipynb"))
         assert result is None
 
     def test_malformed_yaml_returns_none(self):
         """Invalid YAML between --- fences → None."""
         content = "---\n[invalid yaml: {\n---\n\n# Body\n"
-        result, _ = _module.parse_frontmatter(content)
+        result, *rest = _module.parse_frontmatter(content)
         assert result is None
 
 

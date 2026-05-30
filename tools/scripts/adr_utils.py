@@ -178,7 +178,7 @@ def extract_body_status(content: str) -> str | None:
 def extract_status(content: str) -> str | None:
     """Extract status from ADR content (frontmatter priority)."""
     from tools.scripts import check_frontmatter
-    frontmatter = check_frontmatter.parse_frontmatter(content)
+    frontmatter, *rest = check_frontmatter.parse_frontmatter(content)
     if frontmatter:
         # Check top-level first, then check under options
         status = frontmatter.get("status") or frontmatter.get("options", {}).get("status")
@@ -200,7 +200,7 @@ def parse_adr_file(filepath: Path) -> AdrFile | None:
         title = match.group(2).strip()
         effective_status = extract_status(content)
         body_status = extract_body_status(content)
-        frontmatter = check_frontmatter.parse_frontmatter(content)
+        frontmatter, *rest = check_frontmatter.parse_frontmatter(content)
         frontmatter_title = frontmatter.get("title") if frontmatter else None
         return AdrFile(
             path=filepath,

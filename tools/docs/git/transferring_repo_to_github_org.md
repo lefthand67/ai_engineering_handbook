@@ -1,3 +1,21 @@
+---
+title: Transferring a Repository to a GitHub Organization
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: A step-by-step guide for moving any repository from a personal GitHub account to a GitHub organization.
+tags:
+  - git
+  - workflow
+---
+---
+options:
+  type: guide
+  version: 1.0.0
+  birth: '2026-05-03'
+  token_size: 517
+---
 # Transferring a Repository to a GitHub Organization
 
 A step-by-step guide for moving any repository from a personal GitHub account to a GitHub organization.

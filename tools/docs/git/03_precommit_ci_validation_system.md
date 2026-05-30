@@ -4,22 +4,27 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
-kernelspec:
-  display_name: Bash
-  language: bash
-  name: bash
+    jupytext_version: 1.19.1
 ---
 
 ---
-title: "Pre-commit Hooks and CI Validation System"
-author: rudakow.wadim@gmail.com
-date: 2026-03-01
+title: Pre-commit Hooks and CI Validation System
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Detailed overview of the two-layer validation architecture combining local pre-commit hooks and remote GitHub Actions CI."
+tags:
+  - git
+  - ci
+  - testing
+  - workflow
 options:
+  type: guide
   version: 1.2.0
-  birth: 2026-01-22
+  birth: '2026-01-22'
+  token_size: 4030
 ---
-
 # Pre-commit Hooks and CI Validation System
 
 +++
@@ -367,10 +372,12 @@ json-validation:
 +++
 
 ```mermaid
----
+
 config:
   layout: dagre
   theme: redux
+options:
+  type: script_instruction
 ---
 flowchart TB
  subgraph Local["Local Development"]

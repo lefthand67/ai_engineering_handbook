@@ -4,23 +4,28 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
-kernelspec:
-  name: bash
-  display_name: Bash
-  language: bash
+    jupytext_version: 1.19.1
 ---
 
 ---
-title: "Pre-Commit Hooks and Staging: Instruction for Developers"
-author: rudakow.wadim@gmail.com
-date: 2026-03-03
+title: "Pre-commit Hooks and Staging: Instruction for Developers"
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Instructions for developers on how to correctly use pre-commit hooks and git staging to preserve user intent."
+tags:
+  - git
+  - ci
+  - development
+  - workflow
 options:
-  version: 1.3.0
-  birth: 2026-01-04
+  type: guide
+  version: "1.3.0"
+  birth: "2026-01-04"
+  token_size: 1515
 ---
-
-# Pre-Commit Hooks and Staging: Instruction for Developers
+# Pre-commit Hooks and Staging: Instruction for Developers
 
 +++
 
@@ -74,8 +79,8 @@ Git’s staging area reflects the developer’s intentional choice about what be
 
 ---
 
-> **Golden Rule**:  
-> A `pre-commit` hook may *refine* what’s staged—but never *expand* it.  
+> **Golden Rule**:
+> A `pre-commit` hook may *refine* what’s staged—but never *expand* it.
 > Preserve user agency. Respect the index.
 
 +++

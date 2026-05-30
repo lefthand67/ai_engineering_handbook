@@ -1,13 +1,12 @@
----
+
 title: AI Engineering Handbook
 author: rudakow.wadim@gmail.com
 date: 2026-04-13
 options:
-  version: 3.0.0
+  version: "3.0.0"
   birth: 2025-10-19
-  token_size: 3364
+  token_size: 3371
 ---
-
 # AI Engineering Handbook
 
 

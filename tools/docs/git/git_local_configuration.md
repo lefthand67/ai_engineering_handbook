@@ -1,3 +1,21 @@
+---
+title: Git Local Configuration
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: Local environment setup for Git and SSH authentication, specifically for Fedora Linux.
+tags:
+  - git
+  - development
+---
+---
+options:
+  type: guide
+  version: 1.0.0
+  birth: '2026-05-03'
+  token_size: 519
+---
 # Git Local Configuration
 
 This document describes the local environment setup for Git and SSH authentication within this project, specifically for Fedora Linux.

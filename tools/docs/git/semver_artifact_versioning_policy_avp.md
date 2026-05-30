@@ -4,28 +4,30 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
 ---
 
-# SemVer: Artifact Versioning Policy (AVP)
-
-+++
-
 ---
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
-Creation Date: 2025-10-06    
-Modification Date: 2026-01-11
-
+title: 'SemVer: Artifact Versioning Policy (AVP)'
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Mandatory protocol for versioning system artifacts using Semantic Versioning to ensure environment parity.
+tags:
+  - git
+  - governance
+  - development
+options:
+  type: guide
+  token_size: 1146
+  version: 0.1.1
+  birth: '2025-10-06'
 ---
-
-+++
-
 **Standardized Versioning for High-Integrity Systems**
 
 This handbook defines the mandatory protocol for versioning any system artifact—including code, configuration, prompts, and data schemas. The goal is to ensure **Environment Parity** and **Failure Isolation** by treating every component as an immutable, traceable entity.

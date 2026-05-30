@@ -251,6 +251,7 @@ Package manager: `uv` (never use pip directly)
 
 **Commit Conventions (ADR-26024):**
 - Use conventional commits with prefixes from `pyproject.toml [tool.commit-convention]` `valid-types`
+- **Architectural Tags (ArchTag):** For `refactor:` and `perf:` commits, the first line of the commit body MUST be `ArchTag:TAG-NAME` (e.g., `ArchTag:REFACTOR-MIGRATION`), sourced from `pyproject.toml` valid values.
 - `pr:` prefix is for promotional/announcement posts
 - There is no `revert:` type — use `docs:`, `chore:`, or `fix:` depending on what the revert corrects
 - Keep commit subjects concise (50 chars max), focusing on the "what"

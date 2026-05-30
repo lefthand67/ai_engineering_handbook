@@ -69,11 +69,11 @@ def main() -> int:
 
         # Both staged - check for unstaged changes
         if has_unstaged_changes(file_path):
-            print(f"FAIL: {file_path} has unstaged changes")
+            print(f"FAIL: {file_path} has unstaged changes. If this occurred during a commit, it likely means the file was updated by jupytext-sync. Please run 'git add {file_path}' to stage the changes.")
             failed = True
 
         if has_unstaged_changes(pair_path):
-            print(f"FAIL: {pair_path} has unstaged changes")
+            print(f"FAIL: {pair_path} has unstaged changes. If this occurred during a commit, it likely means the file was updated by jupytext-sync. Please run 'git add {pair_path}' to stage the changes.")
             failed = True
 
     return 1 if failed else 0

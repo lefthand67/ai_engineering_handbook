@@ -359,7 +359,7 @@ class TestVerifyPairUnstagedChanges:
 
     @patch("tools.scripts.jupytext_verify_pair.subprocess.run")
     def test_both_staged_md_has_unstaged_fails(self, mock_run, monkeypatch, tmp_path, capsys):
-        """Both staged but md has unstaged changes should fail."""
+        """Both staged but md has unstaged changes should fail with a descriptive message."""
         md_file = tmp_path / "test.md"
         md_file.touch()
         ipynb_file = tmp_path / "test.ipynb"
@@ -388,12 +388,12 @@ class TestVerifyPairUnstagedChanges:
 
         assert result == 1
         captured = capsys.readouterr()
-        assert "FAIL:" in captured.out
-        assert "unstaged changes" in captured.out
+        expected_msg = f"FAIL: {md_file} has unstaged changes. If this occurred during a commit, it likely means the file was updated by jupytext-sync. Please run 'git add {md_file}' to stage the changes."
+        assert expected_msg in captured.out
 
     @patch("tools.scripts.jupytext_verify_pair.subprocess.run")
     def test_both_staged_ipynb_has_unstaged_fails(self, mock_run, monkeypatch, tmp_path, capsys):
-        """Both staged but ipynb has unstaged changes should fail."""
+        """Both staged but ipynb has unstaged changes should fail with a descriptive message."""
         md_file = tmp_path / "test.md"
         md_file.touch()
         ipynb_file = tmp_path / "test.ipynb"
@@ -422,8 +422,8 @@ class TestVerifyPairUnstagedChanges:
 
         assert result == 1
         captured = capsys.readouterr()
-        assert "FAIL:" in captured.out
-        assert "unstaged changes" in captured.out
+        expected_msg = f"FAIL: {ipynb_file} has unstaged changes. If this occurred during a commit, it likely means the file was updated by jupytext-sync. Please run 'git add {ipynb_file}' to stage the changes."
+        assert expected_msg in captured.out
 
 
 class TestVerifyPairDuplicateHandling:
@@ -504,6 +504,57 @@ class TestVerifyPairMixedScenarios:
         assert result == 1
         captured = capsys.readouterr()
         assert "FAIL:" in captured.out
+
+class TestVerifyPairAdversarial:
+    """Adversarial tests for jupytext_verify_pair.py."""
+
+    @patch("tools.scripts.jupytext_verify_pair.subprocess.run")
+    def test_sync_pair_failure_during_verification(self, mock_run, monkeypatch, tmp_path, capsys):
+        """Verify that if sync_pair fails during the 'one staged, other not' check, it's handled gracefully."""
+        md_file = tmp_path / "test.md"
+        md_file.touch()
+        ipynb_file = tmp_path / "test.ipynb"
+        ipynb_file.touch()
+
+        def mock_git_response(cmd, **kwargs):
+            if "ls-files" in cmd:
+                return MagicMock(returncode=0)
+            if "diff" in cmd and "--cached" in cmd:
+                if str(md_file) in cmd:
+                    return MagicMock(returncode=0, stdout=f"{md_file}\n")
+                return MagicMock(returncode=0, stdout="")
+            if "jupytext" in cmd:
+                return MagicMock(returncode=1, stdout="", stderr="Critical Jupytext Error\n")
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = mock_git_response
+        monkeypatch.setattr("sys.argv", ["jupytext_verify_pair.py", str(md_file)])
+
+        result = main()
+        assert result == 1
+        captured = capsys.readouterr()
+        assert f"FAIL: {md_file} is staged but {ipynb_file} is not" in captured.out
+        assert f"FAIL: {md_file} cannot be synced." in captured.out
+        assert "Critical Jupytext Error" in captured.out
+
+    @patch("tools.scripts.jupytext_verify_pair.subprocess.run")
+    def test_git_diff_fails_unexpectedly(self, mock_run, monkeypatch, tmp_path):
+        """Verify behavior when git diff returns an unexpected error code."""
+        md_file = tmp_path / "test.md"
+        md_file.touch()
+        ipynb_file = tmp_path / "test.ipynb"
+        ipynb_file.touch()
+
+        def mock_git_response(cmd, **kwargs):
+            if "diff" in cmd and "--exit-code" in cmd:
+                return MagicMock(returncode=128, stderr="fatal: not a git repository")
+            return MagicMock(returncode=0)
+
+        mock_run.side_effect = mock_git_response
+        monkeypatch.setattr("sys.argv", ["jupytext_verify_pair.py", str(md_file)])
+        
+        result = main()
+        assert result == 1
 
 def test_main_entry_point():
     # Cover the __main__ block

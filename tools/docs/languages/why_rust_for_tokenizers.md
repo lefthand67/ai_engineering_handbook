@@ -4,23 +4,33 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
 ---
 
+---
+title: Why Rust? The Smart Choice Behind Hugging Face’s Tokenizers
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Exploration of why Rust is the ideal choice for high-performance tokenizers,
+  emphasizing memory safety and speed.
+tags:
+- architecture
+- development
+- security
+options:
+  type: guide
+  version: 0.1.1
+  birth: '2025-10-30'
+  token_size: 1958
+---
 # Why Rust? The Smart Choice Behind Hugging Face’s Tokenizers
 
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
-Birth: 2025-10-30  
-Last Modified: 2025-12-31
-
----
 
 > **Written for AI engineers who care not just about models but the robust, fast systems that power them.**
 

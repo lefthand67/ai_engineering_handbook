@@ -4,24 +4,30 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
 ---
 
-# The Python 3.14 Parallelism Game Changer: What It Means for AI Engineers
-
 ---
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
-Birth: 2025-10-31  
-Last Modified: 2025-12-31
-
+title: 'The Python 3.14 Parallelism Game Changer: What It Means for AI Engineers'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Analysis of Python 3.14's free-threaded mode and subinterpreters, and
+  their impact on AI engineering stacks.
+tags:
+- architecture
+- development
+options:
+  type: guide
+  version: 0.1.1
+  birth: '2025-10-31'
+  token_size: 1509
 ---
-
 Python 3.14's new parallelism features mark the most significant advance in the language’s runtime architecture in decades. For AI engineers, researchers, and teams building high-performance model pipelines, this change not only unlocks new capabilities but also redefines the strategic roles of Python, Rust, and C++ in deep learning systems.
 
 ## The Breakthrough: Free-Threaded Python & Subinterpreter Parallelism

@@ -4,24 +4,30 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.18.1
+    jupytext_version: 1.19.1
 kernelspec:
   name: python3
   display_name: Python 3 (ipykernel)
   language: python
 ---
 
-# Right Tool for the Right Layer: Rust, C++, and Python in Modern AI Stack
-
 ---
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.1.1  
-Birth: 2025-10-30  
-Last Modified: 2025-12-31
-
+title: 'Right Tool for the Right Layer: Rust, C++, and Python in Modern AI Stack'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-02'
+description: Engineering rationale for the polyglot architecture of modern AI stacks,
+  leveraging Python, Rust, and C++.
+tags:
+- architecture
+- development
+options:
+  type: guide
+  version: 0.1.1
+  birth: '2025-10-30'
+  token_size: 2493
 ---
-
 When you call `model.generate()` in Hugging Face Transformers, it feels like magic. But under the hood, your request flows through a **carefully layered stack** — each layer built with a different programming language, chosen not by trend, but by **purpose**.
 
 You’ll find:

@@ -349,9 +349,9 @@ The type → CHANGELOG section mapping (e.g., `feat:` → "New Features") and se
 :::{seealso}
 > {term}`ADR-26024`: Structured Commit Bodies for Automated CHANGELOG Generation
 >
-> Script documentation:
-> - [validate_commit_msg.py](/tools/docs/scripts_instructions/validate_commit_msg_py_script.ipynb) — commit-msg hook (ingredients validation)
-> - [generate_changelog.py](/tools/docs/scripts_instructions/generate_changelog_py_script.ipynb) — release-time CHANGELOG generation
+> Sourcing:
+> - [validate_commit_msg.py](/tools/scripts/validate_commit_msg.py) — commit-msg hook (ingredients validation)
+> - [generate_changelog.py](/tools/scripts/generate_changelog.py) — release-time CHANGELOG generation
 :::
 
 +++

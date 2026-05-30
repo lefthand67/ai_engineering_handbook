@@ -6,7 +6,7 @@ tags:
 - governance
 - development
 options:
-  token_size: 1151
+  token_size: 1120
   id: 26011
   status: superseded
   superseded_by: ADR-26045
@@ -82,7 +82,6 @@ We will enforce the **Script Suite** as a mandatory unit of development. A "Suit
 
 * {term}`ADR-26001`: Use of Python and OOP for Git Hook Scripts
 * {term}`ADR-26002`: Adoption of the Pre-commit Framework
-* [tools/docs/scripts_instructions/README.ipynb](/tools/docs/scripts_instructions/README.ipynb): Section on "Script and its Suite"
 
 ## Participants
 

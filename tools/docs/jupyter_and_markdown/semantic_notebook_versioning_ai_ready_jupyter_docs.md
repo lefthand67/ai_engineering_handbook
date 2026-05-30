@@ -1,31 +1,31 @@
 ---
 jupytext:
-  formats: ipynb,md:myst
   text_representation:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
-kernelspec:
-  name: bash
-  display_name: Bash
-  language: bash
+    jupytext_version: 1.19.1
 ---
 
+---
+title: 'Semantic Notebook Versioning: AI-Ready Jupyter Docs Workflow'
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-03'
+description: A professional-grade protocol for AI engineering that decouples logic
+  from state, enabling clean Git diffs and high-fidelity Markdown inputs for AI assistants.
+tags:
+- documentation
+- workflow
+options:
+  type: guide
+  birth: '2026-05-03'
+  version: 1.0.0
+  token_size: 5903
+---
 # Semantic Notebook Versioning: AI-Ready Jupyter Docs Workflow
 
-+++
-
----
-
-Owner: Vadim Rudakov, lefthand67@gmail.com  
-Version: 0.6.0  
-Birth: 2025-12-28  
-Last Modified: 2026-01-30
-
----
-
-+++
 
 To enable clean Git diffs, prevent notebook metadata noise, and provide high-fidelity Markdown inputs for SLM/LLM assistants (e.g., Aider) while preserving execution state.
 
@@ -180,9 +180,9 @@ For actual contents of the file inspect the original files in the repo, not the 
 
 +++
 
-The Jupytext must be installed within the venv where your JupyterLab server is. 
+The Jupytext must be installed within the venv where your JupyterLab server is.
 
-**Why:** JupyterLab server extensions (like Jupytext) must be discoverable by the JupyterLab process. 
+**Why:** JupyterLab server extensions (like Jupytext) must be discoverable by the JupyterLab process.
 
 Assuming your JupyterLab is installed in `~/venv/jupyter`:
 
@@ -212,11 +212,11 @@ After cloning the repo, run from within the repo's root directory:
     ```bash
     uv sync
     ```
-    
+
     This installs project-level dependencies to `.venv`:
     - `pre-commit` (required for Git hooks)
     - **Other project dependencies** (including project levelv Jupytext for synchronization in the project environment during the terminal level operations)
-    
+
     :::{note}
     The project's `pyproject.toml` may list `jupytext` as a dependency for CLI operations (e.g., `uv run jupytext --sync`), but the **JupyterLab extension** must be installed in the central environment as shown in Step 1.
     :::
@@ -328,14 +328,14 @@ Pair with myst md
 +++
 
 :::{seealso}
-> 1. ["Instruction on jupytext_sync.py script"](/tools/docs/scripts_instructions/jupytext_sync_py_script.ipynb)
-> 1. [Instruction on jupytext_verify_pair.py script](/tools/docs/scripts_instructions/jupytext_verify_pair_py_script.ipynb)
+> 1. [jupytext_sync.py](/tools/scripts/jupytext_sync.py)
+> 1. [jupytext_verify_pair.py](/tools/scripts/jupytext_verify_pair.py)
 :::
 
 +++
 
 > "Jupyter keeps paired `.py` and `.ipynb` files in sync, but the synchronization happens only when you save the notebook in Jupyter. If you edit the `.py` file manually, then the `.ipynb` file will be outdated until you reload and save the notebook in Jupyter, or execute `jupytext --sync`."
-> 
+>
 > — Jupytext official documentation
 
 This means:
@@ -383,8 +383,8 @@ In a real-world project, your workflow transitions from **active coding** to **v
 - Ensure `.ipynb` outputs are up-to-date before merge (via team discipline or CI execution)
 
 This gives you:
-- Clean diffs ✅  
-- LLM-friendly input ✅  
+- Clean diffs ✅
+- LLM-friendly input ✅
 - Rich, output-inclusive published docs ✅
 
 Here is exactly what happens when you decide to commit your changes.
@@ -419,9 +419,7 @@ Here is exactly what happens when you decide to commit your changes.
 +++
 
 :::{warning}
-If you've been editing the `.md` file outside the JupyterLab while `.ipynb` file is opened, do not click 'Save' in a stale JupyterLab tab before committing, as this may update the `.ipynb` timestamp and cause `jupytext --sync` to favor the old notebook content.
-
-**The Risk**: If an engineer has a background process or an IDE extension (like a linter) that "touches" the `.ipynb` after they finished editing the `.md` via Aider, the `--sync` command might overwrite the AI's work with the older notebook state.
+If an engineer has a background process or an IDE extension (like a linter) that "touches" the `.ipynb` after they finished editing the `.md` via Aider, the `--sync` command might favor the older notebook state. Always verify your Git status before and after syncing.
 :::
 
 +++
@@ -631,7 +629,7 @@ To minimize these "safety locks" caused by cloud sync (e.g., Yandex.Disk) or min
 File: `jupytext.toml` (or `pyproject.toml` under `[tool.jupytext]`):
 
 ```toml
-# Allow the notebook to be up to 60 seconds newer than the text file 
+# Allow the notebook to be up to 60 seconds newer than the text file
 # without triggering a "stale" warning in JupyterLab.
 outdated_text_notebook_margin = 60
 

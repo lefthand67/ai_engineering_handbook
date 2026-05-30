@@ -85,7 +85,7 @@ exclude_files = [".aider.chat.history.md"]
 exclude_link_strings = ["example.com", "placeholder"]
 scripts_dir = "tools/scripts"
 tests_dir = "tools/tests"
-docs_dir = "tools/docs/scripts_instructions"
+docs_dir = "tools/scripts"
 ```
 
 **Pre-commit integration:**
@@ -129,7 +129,7 @@ repos:
 - {term}`ADR-26001`: Use of Python and OOP for Git Hook Scripts
 - {term}`ADR-26002`: Adoption of the Pre-commit Framework
 - {term}`ADR-26011`: Formalization of the Mandatory Script Suite Workflow
-- [Development Plan: docs-validation-engine](/tools/docs/scripts_instructions/docs_validation_engine_development_plan.ipynb)
+- Development Plan: `misc/plan/docs_validation_engine_development_plan.md`
 
 ## Participants
 

@@ -12,7 +12,7 @@ options:
   type: guide
   version: 1.1.0
   birth: '2026-03-02'
-  token_size: 4575
+  token_size: 4712
 ---
 This guide covers the full lifecycle of an architectural decision — from understanding what an ADR is, through evidence gathering and writing, to validation. It complements the [ADR template](/architecture/adr/adr_template.md) (structure and fields) and `adr.conf.json` (validation rules).
 
@@ -38,7 +38,7 @@ To create a new ADR:
 
 1. Copy the [ADR template](/architecture/adr/adr_template.md)
 2. Follow the structure, required fields, valid statuses, and tags defined in `adr.conf.json` — this file is the Single Source of Truth for all ADR validation rules. **Tagging convention:** the first tag is the *primary tag* and determines which sub-section the ADR appears under in the index. Choose the most specific domain tag first (e.g., `[devops, architecture]` not `[architecture, devops]`). Valid tags are defined in `conf.json`
-3. [check_adr.py](/tools/scripts/check_adr.py) validates ADRs against the config and auto-updates the [ADR index](/architecture/adr_index.md) — never edit the index manually. Run: `uv run tools/scripts/check_adr.py --fix` (see [script docs](/tools/docs/scripts_instructions/check_adr_py_script.ipynb))
+3. [check_adr.py](/tools/scripts/check_adr.py) validates ADRs against the config and auto-updates the [ADR index](/architecture/adr_index.md) — never edit the index manually. Run: `uv run tools/scripts/check_adr.py --fix` (see script docstrings in check_adr.py)
 4. Follow the [quality guidelines](#writing-the-adr--core-discipline) and review the [anti-patterns checklist](#anti-patterns-checklist) before requesting promotion
 
 ## The RFC→ADR Workflow
@@ -186,6 +186,11 @@ Separation of concerns in ADRs mirrors separation of concerns in code. When two 
 
 **Test:** If changing one aspect of your decision (e.g., the file format) would require editing prose in another section (e.g., naming conventions), those aspects belong in separate ADRs.
 
+### Rule 5: Code-as-Docs for Implementation Details
+
+Implementation details, usage instructions, and technical contracts for internal scripts must not live in separate documentation files. They are defined by the script's contract docstrings and tests. In a "code-as-docs" ecosystem, we move away from "instructional" labels for external documents and instead point directly to the artifact. This reinforces the mental model that the engineer (or agent) should look at the implementation's contract to understand its usage.
+
+
 ## Section-by-Section Guidance
 
 ### Context
@@ -248,6 +253,7 @@ Review every ADR against these eleven anti-patterns before promotion:
 9. **Future promises as mitigations** — "We will address this later" without a concrete trigger, owner, or timeline
 10. **Dismissive alternatives** — Alternatives rejected without trade-off analysis or evidence
 11. **Embedded sibling concerns** — An ADR that hardcodes details owned by another ADR (e.g., file extensions, format specifics) instead of cross-referencing. Changes to the sibling ADR force edits here — a coupling smell
+12. **Instructional-label coupling** — Linking to a script while calling it 'instructions' or 'guide', which implies a separation between the code and its documentation. This violates the "code-as-docs" principle.
 
 ## Validation
 

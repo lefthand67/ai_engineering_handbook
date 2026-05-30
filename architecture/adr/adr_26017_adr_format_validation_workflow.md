@@ -97,7 +97,7 @@ All validation rules defined in `adr.conf.json` to avoid drift between template 
 - [ADR template](/architecture/adr/adr_template.md)
 - {term}`ADR-26036` — Config file location and naming conventions (`.vadocs/` directory)
 - [ADR 26016: Metadata-Driven ADR Lifecycle](/architecture/adr/adr_26016_metadata_driven_architectural_records_life.md)
-- [check_adr.py documentation](/tools/docs/scripts_instructions/check_adr_py_script.ipynb)
+- [check_adr.py](/tools/scripts/check_adr.py)
 
 ## Participants
 

@@ -26,7 +26,7 @@ options:
   type: guide
   birth: '2025-11-18'
   version: 0.2.1
-  token_size: 1549
+  token_size: 1528
 ---
 # Aider Commands Handout
 
@@ -97,7 +97,7 @@ main() {
 main "$@"
 ```
 
-Make this [script executable](/tools/docs/scripts_instructions/README.ipynb#how-to-use-scripts) and add it to your PATH. Now you can run aider simply:
+Make this script executable and add it to your PATH. Now you can run aider simply:
 
 ```bash
 $ aider_proxy.sh --model gemini/gemini-3-flash

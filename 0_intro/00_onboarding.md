@@ -26,7 +26,7 @@ options:
   type: guide
   version: 0.4.1
   birth: 2026-01-03
-  token_size: 923
+  token_size: 904
 ---
 
 +++
@@ -73,7 +73,6 @@ bash ./tools/scripts/configure_repo.sh
 
 1. [Setup Jupytext and git hooks](/tools/docs/jupyter_and_markdown/semantic_notebook_versioning_ai_ready_jupyter_docs.ipynb)
 1. ["Production Git Workflow Standards"](/tools/docs/git/01_production_git_workflow_standards.ipynb)
-1. ["The Scripts That Help"](/tools/docs/scripts_instructions/README.ipynb)
 
 +++
 

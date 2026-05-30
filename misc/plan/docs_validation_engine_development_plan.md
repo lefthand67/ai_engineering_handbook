@@ -4,25 +4,26 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
-kernelspec:
-  name: python3
-  display_name: Python 3
-  language: python
+    jupytext_version: 1.19.1
 ---
 
+title: 'Development Plan: docs-validation-engine'
+authors:
+  - name: Vadim Rudakov
+    email: rudakow.wadim@gmail.com
+date: "2026-05-03"
+description: "Detailed development plan for extracting validation scripts into a standalone Python package."
+tags:
+  - development
+  - ci
+  - documentation
+options:
+  type: guide
+  version: "0.1.0"
+  birth: "2026-01-27"
+  token_size: 2304
+---
 # Development Plan: docs-validation-engine
-
-+++
-
----
-
-Owner: Vadim Rudakov, rudakow.wadim@gmail.com
-Version: 0.1.0
-Birth: 2026-01-27
-Last Modified: 2026-01-27
-
----
 
 +++
 

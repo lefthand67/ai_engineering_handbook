@@ -4,23 +4,26 @@ jupytext:
     extension: .md
     format_name: myst
     format_version: 0.13
-    jupytext_version: 1.19.0
-kernelspec:
-  display_name: Python 3 (ipykernel)
-  language: python
-  name: python3
+    jupytext_version: 1.19.1
 ---
 
 ---
-title: "Self-Hosted Website Deployment (Podman / Nginx / Traefik)"
-author: Vadim Rudakov, rudakow.wadim@gmail.com
-description: "Step-by-step guide for deploying a MyST website on private infrastructure using Podman, Nginx, Traefik, and GitHub Actions CI/CD. Covers multi-website configuration with per-site Nginx server blocks behind a shared Traefik reverse proxy."
-date: 2026-03-16
-tags: [website, deployment, nginx, traefik, podman, github_actions]
+title: Self-Hosted Website Deployment (Podman / Nginx / Traefik)
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+date: '2026-05-03'
+description: Step-by-step guide for deploying a MyST website on private infrastructure
+  using Podman, Nginx, Traefik, and GitHub Actions CI/CD.
+tags:
+- documentation
+- devops
+- ci
 options:
   type: guide
   version: 1.1.0
-  birth: 2025-12-17
+  birth: '2025-12-17'
+  token_size: 5269
 ---
 
 +++
@@ -393,7 +396,7 @@ Traefik acts as the entry point, handling SSL/TLS and routing traffic from your 
 1. Add the **Router** and **Service** to your Traefik dynamic configuration.
     ```bash
     # example of the directory with Traefik dynamic files
-    /home/user/.local/share/containers/storage/volumes/traefik-data/_data/dynamic/website_traefik.yml
+    /home/user/.local/share/containers/storage/volumes/traefik-data/_data/dynamic/myst-website.yml
     ```
 2. Ensure the `loadBalancer` URL points to the `hostPort` defined in your pod manifest (e.g., `http://<your-website>:8080`).
 
@@ -445,7 +448,7 @@ http:
       absolute_redirect off;  # prevent redirects leaking internal port/scheme
       ...
   }
-  ```
+```
 
 +++
 
@@ -628,26 +631,26 @@ spec:
 
 +++
 
-When using this specific multi-site configuration in a single Pod, you must pay attention to how the 
-- **Host Paths**, 
-- **Port Mappings**, and 
+When using this specific multi-site configuration in a single Pod, you must pay attention to how the
+- **Host Paths**,
+- **Port Mappings**, and
 - **Volume Mounts**
 
-align with your `nginx.conf`. 
+align with your `nginx.conf`.
 
 Any mismatch between these three areas will result in "404 Not Found" or "Bad Gateway" errors.
 
 1. **Host Path Accuracy**
 
     The `hostPath` must point to the exact location on your server where the MyST HTML files are stored.
-    
+
     * **Permissions:** Ensure the user running the container has read permissions for these directories (e.g., `/home/user/website/site-a/html`).
     * **Directory Type:** The `type: Directory` ensures that the pod will only start if these folders already exist on your host machine.
 
 2. **Port Mapping and Naming**
 
     This config uses port-based routing rather than domain-based routing.
-    
+
     * **Unique Names:** Each port defined in the `ports` section must have a unique `name` (e.g., `port-site-a` and `port-site-b`).
     * **External Access:** You will access your sites using the `hostPort` values. In this example, Website A is at `http://<server-ip>:8080` and Website B is at `http://<server-ip>:8081`.
     * **Internal Alignment:** Your `nginx.conf` **must** contain two `server` blocks: one `listen 80;` and one `listen 81;` to match the `containerPort` values defined here.
@@ -655,7 +658,7 @@ Any mismatch between these three areas will result in "404 Not Found" or "Bad Ga
 3. **Volume Mount Alignment**
 
     The `mountPath` inside the container is what Nginx "sees."
-    
+
     * **Root Directory:** In your `nginx.conf`, the `root` directive for Site A must be set to `/usr/share/nginx/site_a`, and Site B must be `/usr/share/nginx/site_b`.
     * **Config Overwrite:** The `nginx-config` volume mounts to `/etc/nginx/conf.d/default.conf`. This completely replaces the default Nginx welcome page configuration with your custom multi-site rules.
 

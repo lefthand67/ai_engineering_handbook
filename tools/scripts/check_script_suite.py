@@ -108,17 +108,39 @@ def get_all_scripts() -> list[str]:
     ]
 
 
-def check_naming_convention(verbose: bool = False) -> list[str]:
-    """Check that each script has a matching test file."""
+def check_naming_convention(verbose: bool = False, files: list[str] | None = None) -> list[str]:
+    """Check that each script has a matching test file.
+    
+    If 'files' is provided, only validate those specific files.
+    Otherwise, validate all discovered scripts.
+    """
     errors = []
-    for name in get_all_scripts():
-        script, test = script_name_to_paths(name)
+    
+    if files:
+        # Validate only the provided files
+        for file_path in files:
+            path = Path(file_path)
+            if path.suffix != ".py" or "tools/scripts/" not in str(path):
+                continue
+                
+            name = path.stem
+            script, test = script_name_to_paths(name)
 
-        if not test.exists():
-            errors.append(f"Missing test: {test} (for script {script})")
+            if not test.exists():
+                errors.append(f"Missing test: {test} (for script {script})")
 
-        if verbose and test.exists():
-            print(f"OK: {name} has script and test")
+            if verbose and test.exists():
+                print(f"OK: {name} has script and test")
+    else:
+        # Fallback: validate all discovered scripts
+        for name in get_all_scripts():
+            script, test = script_name_to_paths(name)
+
+            if not test.exists():
+                errors.append(f"Missing test: {test} (for script {script})")
+
+            if verbose and test.exists():
+                print(f"OK: {name} has script and test")
 
     return errors
 
@@ -126,6 +148,11 @@ def check_naming_convention(verbose: bool = False) -> list[str]:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Check that each script has a matching test (dyad convention)."
+    )
+    parser.add_argument(
+        "files",
+        nargs="*",
+        help="Optional list of files to validate",
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Show detailed output"
@@ -140,7 +167,7 @@ def main() -> int:
     errors = []
 
     # Check naming convention (every script has a test)
-    errors.extend(check_naming_convention(args.verbose))
+    errors.extend(check_naming_convention(args.verbose, files=args.files))
 
     if errors:
         print("\nErrors found:")

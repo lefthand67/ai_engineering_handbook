@@ -58,7 +58,7 @@ repos:
         entry: uv run --active tools/scripts/check_script_suite.py
         language: python
         files: ^tools/(scripts/.*\.py|tests/test_.*\.py)$
-        pass_filenames: false
+        pass_filenames: true
         stages: [pre-commit]
 
       - id: check-frontmatter

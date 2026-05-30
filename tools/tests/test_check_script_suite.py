@@ -300,9 +300,97 @@ class TestCheckNamingConvention:
 # Integration Tests: main
 # ======================
 
+class TestCommitScopedValidation:
+    """Contract: when files are passed as args, only those files are validated."""
+
+    def test_ignores_non_passed_files_when_args_provided(self, tmp_path, capsys):
+        scripts_dir = tmp_path / "tools" / "scripts"
+        tests_dir = tmp_path / "tools" / "tests"
+        scripts_dir.mkdir(parents=True)
+        tests_dir.mkdir(parents=True)
+
+        # Script A: OK (has test)
+        (scripts_dir / "script_ok.py").touch()
+        (tests_dir / "test_script_ok.py").touch()
+
+        # Script B: BAD (missing test)
+        (scripts_dir / "script_bad.py").touch()
+
+        # Simulate pre-commit passing only script_ok.py
+        passed_file = str(scripts_dir / "script_ok.py")
+
+        mock_staged = MagicMock()
+        mock_staged.stdout = ""
+
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir), \
+             patch("tools.scripts.check_script_suite.TESTS_DIR", tests_dir), \
+             patch("subprocess.run", return_value=mock_staged), \
+             patch("sys.argv", ["check_script_suite.py", passed_file]):
+            result = _module.main()
+
+        captured = capsys.readouterr()
+        # Should be 0 because script_bad.py was not in the arguments
+        assert result == 0
+        assert "Missing test" not in captured.out
+
+    def test_ignores_non_python_files_in_args(self, tmp_path):
+        scripts_dir = tmp_path / "tools" / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (scripts_dir / "readme.txt").touch()
+
+        passed_file = str(scripts_dir / "readme.txt")
+        mock_staged = MagicMock()
+        mock_staged.stdout = ""
+
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir), \
+             patch("subprocess.run", return_value=mock_staged), \
+             patch("sys.argv", ["check_script_suite.py", passed_file]):
+            result = _module.main()
+
+        assert result == 0
+
+    def test_ignores_files_outside_scripts_dir_in_args(self, tmp_path):
+        other_dir = tmp_path / "other"
+        other_dir.mkdir(parents=True)
+        (other_dir / "script.py").touch()
+
+        passed_file = str(other_dir / "script.py")
+        mock_staged = MagicMock()
+        mock_staged.stdout = ""
+
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", tmp_path / "tools" / "scripts"), \
+             patch("subprocess.run", return_value=mock_staged), \
+             patch("sys.argv", ["check_script_suite.py", passed_file]):
+            result = _module.main()
+
+        assert result == 0
+
+    def test_errors_when_passed_script_missing_test(self, tmp_path, capsys):
+        scripts_dir = tmp_path / "tools" / "scripts"
+        tests_dir = tmp_path / "tools" / "tests"
+        scripts_dir.mkdir(parents=True)
+        tests_dir.mkdir(parents=True)
+
+        (scripts_dir / "script_bad.py").touch()
+        passed_file = str(scripts_dir / "script_bad.py")
+
+        mock_staged = MagicMock()
+        mock_staged.stdout = ""
+
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir), \
+             patch("tools.scripts.check_script_suite.TESTS_DIR", tests_dir), \
+             patch("subprocess.run", return_value=mock_staged), \
+             patch("sys.argv", ["check_script_suite.py", passed_file]):
+            result = _module.main()
+
+        captured = capsys.readouterr()
+        assert result == 1
+        assert "Missing test" in captured.out
 
 class TestMain:
     """Contract: exit 0 when all scripts have tests, exit 1 otherwise."""
+
+
 
     def test_exits_zero_when_no_errors(self, tmp_path):
         scripts_dir = tmp_path / "tools" / "scripts"

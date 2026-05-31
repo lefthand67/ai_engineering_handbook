@@ -1,3 +1,334 @@
+release 3.1.0
+* **New Features:**
+    - Add pandoc markdown cleaning script and tests
+        - add: tools/scripts/cleaning_pandoc_md_to_rag.py — implement cleaning pipeline for EPUB-to-RAG markdown conversion
+        - add: tools/tests/test_cleaning_pandoc_md_to_rag.py — add comprehensive contract tests for front-matter removal and regex cleaning
+        - fix: tools/scripts/cleaning_pandoc_md_to_rag.py — swap regex order to prevent metadata removal from shadowing inline formatting cleanup
+    - Enforce staging dyad for scripts and tests
+        - add: tools/scripts/check_script_suite.py — implement check_staging_dyad to ensure matching tests are staged when scripts are modified
+        - update: tools/tests/test_check_script_suite.py — add high-fidelity integration tests using temporary Git repositories to verify staging enforcement
+    - Add --reset and --verbose flags to manage_external_repos.py and refactor to top-down design
+        - Implement: tools/scripts/git.py — add reset_repo utility to forcefully reset repos to remote
+        - Implement: tools/scripts/manage_external_repos.py — add --reset and --verbose flags and implement reset logic in update loop
+        - Refactor: tools/scripts/manage_external_repos.py — apply top-down design by rearranging functions and implementing logging
+        - Add: tools/tests/test_git.py — add tests for reset_repo utility
+        - Update: tools/tests/test_manage_external_repos.py — add tests for --reset behavior and update verbose output tests to use caplog
+    - Validate token_size accuracy in frontmatter
+        - Modify: tools/scripts/check_frontmatter.py — implement token_size accuracy check to act as a quality gate
+        - Modify: tools/tests/test_check_frontmatter.py — add adversary tests for token_size validation accuracy and margins
+    - Implement token count automation utility
+        - Add: tools/scripts/update_token_counts.py — automate token_size calculation using tiktoken
+        - Add: tools/tests/test_update_token_counts.py — provide comprehensive unit and integration tests
+    - Implement block-based architecture and recursive resolution
+        - feat: implement recursive _includes resolution in prepare_prompt.py to support JIT-composed prompt blocks
+        - feat: add shared prompt blocks in ai_system_layers/3_prompts/blocks/ for SSoT
+        - refactor: convert monolithic consultant prompts into manifests
+        - docs: update ai_system_layers/3_prompts/README.md to document the new architecture
+        - test: add comprehensive recursive inclusion and adversarial tests in test_prepare_prompt.py
+        - test: add test for multiple frontmatter blocks in test_check_frontmatter.py
+    - Implement unified manifest-based external repo sync
+        - Add: architecture/adr/adr_26049_unified_manifest_for_external_repos.md — formalize state-based synchronization architecture.
+        - Refactor: tools/scripts/manage_external_repos.py — implement reconciliation loop and unified manifest (SSoT) loading.
+        - Refactor: tools/scripts/paths.py — update dynamic exclusion registry logic.
+        - Remove: .vadocs/validation/external-repos.conf.json — replace with unified manifest.
+        - Update: ai_agents/README.md — document the new sync workflow.
+        - Test: tools/tests/test_manage_external_repos.py — verify dry-run and consumer sync logic.
+* **Bug Fixes:**
+    - Add missing tests for check_adr_index
+        - add: tools/tests/test_check_adr_index.py — implement contract tests for ADR index synchronization and term reference validation
+    - Improve error messages for unstaged changes in jupytext_verify_pair
+        - update: tools/scripts/jupytext_verify_pair.py — provide descriptive guidance when files have unstaged changes during commit
+        - update: tools/tests/test_jupytext_verify_pair.py — update tests to verify new descriptive error messages
+    - Implement dynamic type resolution and Dual-Block structural validation
+        - Refactor: tools/scripts/check_frontmatter.py — implement dynamic type field resolution via `_get_type_field_name` based on HUB_CONFIG identity block
+        - Fix: tools/scripts/check_frontmatter.py — detect `broken_dual_block` anomaly when project metadata lacks an opening fence in Dual-Block files
+        - Refactor: tools/scripts/check_frontmatter.py — update `parse_frontmatter` return signature to `(merged_dict, block_count, anomalies)`
+        - Refactor: tools/scripts/adr_utils.py — update calls to `parse_frontmatter` to handle new tuple return signature
+        - Refactor: tools/scripts/check_adr.py — update calls to `parse_frontmatter` to handle new tuple return signature
+        - Update: tools/tests/test_check_frontmatter.py — migrate tests to new return signature and add cases for dynamic resolution and broken dual-blocks
+        - Update: tools/tests/test_check_adr.py — migrate all callers of `parse_frontmatter` to avoid unpacking errors
+        - Update: tools/tests/test_adr_utils.py — update mocks and tests to match new return signature
+    - Enforce Dual-Block pattern in frontmatter validation
+        - Update: tools/scripts/check_frontmatter.py — modify parse_frontmatter to return block count and validate it in validate_parsed_frontmatter
+        - Update: tools/scripts/check_frontmatter.py — add instructional message about Dual-Block pattern to missing_type error
+        - Update: tools/scripts/check_frontmatter.py — fix errors list redeclaration bug in validate_parsed_frontmatter
+        - Update: tools/tests/test_check_frontmatter.py — update tests to handle new return signature of parse_frontmatter
+    - Make check-script-suite commit-scoped
+        - Update: tools/scripts/check_script_suite.py — add support for positional file arguments to limit validation scope
+        - Update: tools/tests/test_check_script_suite.py — add test case for commit-scoped validation
+        - Update: .pre-commit-config.yaml — set pass_filenames to true for check-script-suite hook
+    - Update evidence source frontmatter to align with ADR-26042
+        - update: architecture/evidence/sources/README.md — align frontmatter with new schema
+        - update: architecture/evidence/sources/S-26012_adr_001_database_ecosystem_design_principles.md — align frontmatter with new schema
+        - update: architecture/evidence/sources/S-26015_handbook_peer_review_format_as_architecture.md — align frontmatter with new schema
+        - update: architecture/evidence/sources/S-26023_distributional_shift_and_token_sequences.md — align frontmatter with new schema
+        - update: architecture/evidence/sources/S-26024_causal_masking_and_kv_cache_momentum.md — align frontmatter with new schema
+        - update: architecture/evidence/sources/README.ipynb — sync with markdown pair
+    - Enforce strict allow-list for governed frontmatter fields
+        - Implement: tools/scripts/check_frontmatter.py — add _get_allowed_fields to compute permitted fields via block and type configs
+        - Update: tools/scripts/check_frontmatter.py — reject non-permitted governed fields in validate_parsed_frontmatter using invalid_field error
+    - Implement strict frontmatter validation and fix ADR/Repo tool regressions
+        - tools/scripts/check_frontmatter.py — implement strict field validation, forbid unknown fields, and validate ID prefixes
+        - tools/scripts/adr_utils.py — fix regression in get_staged_adr_files to return AdrFile objects and resolve absolute paths
+        - tools/scripts/check_adr_index.py — fix BrokenTermReference instantiation and attribute access
+        - tools/scripts/manage_external_repos.py — change _pull_with_reset to be reactive to pull failures for better recovery
+        - tools/scripts/check_adr.py — add verbose output to the validation loop
+        - .vadocs/conf.json — add common_mistakes mapping for dynamic correction instructions
+        - tools/tests/test_check_adr.py — update mocks and fix regressions in CLI and staged file discovery tests
+        - tools/tests/test_check_frontmatter.py — add comprehensive tests for unknown fields and ID prefix validation
+        - tools/tests/test_adr_utils.py — refactor into classes with explicit contract documentation
+    - Enforce strict frontmatter validation and fix ADR staged file processing
+        - tools/scripts/check_frontmatter.py — Implement strict field validation, forbid unknown fields, and validate ID prefixes
+        - tools/scripts/adr_utils.py — Fix regression in get_staged_adr_files to return AdrFile objects and resolve absolute paths
+        - tools/tests/test_check_adr.py — Update mocks and fix regressions in CLI and staged file discovery tests
+        - tools/scripts/check_adr.py — Add verbose output to the validation loop for better visibility
+        - architecture/adr/ — Update adr_26043 and adr_26044 frontmatter to satisfy strict validation
+        - .vadocs/conf.json — Add common_mistakes mapping for dynamic correction instructions
+    - Solve hanging updates and restore --reset functionality in manage_external_repos.py
+        - tools/scripts/git.py: remove capture_output=True from pull_repo and clone_repo to allow interactive TTY prompts
+        - tools/scripts/git.py: implement is_repo_dirty() to detect local changes via git status --porcelain
+        - tools/scripts/manage_external_repos.py: update _pull_with_reset to use is_repo_dirty instead of parsing error strings
+        - tools/scripts/manage_external_repos.py: change default log level to INFO and verbose to DEBUG for better default visibility
+        - tools/tests/test_git.py: add tests for is_repo_dirty and update existing tests to match the new TTY-friendly implementation
+    - Prevent validation scripts from processing explicit files in excluded directories
+        - Fix 'leak' where files in excluded directories (e.g. external research repos) were processed when passed as explicit CLI arguments
+        - Add \# CRITICAL contract comments to discovery logic in validation scripts
+        - Add TDD test cases to verify explicit file exclusion for affected scripts
+    - Update check_evidence validator to support options namespace for required fields
+        - implement _get_field helper to resolve fields from top-level or options block
+        - update validate_frontmatter to use _get_field for common and type-specific required fields
+        - add test case to verify options block compatibility (ADR-26042)
+    - Enforce frontmatter namespace blocking
+        - Fix: tools/scripts/check_frontmatter.py — treat invalid_namespace as blocking error instead of warning to ensure governance compliance
+        - Add: tools/scripts/check_frontmatter.py — implement -v/--verbose flag for debug logging to assist in troubleshooting validation failures
+        - Update: tools/tests/test_check_frontmatter.py — adjust test assertions and helpers to reflect blocking namespace enforcement
+    - Merge multiple YAML frontmatter blocks
+        - Add: tools/tests/test_check_frontmatter.py — add regression test for multiple block merging
+    - Resolve tiktoken crash and refine token count update guidance
+        - Fix: resolve tiktoken crash in check_frontmatter.py
+        - Update: recommend per-file update in token_size error message
+        - Refactor: tools/scripts/update_token_counts.py — remove --staged flag to align with path-based standards
+        - Modify: tools/tests/test_update_token_counts.py — remove obsolete tests for the reverted --staged flag
+    - Resolve tiktoken crash in frontmatter validation
+        - Fix: tools/scripts/check_frontmatter.py — add disallowed_special=() to encode() to prevent crashes on special tokens
+        - Add: tools/tests/test_check_frontmatter.py — add TestTokenCounting to verify handling of FIM and special tokens
+    - Improve token validation and CI
+        - Modify: .github/workflows/quality.yml — add CI job to verify update_token_counts.py tests
+        - Modify: tools/scripts/check_frontmatter.py — provide full 3-step recovery loop and add read-only note
+    - Implement mandatory frontmatter enforcement
+        - Fix: tools/scripts/check_frontmatter.py — implement mandatory frontmatter enforcement
+        - Update: tools/tests/test_check_frontmatter.py — add TestMandatoryGovernance suite with adversary scenarios (scalar YAML, notebook edge cases)
+    - Enforce options.type as mandatory for frontmatter
+        - Modified: tools/scripts/check_frontmatter.py — replace warning-and-skip with blocking FrontmatterError when frontmatter present but options.type absent; all governed files must declare type for schema validation
+        - Modified: tools/tests/test_check_frontmatter.py — TestWarningNoType replaced with TestMissingTypeError and TestValidateMissingType (4 new tests, 74 total pass, 99% coverage)
+        - Modified: architecture/adr/adr_26042_common_frontmatter_standard.md — status proposed→accepted, supersedes ADR-26023, adds missing required fields (authors, description, token_size, options.type/birth/version)
+        - Modified: architecture/adr_index.md — auto-updated by check-adr-index hook to include new ADR description
+    - Add config reference to ArchTag validation error message
+        - Updated: tools/scripts/validate_commit_msg.py — error now points to pyproject.toml [tool.commit-convention].archtag-required-types so users know where to find the rule
+* **Documentation:**
+    - Add Open WebUI Knowledge Base configuration guide
+        - add: ai_system_layers/5_context/knowledge_bases/open_webui_settings_guide.md — provide optimized RAG settings for Open WebUI to balance VRAM and retrieval accuracy
+    - Align self-hosted deployment guide with latest frontmatter and fix paths
+        - update: tools/docs/website/02_self_hosted_deployment.md — align frontmatter with Dual-Block pattern and update Traefik config path
+        - update: tools/docs/website/02_self_hosted_deployment.ipynb — sync with markdown changes
+    - Align language guides with latest frontmatter conventions
+        - Update: tools/docs/languages/python314_parallelism_game_changer.md — implement Dual-Block frontmatter pattern
+        - Update: tools/docs/languages/right_tool_for_right_layer.md — implement Dual-Block frontmatter pattern
+        - Update: tools/docs/languages/why_rust_for_tokenizers.md — implement Dual-Block frontmatter pattern
+        - Update: tools/docs/languages/*.ipynb — sync notebooks with markdown counterparts
+    - Align core docs and git guides with latest conventions
+        - Update: README.md — fix frontmatter version quoting and update token size
+        - Update: tools/docs/git/*.ipynb — sync notebooks with markdown counterparts
+    - Remove redundant script instruction documents (ADR-26045)
+        - remove: tools/docs/scripts_instructions/ — deprecated in favor of code-as-docs (docstrings in .py files)
+        - update: multiple files — updated links to point directly to .py scripts or relocated plans
+    - Migrate architecture docs to common frontmatter standard and fix violations
+        - Update: architecture/adr_index.md — reorganize index categories and align with new taxonomy; add mandatory frontmatter
+        - Update: architecture/architecture_decision_workflow_guide.md — align frontmatter with ADR-26042
+        - Update: architecture/manifesto.md — align frontmatter with ADR-26042
+        - Update: architecture/packages/creating_spoke_packages.md — add mandatory frontmatter and correct tags
+        - Update: architecture/packages/rnd/vadocs_poc.md — align frontmatter with ADR-26042
+        - Update: architecture/packages/vadocs.md — add mandatory frontmatter and correct tags
+        - Update: architecture/post-mortems/nbdiff/nbdiff_git_diff_for_jupyter_notebooks_version_control.md — add mandatory frontmatter
+        - Update: architecture/post-mortems/post-mortem_slm_non-determinism_in_commit_generation.md — fix missing required fields, correct tags, and fix ID prefix
+        - Update: architecture/post-mortems/nbdiff/post_mortem_architectural_flaws_in_nbdiff_centric.md — fix missing required fields, correct tags, and fix ID prefix
+    - Update frontmatter schema and sections for analysis artifacts
+        - Update: architecture/evidence/analyses/*.md — migrate frontmatter to unified options-block schema and fix structural violations (Problem Statement, References sections)
+    - Fix frontmatter violations in ai_agents/architecture/tooling/
+        - Remove forbidden 'id' and 'status' fields from 'guide' type files
+        - Add missing frontmatter to qwen_code_run_shell_command.md
+        - Correct tags and update token_size for all files in the directory
+    - Integrate Three-Tier Steering Model into AI agent tooling guides
+        - update: ai_agents/architecture/tooling/ai_agent_tooling_architecture_patterns.md — define general three-tier steering model and cross-agent patterns
+        - update: ai_agents/architecture/tooling/aider_tool_calling_architecture.md — integrate three-tier steering analysis for Aider
+        - update: ai_agents/architecture/tooling/claude_code_tool_calling_architecture.md — integrate three-tier steering analysis for Claude Code
+        - update: ai_agents/architecture/tooling/openclaw_tool_calling_architecture.md — integrate three-tier steering analysis for OpenClaw
+        - update: ai_agents/architecture/tooling/openclaude_tool_calling_architecture.md — integrate three-tier steering analysis for OpenClaude
+        - update: ai_agents/architecture/tooling/opencode_tool_calling_architecture.md — integrate three-tier steering analysis for OpenCode
+    - Expand tool calling architecture analysis
+        - add: ai_agents/architecture/tooling/ai_agent_tooling_architecture_patterns.md — introduce general architecture patterns for agent tooling
+        - add: ai_agents/architecture/tooling/aider_tool_calling_architecture.md — analyze Aider tool calling implementation
+        - add: ai_agents/architecture/tooling/claude_code_tool_calling_architecture.md — analyze Claude Code tool calling implementation
+        - add: ai_agents/architecture/tooling/openclaude_tool_calling_architecture.md — analyze OpenClaude tool calling implementation
+        - add: ai_agents/architecture/tooling/openclaw_tool_calling_architecture.md — analyze OpenClaw tool calling implementation
+        - add: ai_agents/architecture/tooling/opencode_tool_calling_architecture.md — analyze OpenCode tool calling implementation
+        - add: ai_agents/architecture/tooling/qwen_code_tool_calling_architecture.md — analyze Qwen Code tool calling implementation
+        - add: ai_agents/architecture/tooling/superpowers_tool_calling_architecture.md — analyze Superpowers tool calling implementation
+        - update: ai_agents/architecture/tooling/open_webui_tool_system.md — refine tool system guide and update version to 1.2.0
+        - update: ai_agents/architecture/tooling/mempalace_ai_memory_system.md — add frontmatter and sanitize absolute paths in configuration examples
+    - Align ADRs in architecture/adr/ with Common Frontmatter Standard ADR-26042
+        - fix: architecture/adr/*.md — align ADRs with ADR-26042
+    - Add taxonomy transition analysis and migration plan
+        - create A-26025 analysis on the transition to hierarchical doc-type taxonomy
+    - Establish agent-actionable reporting standards
+        - Implement: tools/scripts/check_evidence.py — implement agent-actionable reporting contract for clearer error diagnostics
+        - Refactor: tools/scripts/check_evidence.py — move config loading to setup_config() to support test monkeypatching
+        - Fix: tools/scripts/check_evidence.py — normalize paths to as_posix() for consistent matching in --check-staged mode
+        - Create: tools/scripts/validation_standards.md — define agent-actionable reporting and semantic validation standards
+        - Create: tools/scripts/testing_standards.md — define non-brittle testing contracts for validation scripts
+        - Create: tools/scripts/README.md — provide overview of script development and quality gates
+        - Fix: tools/tests/test_check_evidence.py — resolve monkeypatching regression in test_check_staged_with_errors
+        - Expand: tools/tests/test_check_evidence.py — add comprehensive tests for config loading and naming edge cases
+    - Update git workflow standards frontmatter to comply with ADR-26042
+        - Updated: tools/docs/git/01_production_git_workflow_standards.md — added missing required frontmatter fields (title, authors, date, description, tags) and updated token count to resolve validation errors
+    - Add Open WebUI tool system and storage analysis
+        - Add: ai_agents/architecture/knowledge_base/open_webui_knowledge_base_storage_analysis.md — technical analysis of Open WebUI knowledge base storage
+        - Add: ai_agents/architecture/tooling/open_webui_tool_system.md — source-level analysis of Open WebUI tool definition and execution pipeline
+    - Fix link formats in terminal ai agents workflow
+        - Fix: Update .md links to .ipynb in ai_agents/guides/terminal_ai_agents_workflow.md
+        - Pair: Stage ai_agents/guides/terminal_ai_agents_workflow.ipynb to satisfy pairing constraint
+    - Fix broken links and align context management doc names
+        - Update: RELEASE_NOTES.md, README.md, ai_agents/README.md — replace short doc names (overview.md, comparison.md) with full descriptive names
+        - Update: ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md — fix internal links to use absolute paths and correct comparison doc name
+    - Implement agent governance model and refine permission analysis
+        - Add: ai_agents/architecture/agent_governance_model.md — define L0-L5 governance framework for agent security
+        - Update: ai_agents/architecture/tools/qwen_code_permission_enforcement_analysis.md — align analysis with L0-L5 model and clarify global permission risks
+    - Analyze Qwen Code permission enforcement mechanism
+        - add: ai_agents/architecture/tools/qwen_code_permission_enforcement_analysis.md — document the L3-L4-L5 permission flow and 'Implicit Trust' risk
+    - Refine ignore architecture analysis and create implementation plan
+        - docs: architecture/evidence/analyses/A-26024_config_driven_ignore_architecture.md — restore technical rigor and align with governance schema
+    - Align agent guides governance and tags
+        - fix: align frontmatter identity, discovery, and lifecycle blocks for agent guides in ai_agents/guides/ — ensure strict adherence to governance and tagging standards
+    - Update frontmatter and token_size for context management analysis
+        - Update: ai_agents/architecture/context_management/*.md — synchronize frontmatter and token_size with current standards
+    - Reorganize and expand subagents research
+        - Move: ai_agents/architecture/context_management/how_subagents_actually_work_myth_of_process_spawning.md -> ai_agents/architecture/orchestration/how_subagents_actually_work_myth_of_process_spawning.md — align content with orchestration layer
+        - Add: ai_agents/architecture/orchestration/gemini_cli_subagents.md — provide technical analysis of Gemini CLI subagents
+        - Add: ai_agents/architecture/orchestration/openclaude_subagents.md — provide technical analysis of OpenClaude subagents
+        - Add: ai_agents/architecture/orchestration/openclaw_subagents.md — provide technical analysis of OpenClaw subagents
+        - Add: ai_agents/architecture/orchestration/opencode_subagents.md — provide technical analysis of OpenCode subagents
+        - Add: ai_agents/architecture/orchestration/subagents_realization_report.md — provide cross-platform realization report for subagents
+        - Modify: ai_agents/README.md — update internal links to moved subagents article
+        - Modify: RELEASE_NOTES.md — document expansion of the subagents research program
+    - Add OpenCode agent guide
+        - Add: ai_agents/guides/opencode_guide.md — provide technical overview of OpenCode, its provider-agnostic architecture, and a comparison with Qwen Code to help users select the appropriate tool
+    - Document subagents and prefix alignment
+        - Add: ai_agents/architecture/orchestration/claude_code_subagents.md — analyzed Claude Code's forking mechanism
+        - Add: ai_agents/architecture/orchestration/qwen_code_subagents.md — analyzed Qwen Code's hybrid subagent system
+        - Update: ai_system_layers/1_execution/what_kv_cache_actually_contains.md — added client-side prefix alignment requirements
+        - Update: ai_agents/README.md — formalized Analyze-Save-Move research loop
+    - Document local SSH and agent configuration
+        - Add: tools/docs/git/git_local_configuration.md — document Fedora-specific SSH passphrase and agent setup to avoid repetitive prompts
+    - Formalize Heuer tradecraft and WRC metric
+        - Create: architecture/adr/adr_26047_integrate_heuer_tradecraft_into_methodology.md — formalize Heuer integration as system methodology to counter autoregressive momentum
+        - Create: architecture/adr/adr_26048_formalize_wrc_metric.md — formalize WRC as ecosystem evaluation metric (resolves TD-006)
+        - Modify: architecture/evidence/analyses/A-26016_causal_masking_attention_mechanics_for_prompt_engineering.md — analyze difference between corrective tokens and backtracking
+    - Add Heuer brainstorm analysis A-26023
+        - Create: architecture/evidence/analyses/A-26023_heuer_brainstorm_stress_test.md — capture brainstorm results and agentic pipeline proposal
+* **Maintenance:**
+    - Establish governed vocabulary for ArchTags
+        - Add: pyproject.toml — establish authoritative list of allowed ArchTags
+    - Align frontmatter in ai_system_layers/4_orchestration/ and 5_context/
+        - update: ai_system_layers/4_orchestration/workflows/multi_phase_ai_pipeline.md — align frontmatter with standard
+        - update: ai_system_layers/4_orchestration/workflows/release_notes_generation/slm_backed_release_documentation_pipeline_architecture.md — align frontmatter with standard
+        - update: ai_system_layers/4_orchestration/workflows/requirements_engineering/appendices_for_requirements_engineering_in_the_ai_era.md — align frontmatter with standard
+        - update: ai_system_layers/4_orchestration/workflows/requirements_engineering/requirements_engineering_in_the_ai_era_the_gated_velocity.md — align frontmatter with standard
+        - update: ai_system_layers/5_context/yaml_frontmatter_for_ai_enabled_engineering.md — align frontmatter with standard
+        - sync: paired .ipynb files for the above documents — sync changes from .md files
+    - Align frontmatter in ai_system_layers/3_prompts/
+        - update: ai_system_layers/3_prompts/README.md — align frontmatter with standard and remove metadata filters
+        - update: ai_system_layers/3_prompts/appendix_yaml_serializer_variance.md — align frontmatter with standard
+        - update: ai_system_layers/3_prompts/format_as_architecture_signal_noise_in_prompt_delivery.md — align frontmatter with standard
+        - update: ai_system_layers/3_prompts/token_economics_of_prompt_delivery.md — align frontmatter with standard
+        - update: paired .ipynb files in ai_system_layers/3_prompts/ — sync changes from .md files
+    - Enhance frontmatter validator diagnostics
+        - Update: tools/scripts/check_frontmatter.py — replaced print with logger and added diagnostic tips.
+        - Update: tools/tests/test_check_frontmatter.py — updated tests to use caplog and removed brittle hardcoded token values in favor of dynamic calculation.
+    - Align frontmatter in ai_system_layers/2_model/
+        - Update: ai_system_layers/2_model/ — aligned frontmatter with ADR-26042 standard
+        - fix: quoted colon in embeddings_for_small_llms.md title to prevent YAML parsing failure
+        - sync: updated token_size for all modified documents in the layer
+    - Update frontmatter in ai_system_layers/1_execution/ to align with common standard
+        - update: ai_system_layers/1_execution/algebra_gemm_engineering_standard.md — align frontmatter with ADR-26042
+        - update: ai_system_layers/1_execution/hybrid_execution_and_kv_cache_offloading.md — align frontmatter with ADR-26042
+        - update: ai_system_layers/1_execution/optimization_fpga_asic_hardware_acceleration_for_ai.md — align frontmatter with ADR-26042
+        - update: ai_system_layers/1_execution/optimization_nvidia_gpu_cuda_nsight_and_systems_thinking.md — align frontmatter with ADR-26042
+        - update: ai_system_layers/1_execution/what_kv_cache_actually_contains.md — align frontmatter with ADR-26042
+        - update: paired .ipynb files in ai_system_layers/1_execution/ — sync changes from .md files
+    - Update frontmatter in ai_agents/guides/ to align with common standard
+        - update: ai_agents/guides/connect_to_capable_llms_api_keys.md — align frontmatter with ADR-26042 and update version
+        - update: ai_agents/guides/opencode_guide.md — fix frontmatter spacing and update token size
+    - Update frontmatter in 0_intro/ to align with common standard
+        - update: 0_intro/a_multi_layered_ai_system_architecture.md — align frontmatter with ADR-26042
+        - update: 0_intro/ai_systems_grounding_in_computing_disciplines.md — align frontmatter with ADR-26042
+        - update: paired .ipynb files in 0_intro/ — sync changes from .md files
+    - Standardize frontmatter in ai_agents/architecture
+        - Update: ai_agents/architecture/**/*.md — standardize YAML frontmatter formatting, update token sizes and versions
+    - Update vadocs configuration and inventory
+        - Update: .vadocs/conf.json — synchronize hub vocabulary and structural rules
+        - Update: .vadocs/inventory/manage_external_repos.json — update registered external research repositories
+    - Align Hybrid Execution guide frontmatter
+        - Update: ai_system_layers/1_execution/hybrid_execution_and_kv_cache_offloading.md — move token_size to options block for ADR-26042 compliance
+        - Update: ai_system_layers/1_execution/hybrid_execution_and_kv_cache_offloading.ipynb — synchronize notebook metadata with updated markdown frontmatter
+    - Improve token_size automation and validation
+        - Modify: tools/scripts/update_token_counts.py — implement surgical update logic and remove redundant top-level fields
+        - Modify: tools/tests/test_update_token_counts.py — add adversary tests for redundant fields and external repo exclusions
+        - Modify: tools/tests/test_check_frontmatter.py — add validation for non-integer token_size values
+        - Modify: README.md — synchronize frontmatter token_size
+    - Define governed extensions and exclusions in hub config
+        - Add: .vadocs/conf.json — define governed_extensions and governance_excludes to enable mandatory frontmatter validation
+    - Archive implementation plans and add unified manifest manifest
+        - Add: .vadocs/inventory/manage_external_repos.json — register the final unified manifest SSoT.
+* **Refactoring:**
+    - Migrate check_broken_links to logging and git utils
+        - update: tools/scripts/check_broken_links.py — replace print statements with logging for diagnostic and verbose output
+        - update: tools/tests/test_check_broken_links.py — migrate tests from capsys to caplog for log verification
+        - update: tools/scripts/git.py — introduce detect_repo_root, get_staged_files, and is_tracked utilities
+        - update: tools/tests/test_git.py — add contract tests for new git utilities
+    - Improve ADR and frontmatter validation robustness
+        -  — Implement contiguous block discovery to prevent false positives from YAML examples in document bodies and add detailed diagnostic tips to errors
+        -  — Remove silent skip guards and expand conditional field lookup to the  namespace for ADR-26042 compliance
+        -  — Add regression tests for governed missing frontmatter and YAML body block isolation
+        -  — Add  to verify field detection in  block
+    - Improve frontmatter validator robustness and transparency
+        - tools/scripts/check_frontmatter.py: eliminate silent failures for governed files without frontmatter, implement parser transparency (DEBUG logs and block discovery fix), and add dynamic diagnostic tips to errors
+        - tools/scripts/check_adr.py: remove guards that skipped frontmatter validation for ADRs without frontmatter, ensuring full governance
+        - tools/tests/test_check_frontmatter.py: add tests for governed vs non-governed files without frontmatter
+    - Split ADR validation into structural and index sync tools
+        - Create: tools/scripts/adr_utils.py — implement SSoT for ADR domain models and status extraction to remove redundancy
+        - Refactor: tools/scripts/check_adr.py — isolate structural validation of ADR content and tags from index synchronization
+        - Create: tools/scripts/check_adr_index.py — implement dedicated ADR index synchronization and section placement validation
+        - Refactor: tools/tests/test_check_adr.py — implement a non-brittle test suite using caplog and dynamic token calculation
+    - Transform ArchTag validation into instructional feedback
+        - Modify: tools/scripts/validate_commit_msg.py — enforce strict ArchTag position and value validation against pyproject.toml SSoT
+        - Modify: tools/tests/test_validate_commit_msg.py — refactor tests to verify instructional structure and config-driven values
+    - Restructure guides — rename dirs, create general workflow guide
+        - Renamed: ai_agents/guides/vim_and_aider/ → vim_ollama/ — directory contained only vim-ollama plugin guides
+        - Created: ai_agents/guides/terminal_ai_agents_workflow.md — general hybrid strategy, workflow patterns, tool stack reference
+        - Created: ai_agents/guides/vim_ollama/vim_ollama_plugin_setup.md — slimmed to plugin-only content (installation, mappings, troubleshooting), moved FIM caution from general guide
+        - Deleted: ai_agents/guides/vim_and_aider/01_vim_in_ai_era_*.md — replaced by terminal_ai_agents_workflow.md + vim_ollama_plugin_setup.md
+        - Deleted: ai_agents/guides/*/02_*.ipynb, 04_*.ipynb, 05_*.ipynb — redundant documentation-only pairs (no executable code cells)
+        - Renamed: ai_agents/guides/vim_ollama/03_vim_ollama_llm_tab_completion_nuances.md → vim_ollama_tab_completion.md
+        - Updated: RELEASE_NOTES.md (lines 695, 947) — aider handout link retargeted to new path
+        - Updated: ai_agents/guides/aider/aider_commands_handout.md — setup link points to terminal_ai_agents_workflow.md
+        - Updated: ai_agents/guides/vim_ollama/vim_ollama_tab_completion.md — vim setup link retargeted
+        - Updated: 0_intro/00_onboarding.md — vim guide link retargeted to terminal_ai_agents_workflow.md
+    - Remove numeric prefixes from file names
+        - Renamed: ai_agents/guides/aider/02_aider_commands_handout.md → aider_commands_handout.md — drop numeric prefix, directories provide ordering
+        - Renamed: ai_agents/guides/04_connect_to_capable_llms_using_api_keys.md → connect_to_capable_llms_api_keys.md — drop numeric prefix, directories provide ordering
+        - Renamed: ai_agents/guides/kilocode/05_kilocode_cli_setup.md → kilocode_cli_setup.md — drop numeric prefix, directories provide ordering
+        - Renamed: ai_agents/guides/claude/2026_03_03_claude_code_memory_vs_claude_md.md → claude_code_memory_vs_claude_md.md — replace date prefix with plain name
+
 release 3.0.0
 * **New Features:**
     - Consolidate all agent content under ai_agents/

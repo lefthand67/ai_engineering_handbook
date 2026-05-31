@@ -3,7 +3,7 @@ title: AI Engineering Handbook
 author: rudakow.wadim@gmail.com
 date: 2026-04-13
 options:
-  version: "3.0.0"
+  version: "3.1.0"
   birth: 2025-10-19
   token_size: 3371
 ---
@@ -19,6 +19,12 @@ Content is **generated through a hybrid LLM methodology**, **cross-validated by 
 
 ## What's new?
 
+v3.1.0 — "The Industrialization of Intelligence"
+* **Prompt-as-Infrastructure**: Implementation of a Recursive Block Architecture for prompts, treating them as compiled artifacts to ensure SSoT and reduce context tax.
+* **Intelligence Tradecraft**: Integration of Heuer's methodology (ACH and disconfirmation) and the WRC metric to replace "vibes-based" evaluation with verifiable rigor.
+* **Governed Metadata**: Adoption of a Composable Block Standard for frontmatter, enabling AI-readability through structural discovery blocks.
+* **Operational Guardrails**: Introduction of "Scripts as Instructors" for JIT feedback, evolution of script governance to a **script-test dyad**, and a ban on high-risk tools (`sed`, `git reset`, `--no-verify`).
+
 v3.0.0 — "The Agents Emerge"
 * **Agent Research Program**: Systematic analysis of 7 open-source coding agents (Qwen Code, Claude Code, OpenCode, OpenClaude, Aider, KiloCode, Superpowers). [Context Management Overview](/ai_agents/architecture/context_management/context_management_in_ai_coding_agents.md) and [Comparison](/ai_agents/architecture/context_management/context_management_agent_comparison.md) cover how each agent handles conversation history, compaction, and state — with side-by-side tables and a decision guide. Architecture articles: [How Subagents Work](/ai_agents/architecture/orchestration/how_subagents_actually_work_myth_of_process_spawning.md), [Stability Against LLM Drift](/ai_agents/architecture/skills/stability_in_a_probabilistic_substrate_how_agents_fight_llm_drift.md), and [Skills Discovery](/ai_agents/architecture/skills/skill_discovery_across_ai_coding_platforms.md).
 * **Repository Reorganization**: `ai_system/` → `ai_system_layers/` (clarifying that layers are engine components) and `ai_agents/` moves to the repo root (agents are the product, not another layer). `tools/docs/ai_agents/` → `ai_agents/guides/`. New `research/` directory for external product source code clones.
@@ -28,11 +34,6 @@ v2.8.0 — "The Prompt Physics"
 * **Prompt Engineering Research**: A three-article series with real measurements and reproducible code — [Format as Architecture](ai_system_layers/3_prompts/format_as_architecture_signal_noise_in_prompt_delivery.ipynb), [Token Economics of Prompt Delivery](ai_system_layers/3_prompts/token_economics_of_prompt_delivery.ipynb), and an [Appendix on YAML Serializer Variance](ai_system_layers/3_prompts/appendix_yaml_serializer_variance.ipynb). Central finding: token cost is `f(format, serializer, tokenizer)` — PyYAML vs. yq on the same JSON source can differ by 100+ tokens on a 150-line prompt and flip the YAML vs. JSON ranking. Backed by three analyses ([A-26016](architecture/evidence/analyses/A-26016_causal_masking_attention_mechanics_for_prompt_engineering.md), [A-26017](architecture/evidence/analyses/A-26017_yaml_serializer_variance_token_economics.md), [A-26018](architecture/evidence/analyses/A-26018_xml_tags_scope_isolation_prompt_architecture.md)).
 * **Two-Stage Consultant Workflow**: [ai_brainstorming_colleague.json](ai_system_layers/3_prompts/consultants/ai_brainstorming_colleague.json) (v0.2.0) handles exploration; it hands off explicitly to the strict reviewers ([ai_systems_consultant.json](ai_system_layers/3_prompts/consultants/ai_systems_consultant.json), [devops_consultant.json](ai_system_layers/3_prompts/consultants/devops_consultant.json)) when formal validation is needed. The handoff is enforced by the prompt itself.
 * **Governance Enforcement**: All governance configs migrated from YAML to JSON (`.vadocs/`). [check_frontmatter.py](tools/scripts/check_frontmatter.py) (work in progress) enforces {term}`ADR-26042` at commit time. Two new proposed ADRs: {term}`ADR-26044` and {term}`ADR-26054`.
-
-v2.7.0 — "The Context Engineering Pivot"
-* **From Agentic OS to Context Engineering**: v2.6.0 explored an ambitious vision — agents as operating systems. That research produced valuable insights, but the key finding was simpler: what matters is not how many agents you have, but what each agent sees. {term}`ADR-26038` adopts context engineering as the core principle — one agent, skills loaded on demand, context window as the primary constraint. The multi-agent vs single-agent boundary will be analyzed more thoroughly in future releases.
-* **Infrastructure Blueprint**: 7 new ADRs define the technical stack for the ecosystem's next phase — database, deployment, data access, metadata format, and governance packaging. The goal: everything needed to deploy a working application from a single `podman play kube` command plus an API key.
-* **First Consolidation**: 4 ADRs promoted to accepted standards, 3 rejected with their insights absorbed. The ecosystem moves from pure exploration to selective commitment.
 
 
 ## Live Documentation Site

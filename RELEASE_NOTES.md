@@ -4,35 +4,35 @@
 
 Since v3.0.0, the repository has transitioned from content establishment to **governed engineering and verifiable rigor.** The focus of v3.1.0 is the elimination of "casual" engineering in favor of governed, verifiable standards.
 
-### 🛠️ The Primary Shift: AI-Native Development ("Code as Docs")
-We've collapsed the gap between documentation and implementation by adopting the principle of **Code as Primary Documentation**.
+### 🛠️ The Primary Shift: Prompt-as-Infrastructure
+We've moved from monolithic consultant prompts to a **Recursive Block Architecture**, treating prompts as compiled artifacts rather than static text.
 
-*   **Contract Docstrings:** We replaced entire directories of separate instruction files with mandatory contract docstrings within every source file. 
-*   **The Logic:** Since agents read code as fluently as prose, co-locating the "contract" (scope, public interface, design decisions) within the file ensures that documentation is CI-verified and refactoring-safe. This removes the "context window tax" of redundant prose and prevents agents from operating on stale instructions.
+*   **The Compiler:** `prepare_prompt.py` has been rewritten as a JIT compiler that recursively resolves `_includes` and merges shared blocks from `ai_system_layers/3_prompts/blocks/`.
+*   **The Logic:** This removes the "context window tax" of duplicating complex logic (like Heuer or WRC) across multiple consultants. We now maintain a Single Source of Truth (SSoT) for intelligence tradecraft and inject it into "thin skin" manifests.
+*   **Verification:** This architecture is backed by 117 TDD tests covering nested and circular dependency scenarios, ensuring structural stability.
 
 ### 🧠 The Intelligence Layer: From Heuristics to Tradecraft
-To move beyond the limitations of raw LLM generation, we integrated formal intelligence analysis techniques into our system prompts and orchestration.
+By leveraging the new block architecture, we integrated formal intelligence analysis techniques into our system prompts.
 
-*   **Heuer Intelligence Tradecraft:** To counter "autoregressive momentum"—the tendency of AI to converge on the first plausible hypothesis and simply agree with itself—we integrated Richard Heuer's methodology. By mandating the **Analysis of Competing Hypotheses (ACH)** and **disconfirmation**, we force the system to explore divergent paths and identify "linchpin" assumptions before reaching a conclusion.
-*   **The WRC Metric (Self-Discipline Trigger):** We replaced "vibes-based" evaluation with the **Weighted Response Confidence (WRC)** metric. Rather than an external tool, WRC is a self-discipline trigger embedded in the generation phase. It forces the model to calculate confidence based on a weighted formula ($\text{WRC} = 0.35 \cdot \text{Evidence} + 0.25 \cdot \text{Alignment} + 0.40 \cdot \text{Probability}$), ensuring that high confidence is earned through evidence and adherence to constraints, not just linguistic fluency.
+*   **Heuer Intelligence Tradecraft:** To counter "autoregressive momentum"—the tendency of AI to converge on the first plausible hypothesis—we use shared blocks to mandate the **Analysis of Competing Hypotheses (ACH)** and **disconfirmation**.
+*   **The WRC Metric (Self-Discipline Trigger):** We replaced "vibes-based" evaluation with the **Weighted Response Confidence (WRC)** metric, implemented as a core block. It forces the model to calculate confidence based on evidence, alignment, and probability, ensuring high confidence is earned, not hallucinated.
 
 ### 🏗️ The Governance Foundation: The Frontmatter Standard
 We overhauled the repository's metadata system, moving from a fragmented, directory-based approach to a **Self-Describing Composable Block Standard**.
 
-*   **The "Why":** Previously, validation scripts had to "guess" a file's type based on its folder. We replaced this with a system where documents define themselves using additive blocks: **Identity** (who/what), **Discovery** (intent/tags/cost), and **Lifecycle** (version/birth/date).
-*   **Enabling Progressive Disclosure:** This structural shift is the prerequisite for **AI-Readability**. By isolating the "Discovery block," we enable agents to parse a file's intent and context cost without reading the entire document—a critical optimization for managing the attention budget.
-*   **The Guardrail:** This standard is enforced by the `check_frontmatter.py` validation engine, acting as a Git guardrail that prevents metadata decay.
-*   **The "Hidden" Win:** The massive effort of migrating hundreds of files to this standard served as a systemic audit. Forcing every metadata-touching script to handle the new schema revealed and purged dozens of latent bugs in YAML parsing and path handling, effectively **hardening our toolchain**.
+*   **The "Why":** Documents now define themselves using additive blocks: **Identity** (who/what), **Discovery** (intent/tags/cost), and **Lifecycle** (version/birth/date).
+*   **Enabling AI-Readability:** By isolating the "Discovery block," agents can parse a file's intent and cost without reading the entire document, optimizing the attention budget.
+*   **The Guardrail:** This standard is enforced by the `check_frontmatter.py` validation engine, preventing metadata decay.
 
 ### 🛡️ Operational Guardrails: Hard Constraints
-As the system's complexity grew, we introduced "Hard Constraints" to eliminate high-impact, avoidable errors.
+We introduced "Hard Constraints" to eliminate high-impact, avoidable errors in the agentic workflow.
 
-*   **Scripts as Instructors (JIT Feedback):** We transformed our validation scripts from simple "pass/fail" checks into active instructors. Instead of generic error messages, the scripts now provide **Just-In-Time (JIT) instructions**—telling the agent exactly what is wrong and how to fix it. This eliminates the costly "diagnostic loop" where agents waste time and tokens repeatedly reading the same files to figure out an error, often spiraling into cycles that require user intervention. By enforcing **Precise Targeting**, we ban dangerous "global cleanups" and require agents to map every single error to a specific fix and a specific file pair. This workflow improvement was rigorously tested on `gemma-4-31b-it` as part of our "no-vendor-lock-in" initiative, proving that governed instructions can compensate for lower-tier model reasoning.
-*   **Safety Bans:** To protect the integrity of the Git history and CI/CD pipeline, we explicitly banned high-risk tools (`sed`, `git reset`) and the use of the `--no-verify` flag.
+*   **Scripts as Instructors (JIT Feedback):** Validation scripts now provide **Just-In-Time (JIT) instructions**, telling the agent exactly how to fix a violation. This eliminates the "diagnostic loop" where agents waste tokens repeatedly reading files to guess the cause of an error.
+*   **Script Suite Governance:** As a consequence of the "Code as Docs" shift, the former script-test-doc triad has evolved into a **script-test dyad**. `check_script_suite.py` enforces this pairing, preventing the proliferation of "dark tools" (untested or undocumented utilities) while eliminating redundant prose.
+*   **Safety Bans:** To protect Git history and CI/CD integrity, we explicitly banned high-risk tools (`sed`, `git reset`) and the use of the `--no-verify` flag.
 
 ---
 ---
-
 ## release v3.0.0 "The Agents Emerge"
 
 ### Summary of Changes

@@ -1,11 +1,13 @@
 import subprocess
 import sys
 import runpy
+import logging
 from pathlib import Path
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
+import tools.scripts.git as _git
 from tools.scripts.check_broken_links import (
     FileFinder,
     LinkCheckerCLI,
@@ -69,18 +71,14 @@ class TestLinkExtractor:
         links = extractor.extract(file)
         assert links == expected_links
 
-    def test_extract_handles_decode_error(self, capsys):
+    def test_extract_handles_decode_error(self, tmp_path, caplog):
         extractor = LinkExtractor(verbose=False)
         # Create a file that can't be decoded as UTF-8
-        binary_file = Path(__file__).parent / "binary_file.bin"
+        binary_file = tmp_path / "binary_file.bin"
         binary_file.write_bytes(b"\xff\xfe")
-        try:
-            links = extractor.extract(binary_file)
-            assert links == []
-            captured = capsys.readouterr()
-            assert "Cannot decode file" in captured.err
-        finally:
-            binary_file.unlink(missing_ok=True)
+        links = extractor.extract(binary_file)
+        assert links == []
+        assert "Cannot decode file" in caplog.text
 
 
 class TestLinkValidator:
@@ -170,7 +168,8 @@ class TestLinkValidator:
         error = validator.validate_link(excluded_link, source, 1)
         assert error is None
 
-    def test_validate_link_excluded_string_verbose(self, tmp_path, capsys):
+    def test_validate_link_excluded_string_verbose(self, tmp_path, caplog):
+        caplog.set_level(logging.DEBUG)
         validator = LinkValidator(
             root_dir=tmp_path,
             verbose=True,
@@ -180,10 +179,10 @@ class TestLinkValidator:
         excluded_link = next(iter(BROKEN_LINKS_EXCLUDE_LINK_STRINGS))
         error = validator.validate_link(excluded_link, source, 1)
         assert error is None
-        captured = capsys.readouterr()
-        assert f"  SKIP Excluded Link String: {excluded_link}" in captured.out
+        assert f"  SKIP Excluded Link String: {excluded_link}" in caplog.text
 
-    def test_validate_link_target_outside_root_verbose(self, tmp_path, capsys):
+    def test_validate_link_target_outside_root_verbose(self, tmp_path, caplog):
+        caplog.set_level(logging.DEBUG)
         validator = LinkValidator(root_dir=tmp_path / "root", verbose=True)
         validator.root_dir.mkdir()
         source = validator.root_dir / "a.ipynb"
@@ -196,18 +195,17 @@ class TestLinkValidator:
         relative_path_str = str(outside.relative_to(source.parent, walk_up=True))
         error = validator.validate_link(relative_path_str, source, 1)
         assert error is None
-        captured = capsys.readouterr()
-        assert f"  OK: {relative_path_str} -> {outside.resolve()}" in captured.out
+        assert f"  OK: {relative_path_str} -> {outside.resolve()}" in caplog.text
 
-    def test_validate_link_valid_verbose(self, tmp_path, capsys):
+    def test_validate_link_valid_verbose(self, tmp_path, caplog):
+        caplog.set_level(logging.DEBUG)
         target = tmp_path / "exists.ipynb"
         target.touch()
         source = tmp_path / "a.ipynb"
         validator = LinkValidator(root_dir=tmp_path, verbose=True)
         error = validator.validate_link("exists.ipynb", source, 1)
         assert error is None
-        captured = capsys.readouterr()
-        assert "  OK: exists.ipynb -> exists.ipynb" in captured.out
+        assert "  OK: exists.ipynb -> exists.ipynb" in caplog.text
 
     @pytest.mark.parametrize(
         "link,expected_error",
@@ -354,19 +352,18 @@ class TestFileFinder:
         assert len(files) == 1
         assert files[0] == symlink_path
 
-    def test_find_skipping_non_files(self, tmp_path, capsys):
+    def test_find_skipping_non_files(self, tmp_path, caplog):
+        caplog.set_level(logging.DEBUG)
         # Create a directory that matches the pattern (e.g. ends in .ipynb)
         dir_matching_pattern = tmp_path / "not_a_file.ipynb"
         dir_matching_pattern.mkdir()
         (tmp_path / "real.ipynb").touch()
-        
+
         finder = FileFinder(exclude_dirs=[], exclude_files=[], verbose=True)
         files = finder.find(tmp_path, "*.ipynb")
         assert len(files) == 1
         assert files[0].name == "real.ipynb"
-        captured = capsys.readouterr()
-        assert "SKIPPING (not a file)" in captured.out
-
+        assert "SKIPPING (not a file)" in caplog.text
 
 class TestReporter:
     def test_report_broken_links_exits_1(self, tmp_path, capsys):
@@ -387,18 +384,102 @@ class TestReporter:
         captured = capsys.readouterr()
         assert "✅" in captured.out
 
-    def test_report_missing_temp_file(self, tmp_path, capsys):
+    def test_report_missing_temp_file(self, tmp_path, caplog):
         missing = tmp_path / "missing.txt"
         with pytest.raises(SystemExit) as exc_info:
             Reporter.report(missing, broken_links_found=True)
         assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "not found" in captured.err
+        assert "not found" in caplog.text
 
 
-# ======================
-# Integration & E2E Tests
-# ======================
+# =============================================================================
+# Integration Tests: Git-Scoped Validation & Production Safety
+# =============================================================================
+
+class TestLinkCheckerGitIntegration:
+    """Contract: verifies that only staged files are checked and targets must be tracked."""
+
+    def setup_repo(self, tmp_path):
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        # Establish a commit
+        (repo_dir / "init.txt").write_text("init")
+        subprocess.run(["git", "add", "init.txt"], cwd=repo_dir, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=repo_dir, capture_output=True)
+        return repo_dir
+
+    def test_check_staged_only_scans_staged_files(self, tmp_path, monkeypatch):
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # 1. Staged file: valid link
+        staged_file = Path("staged.md")
+        staged_file.write_text("[link](target.md)", encoding="utf-8")
+        (repo / "target.md").touch()
+        subprocess.run(["git", "add", "staged.md", "target.md"], cwd=repo, capture_output=True)
+
+        # 2. Unstaged file: broken link
+        unstaged_file = Path("unstaged.md")
+        unstaged_file.write_text("[bad](missing.md)", encoding="utf-8")
+
+        # Run with --check-staged
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
+        
+        # Should be 0 because the broken link is in an unstaged file
+        assert exc_info.value.code == 0
+
+    def test_fails_when_staged_file_has_broken_link(self, tmp_path, monkeypatch):
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        staged_file = Path("staged.md")
+        staged_file.write_text("[bad](missing.md)", encoding="utf-8")
+        subprocess.run(["git", "add", "staged.md"], cwd=repo, capture_output=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
+        
+        assert exc_info.value.code == 1
+
+    def test_fails_when_link_target_is_untracked(self, tmp_path, monkeypatch):
+        """Production Safety: A link to a file that exists on disk but is not tracked is broken."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # Target exists on disk but is NOT staged/tracked
+        target = Path("untracked_target.md")
+        target.touch()
+
+        source = Path("source.md")
+        source.write_text(f"[link]({target.name})", encoding="utf-8")
+        subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
+        
+        assert exc_info.value.code == 1
+        # The error should specifically mention that the target is untracked
+        # (Since we haven't implemented this yet, this test will FAIL - Red Phase)
+        # In the final implementation, the error message will be customized.
+
+    def test_passes_when_link_target_is_tracked(self, tmp_path, monkeypatch):
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        target = Path("tracked_target.md")
+        target.touch()
+        subprocess.run(["git", "add", "tracked_target.md"], cwd=repo, capture_output=True)
+
+        source = Path("source.md")
+        source.write_text(f"[link]({target.name})", encoding="utf-8")
+        subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
+        
+        assert exc_info.value.code == 0
 
 
 class TestLinkCheckerCLI:
@@ -406,36 +487,14 @@ class TestLinkCheckerCLI:
     def cli(self):
         return LinkCheckerCLI()
 
-    @patch("tools.scripts.check_broken_links.subprocess.run")
-    def test_get_git_root_dir_success(self, mock_run, cli):
-        mock_run.return_value = MagicMock(stdout="/fake/repo\n")
-        root = cli.get_git_root_dir()
-        assert root == Path("/fake/repo").resolve()
-        mock_run.assert_called_once_with(
-            ["git", "rev-parse", "--show-toplevel"],
-            check=True,
-            stdout=ANY,
-            stderr=ANY,
-            text=True,
-        )
-
-    @patch("tools.scripts.check_broken_links.subprocess.run")
-    def test_get_git_root_dir_failure(self, mock_run, cli):
-        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
-        root = cli.get_git_root_dir()
-        assert root is None
-
-    @patch("tools.scripts.check_broken_links.subprocess.run")
-    def test_get_git_root_dir_git_not_installed(self, mock_run, cli):
-        mock_run.side_effect = FileNotFoundError()
-        root = cli.get_git_root_dir()
-        assert root is None
-
     def test_run_single_file_input(self, tmp_path, capsys, monkeypatch):
         target = tmp_path / "target.ipynb"
         target.touch()
         source = tmp_path / "source.ipynb"
         source.write_text(f"[link]({target.name})", encoding="utf-8")
+
+        # Mock detect_repo_root to return None to avoid enforcing Git tracking in tmp_path
+        monkeypatch.setattr("tools.scripts.check_broken_links.detect_repo_root", lambda: None)
 
         # Corrected: Added "--paths" flag
         monkeypatch.setattr(
@@ -474,6 +533,8 @@ class TestLinkCheckerCLI:
     def test_run_current_directory_default_path(self, tmp_path, capsys, monkeypatch):
         # Simulate running with no --paths argument, defaulting to current directory
         monkeypatch.chdir(tmp_path)  # Change CWD to tmp_path for this test
+        # Mock detect_repo_root to return None to avoid enforcing Git tracking in tmp_path
+        monkeypatch.setattr("tools.scripts.check_broken_links.detect_repo_root", lambda: None)
         target = tmp_path / "target.ipynb"
         target.touch()
         source = tmp_path / "source.ipynb"
@@ -499,14 +560,31 @@ class TestLinkCheckerCLI:
         captured = capsys.readouterr()
         assert "BROKEN LINK" in captured.out
 
-    def test_run_no_files_found(self, tmp_path, capsys):
-        cli = LinkCheckerCLI()
+    def test_run_path_does_not_exist(self, tmp_path, caplog, cli):
+        non_existent = tmp_path / "ghost.md"
         with pytest.raises(SystemExit) as exc_info:
-            # Use the new injectable argv and include --paths
-            cli.run(["--paths", str(tmp_path), "--pattern", "*.xyz"])
+            # No files found should exit 0
+            cli.run(["--paths", str(non_existent), "--pattern", "*.md"])
         assert exc_info.value.code == 0
-        captured = capsys.readouterr()
-        assert "No files matching '*.xyz' found!" in captured.out
+        assert "Warning: Path does not exist" in caplog.text
+
+    def test_run_verbose_logging(self, cli, tmp_path, caplog, monkeypatch):
+        """Verify that verbose output is sent to logging.debug instead of print."""
+        import logging
+        caplog.set_level(logging.DEBUG)
+        target = tmp_path / "target.md"
+        target.touch()
+        source = tmp_path / "source.md"
+        source.write_text("[link](target.md)", encoding="utf-8")
+
+        monkeypatch.setattr("tools.scripts.check_broken_links.detect_repo_root", lambda: None)
+
+        with pytest.raises(SystemExit) as exc_info:
+            cli.run(["--paths", str(source), "--verbose"])
+
+        assert exc_info.value.code == 0
+        # Checking for a message that should now be a log
+        assert "Checking file:" in caplog.text
 
     def test_run_broken_myst_include(self, tmp_path, capsys):
         (tmp_path / "source.md").write_text(
@@ -521,30 +599,7 @@ class TestLinkCheckerCLI:
         captured = capsys.readouterr()
         assert "BROKEN LINK" in captured.out
 
-    def test_e2e_with_git_root(self, tmp_path, capsys):
-        git_root = tmp_path / "repo"
-        git_root.mkdir()
-        (git_root / ".git").mkdir()
-        docs = git_root / "docs"
-        docs.mkdir()
-        target = git_root / "data.ipynb"
-        target.touch()
-        source = docs / "guide.ipynb"
-        source.write_text("[data](/data.ipynb)", encoding="utf-8")
-
-        cli = LinkCheckerCLI()
-        with (
-            patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=git_root),
-            patch("pathlib.Path.cwd", return_value=docs),
-        ):
-            # Explicitly use --paths and avoid monkeypatch
-            with pytest.raises(SystemExit) as exc_info:
-                cli.run(["--verbose", "--paths", str(source)])
-            assert exc_info.value.code == 0
-            captured = capsys.readouterr()
-            assert "Using Git root" in captured.out
-
-    def test_e2e_myst_include_with_git_root(self, tmp_path, capsys):
+    def test_e2e_myst_include_with_git_root(self, tmp_path, capsys, caplog):
         git_root = tmp_path / "repo"
         git_root.mkdir()
         (git_root / ".git").mkdir()
@@ -561,7 +616,7 @@ class TestLinkCheckerCLI:
 
         cli = LinkCheckerCLI()
         with (
-            patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=git_root),
+            patch("tools.scripts.check_broken_links.detect_repo_root", return_value=git_root),
             patch("pathlib.Path.cwd", return_value=docs),
         ):
             # Enable verbose mode to cover line 275 (SKIP Excluded Link String verbose output)
@@ -569,11 +624,11 @@ class TestLinkCheckerCLI:
                 cli.run(["--paths", str(source), "--verbose"])
             assert exc_info.value.code == 0
             captured = capsys.readouterr()
-            assert "Using Git root" in captured.out
-            assert "SKIP Excluded Link String: path/to/file.md" in captured.out
+            assert "Using Git root" in caplog.text
+            assert "SKIP Excluded Link String: path/to/file.md" in caplog.text
             assert "BROKEN LINK" not in captured.out  # Crucial check
 
-    def test_e2e_directory_link_with_excluded_link(self, tmp_path, capsys):
+    def test_e2e_directory_link_with_excluded_link(self, tmp_path, capsys, caplog):
         git_root = tmp_path / "repo"
         git_root.mkdir()
         (git_root / ".git").mkdir()
@@ -585,7 +640,7 @@ class TestLinkCheckerCLI:
 
         cli = LinkCheckerCLI()
         with (
-            patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=git_root),
+            patch("tools.scripts.check_broken_links.detect_repo_root", return_value=git_root),
             patch("pathlib.Path.cwd", return_value=docs),
         ):
             # Enable verbose mode to cover line 275 (SKIP Excluded Link String verbose output)
@@ -593,11 +648,11 @@ class TestLinkCheckerCLI:
                 cli.run(["--paths", str(source), "--verbose"])
             assert exc_info.value.code == 0
             captured = capsys.readouterr()
-            assert "Using Git root" in captured.out
-            assert "SKIP Excluded Link String: ./intro/" in captured.out
+            assert "Using Git root" in caplog.text
+            assert "SKIP Excluded Link String: ./intro/" in caplog.text
             assert "BROKEN LINK" not in captured.out  # Crucial check
 
-    def test_run_explicit_file_in_excluded_dir_is_skipped(self, tmp_path, capsys):
+    def test_run_explicit_file_in_excluded_dir_is_skipped(self, tmp_path, capsys, caplog):
         # Setup a mock repository structure
         root_dir = tmp_path / "repo"
         root_dir.mkdir()
@@ -619,7 +674,7 @@ class TestLinkCheckerCLI:
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         # It should report that no files matching the pattern were found (because it was skipped)
-        assert "No files matching '*.ipynb' found!" in captured.out
+        assert "No files matching '*.ipynb' found!" in caplog.text
 
 
 # ======================
@@ -627,24 +682,24 @@ class TestLinkCheckerCLI:
 # ======================
 
 
-def test_nonexistent_input_path(tmp_path, capsys):
+def test_nonexistent_input_path(tmp_path, capsys, caplog):
     cli = LinkCheckerCLI()
     bad_path = tmp_path / "does_not_exist"
     with pytest.raises(SystemExit) as exc_info:
         cli.run(["--paths", str(bad_path)])
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    assert "Warning: Path does not exist" in captured.err
+    assert "Warning: Path does not exist" in caplog.text
 
 
-def test_run_no_git_root_warning(tmp_path, capsys):
+def test_run_no_git_root_warning(tmp_path, capsys, caplog):
     cli = LinkCheckerCLI()
-    with patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=None):
+    with patch("tools.scripts.check_broken_links.detect_repo_root", return_value=None):
         # We need to provide --paths so it doesn't try to find git root for CWD if we are in one
         with pytest.raises(SystemExit):
             cli.run(["--paths", str(tmp_path), "--verbose"])
     captured = capsys.readouterr()
-    assert "Warning: Not in a Git repository" in captured.out
+    assert "Warning: Not in a Git repository" in caplog.text
 
 
 # ======================
@@ -680,20 +735,21 @@ def test_link_validator_skip_logic(tmp_path, link_str, should_skip):
 # ======================
 
 
-def test_e2e_with_git_root(tmp_path, capsys):
+def test_e2e_with_git_root(tmp_path, capsys, caplog):
     git_root = tmp_path / "repo"
     git_root.mkdir()
-    (git_root / ".git").mkdir()
+    _git.init_repo(git_root)
     docs = git_root / "docs"
     docs.mkdir()
     target = git_root / "data.ipynb"
     target.touch()
+    _git.add_files(git_root, "data.ipynb")
     source = docs / "guide.ipynb"
     source.write_text("[data](/data.ipynb)", encoding="utf-8")
 
     cli = LinkCheckerCLI()
     with (
-        patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=git_root),
+        patch("tools.scripts.check_broken_links.detect_repo_root", return_value=git_root),
         patch("pathlib.Path.cwd", return_value=docs),
     ):
         # Explicitly use --paths and avoid monkeypatch
@@ -701,37 +757,7 @@ def test_e2e_with_git_root(tmp_path, capsys):
             cli.run(["--verbose", "--paths", str(source)])
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "Using Git root" in captured.out
-
-
-def test_e2e_myst_include_with_git_root(tmp_path, capsys):
-    git_root = tmp_path / "repo"
-    git_root.mkdir()
-    (git_root / ".git").mkdir()
-    docs = git_root / "docs"
-    docs.mkdir()
-    target = git_root / "architecture" / "adr_index.md"
-    target.parent.mkdir()
-    target.touch()
-    source = docs / "guide.md"
-    source.write_text(
-        "```{include} path/to/file.md\n:class: dropdown\n```",
-        encoding="utf-8",
-    )
-
-    cli = LinkCheckerCLI()
-    with (
-        patch.object(LinkCheckerCLI, "get_git_root_dir", return_value=git_root),
-        patch("pathlib.Path.cwd", return_value=docs),
-    ):
-        # Enable verbose mode to cover line 275 (SKIP Excluded Link String verbose output)
-        with pytest.raises(SystemExit) as exc_info:
-            cli.run(["--paths", str(source), "--verbose"])
-        assert exc_info.value.code == 0
-        captured = capsys.readouterr()
-        assert "Using Git root" in captured.out
-        assert "SKIP Excluded Link String: path/to/file.md" in captured.out
-        assert "BROKEN LINK" not in captured.out  # Crucial check
+        assert "Using Git root" in caplog.text
 
 
 # ======================
@@ -757,12 +783,12 @@ def test_main_entry_point(monkeypatch):
 # ======================
 
 
-def test_link_extractor_verbose_output(tmp_path, capsys):
+def test_link_extractor_verbose_output(tmp_path, capsys, caplog):
     file = tmp_path / "test.md"
     file.write_text("[link](target.md)", encoding="utf-8")
     extractor = LinkExtractor(verbose=True)
     links = extractor.extract(file)
     assert links == [("target.md", 1)]
     captured = capsys.readouterr()
-    assert "Links found in" in captured.out
-    assert "target.md" in captured.out
+    assert "Links found in" in caplog.text
+    assert "target.md" in caplog.text

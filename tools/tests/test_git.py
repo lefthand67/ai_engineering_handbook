@@ -93,6 +93,34 @@ class TestGetHistoricalPaths:
         assert result == set()
 
 
+class TestIsGitRepo:
+    """Contract: is_git_repo(path) returns True if path is inside a git repo, False otherwise."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_true_when_inside_repo(self, mock_run):
+        """git rev-parse --is-inside-work-tree succeeds → return True."""
+        mock_run.return_value = MagicMock(returncode=0)
+        assert _module.is_git_repo(Path("/fake/repo")) is True
+        mock_run.assert_called_once_with(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=Path("/fake/repo"),
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_when_outside_repo(self, mock_run):
+        """git rev-parse --is-inside-work-tree fails → return False."""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        assert _module.is_git_repo(Path("/fake/not-a-repo")) is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_on_git_not_found(self, mock_run):
+        """git binary not found → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        assert _module.is_git_repo(Path("/fake/repo")) is False
+
+
 class TestCloneRepo:
 
 
@@ -140,6 +168,16 @@ class TestCloneRepo:
         )
         assert result is False
 
+    @patch.object(_module.subprocess, "run")
+    def test_clone_git_not_found(self, mock_run):
+        """git binary not found → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        result = _module.clone_repo(
+            "https://github.com/test/repo",
+            Path("/tmp/test/repo"),
+        )
+        assert result is False
+
 
 class TestPullRepo:
     """Contract: pull_repo(path) pulls latest changes, returns (success, message)."""
@@ -167,6 +205,14 @@ class TestPullRepo:
         success, message = _module.pull_repo(Path("/tmp/test/repo"))
         assert success is False
         assert "git pull failed" in message.lower()
+
+    @patch.object(_module.subprocess, "run")
+    def test_pull_git_not_found(self, mock_run):
+        """git binary not found → return False with error."""
+        mock_run.side_effect = FileNotFoundError("git not found")
+        success, message = _module.pull_repo(Path("/tmp/test/repo"))
+        assert success is False
+        assert "git not found" in message
 
 
 class TestGetRepoStatus:
@@ -212,6 +258,21 @@ class TestGetStagedFiles:
         assert result == {"file1.py", "file2.md", "dir/file3.txt"}
         mock_run.assert_called_once_with(
             ["git", "diff", "--cached", "--name-only"],
+            cwd=None,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_staged_files_with_cwd(self, mock_run):
+        """Should support specifying the repository path."""
+        mock_run.return_value = MagicMock(stdout="file1.py\n")
+        result = _module.get_staged_files(cwd=Path("/fake/repo"))
+        assert result == {"file1.py"}
+        mock_run.assert_called_once_with(
+            ["git", "diff", "--cached", "--name-only"],
+            cwd=Path("/fake/repo"),
             capture_output=True,
             text=True,
             check=True,
@@ -219,6 +280,7 @@ class TestGetStagedFiles:
 
     @patch.object(_module.subprocess, "run")
     def test_empty_staging_area(self, mock_run):
+
         """No staged files → empty set."""
         mock_run.return_value = MagicMock(stdout="")
         result = _module.get_staged_files()
@@ -326,3 +388,109 @@ class TestIsRepoDirty:
         mock_run.side_effect = subprocess.CalledProcessError(1, "git")
         result = _module.is_repo_dirty(Path("/tmp/test/repo"))
         assert result is False
+
+
+class TestIsTracked:
+    """Contract: is_tracked(path) returns True if path is in the git index, False otherwise."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_true_when_tracked(self, mock_run):
+        """git ls-files --error-unmatch succeeds → return True."""
+        mock_run.return_value = MagicMock(returncode=0)
+        result = _module.is_tracked(Path("/fake/repo/file.txt"))
+        assert result is True
+        mock_run.assert_called_once_with(
+            ["git", "ls-files", "--error-unmatch", "/fake/repo/file.txt"],
+            cwd=None,
+            capture_output=True,
+            text=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_when_untracked(self, mock_run):
+        """git ls-files --error-unmatch returns non-zero → return False."""
+        mock_run.return_value = MagicMock(returncode=1)
+        result = _module.is_tracked(Path("/fake/repo/untracked.txt"))
+        assert result is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_on_git_failure(self, mock_run):
+        """git binary not found or other system error → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        result = _module.is_tracked(Path("/fake/repo/file.txt"))
+        assert result is False
+
+
+class TestInitAndAdd:
+    """Contract: init_repo initializes a repo, add_files stages files."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_init_repo_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        assert _module.init_repo(Path("/fake/repo")) is True
+        mock_run.assert_called_once_with(
+            ["git", "init"],
+            cwd=Path("/fake/repo"),
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_add_files_single_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        assert _module.add_files(Path("/fake/repo"), "file.txt") is True
+        mock_run.assert_called_once_with(
+            ["git", "add", "file.txt"],
+            cwd=Path("/fake/repo"),
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_add_files_multiple_success(self, mock_run):
+        mock_run.return_value = MagicMock(returncode=0)
+        assert _module.add_files(Path("/fake/repo"), ["f1.txt", "f2.txt"]) is True
+        mock_run.assert_called_once_with(
+            ["git", "add", "f1.txt", "f2.txt"],
+            cwd=Path("/fake/repo"),
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_init_repo_failure(self, mock_run):
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        assert _module.init_repo(Path("/fake/repo")) is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_add_files_failure(self, mock_run):
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        assert _module.add_files(Path("/fake/repo"), "file.txt") is False
+
+
+class TestCommitFiles:
+    """Contract: commit_files(path, message) commits staged files, returns bool success."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_commit_success(self, mock_run):
+        """git commit succeeds → return True."""
+        mock_run.return_value = MagicMock(returncode=0)
+        assert _module.commit_files(Path("/fake/repo"), "feat: test commit") is True
+        mock_run.assert_called_once_with(
+            ["git", "commit", "-m", "feat: test commit"],
+            cwd=Path("/fake/repo"),
+            capture_output=True,
+            check=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_commit_failure(self, mock_run):
+        """git commit fails → return False."""
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+        assert _module.commit_files(Path("/fake/repo"), "feat: test commit") is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_commit_git_not_found(self, mock_run):
+        """git binary not found → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        assert _module.commit_files(Path("/fake/repo"), "feat: test commit") is False

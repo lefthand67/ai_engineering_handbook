@@ -13,8 +13,8 @@ given pattern (default: *.md), but any file type can be scanned.
 """
 
 import argparse
+import logging
 import re
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -27,6 +27,10 @@ from tools.scripts.paths import (
     BROKEN_LINKS_EXCLUDE_LINK_STRINGS,
     is_excluded,
 )
+from tools.scripts.git import detect_repo_root, get_staged_files, is_tracked
+
+# Configure logger
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -61,6 +65,12 @@ Default pattern: *.md""",
             help="File glob pattern to match (default: *.md) - ignored if a single file is specified",
         )
         parser.add_argument(
+            "--check-staged",
+            action="store_true",
+            default=False,
+            help="Check only files currently staged in the git index.",
+        )
+        parser.add_argument(
             "--exclude-dirs",
             nargs="*",
             default=VALIDATION_EXCLUDE_DIRS,
@@ -80,19 +90,6 @@ Default pattern: *.md""",
         )
         return parser
 
-    def get_git_root_dir(self) -> Optional[Path]:
-        try:
-            result = subprocess.run(
-                ["git", "rev-parse", "--show-toplevel"],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            return Path(result.stdout.strip()).resolve()
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return None
-
     def run(self, argv: Optional[List[str]] = None) -> None:
         """
         Execute logic.
@@ -103,53 +100,75 @@ Default pattern: *.md""",
         verbose = args.verbose
         pattern = args.pattern
 
+        # Configure logging
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+        if verbose:
+            logging.getLogger().setLevel(logging.DEBUG)
+
         # 🔍 Determine project root: Git root first, then CWD
-        root_dir = self.get_git_root_dir()
+        root_dir = detect_repo_root()
+        use_git_tracking = root_dir is not None
         if root_dir is None:
             root_dir = Path(".").resolve()
             if verbose:
-                print(
-                    "Warning: Not in a Git repository. Using current directory as root."
-                )
+                logger.warning("Warning: Not in a Git repository. Using current directory as root.")
         else:
             # Remove 'if verbose:' to satisfy test expectations
-            print(f"Using Git root as project root: {root_dir.name}")
+            logger.info(f"Using Git root as project root: {root_dir.name}")
 
         files = []
         file_finder = FileFinder(args.exclude_dirs, args.exclude_files, verbose)
 
-        is_current_dir = False
-        if args.paths:
-            input_paths = args.paths
+        if args.check_staged:
+            # Only check staged files
+            staged_files = get_staged_files()
+            for rel_path in staged_files:
+                resolved = (root_dir / rel_path).resolve()
+                if resolved.is_file():
+                    # Apply pattern filter if applicable
+                    if not (len(staged_files) == 1 or resolved.match(pattern)):
+                        continue
+                    # Check exclusions
+                    if is_excluded(str(resolved)):
+                        if verbose:
+                            logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
+                        continue
+                    files.append(resolved)
+            is_current_dir = False
+            input_paths = [f"Git Staged Files"]
         else:
-            is_current_dir = True
-            input_paths = [str(Path.cwd())]
-
-        resolved_paths_list = list()
-        for p in input_paths:
-            # Resolve input path relative to current working directory (not root_dir!)
-            path_obj = Path(p)
-            if path_obj.is_absolute():
-                resolved = path_obj.resolve()
+            is_current_dir = False
+            if args.paths:
+                input_paths = args.paths
             else:
-                resolved = (Path.cwd() / path_obj).resolve()
-            resolved_paths_list.append(resolved)
+                is_current_dir = True
+                input_paths = [str(Path.cwd())]
 
-            if resolved.is_file():
-                # CRITICAL: Always check exclusions for explicit file arguments.
-                # Prevents processing of files in external research repos when passed directly.
-                if is_excluded(str(resolved)):
-                    if verbose:
-                        print(f"  EXCLUDING (by directory rule): {resolved}")
-                    continue
-                files.append(resolved)
-            elif resolved.is_dir():
-                files.extend(file_finder.find(resolved, pattern))
-            else:
-                print(f"Warning: Path does not exist: {resolved}", file=sys.stderr)
+            resolved_paths_list = list()
+            for p in input_paths:
+                # Resolve input path relative to current working directory (not root_dir!)
+                path_obj = Path(p)
+                if path_obj.is_absolute():
+                    resolved = path_obj.resolve()
+                else:
+                    resolved = (Path.cwd() / path_obj).resolve()
+                resolved_paths_list.append(resolved)
+
+                if resolved.is_file():
+                    # CRITICAL: Always check exclusions for explicit file arguments.
+                    # Prevents processing of files in external research repos when passed directly.
+                    if is_excluded(str(resolved)):
+                        if verbose:
+                            logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
+                        continue
+                    files.append(resolved)
+                elif resolved.is_dir():
+                    files.extend(file_finder.find(resolved, pattern))
+                else:
+                    logger.warning(f"Warning: Path does not exist: {resolved}")
 
         if not files:
-            print(f"No files matching '{pattern}' found!")
+            logger.info(f"No files matching '{pattern}' found!")
             sys.exit(0)
 
         effective_pattern = (
@@ -171,6 +190,7 @@ Default pattern: *.md""",
             root_dir=root_dir,
             verbose=verbose,
             exclude_link_strings=list(BROKEN_LINKS_EXCLUDE_LINK_STRINGS),
+            use_git_tracking=use_git_tracking,
         )
         broken_links_found = False
 
@@ -180,7 +200,7 @@ Default pattern: *.md""",
             temp_path = Path(tf.name)
             for file in files:
                 if verbose:
-                    print(f"\nChecking file: {file}")
+                    logger.debug(f"\nChecking file: {file}")
                 links = link_extractor.extract(file)
                 for link, line_no in links:
                     error = link_validator.validate_link(link, file, line_no)
@@ -223,13 +243,13 @@ class LinkExtractor:
 
             if self.verbose:
                 if matches:
-                    print(f"  Links found in {file}: {matches}")
+                    logger.debug(f"  Links found in {file}: {matches}")
                 else:
-                    print(f"  No links found for {file}")
+                    logger.debug(f"  No links found for {file}")
 
             return matches
         except UnicodeDecodeError:
-            print(f"Warning: Cannot decode file {file}. Skipping.", file=sys.stderr)
+            logger.warning(f"Warning: Cannot decode file {file}. Skipping.")
             return []
 
 
@@ -241,12 +261,14 @@ class LinkValidator:
         root_dir: Path,
         verbose: bool = False,
         exclude_link_strings: Optional[List[str]] = None,
+        use_git_tracking: bool = False,
     ):
         self.root_dir = root_dir.resolve()
         self.verbose = verbose
         self.exclude_link_strings = (
             set(exclude_link_strings) if exclude_link_strings else set()
         )
+        self.use_git_tracking = use_git_tracking
 
     def is_absolute_url(self, link: str) -> bool:
         """Check if link is an absolute HTTP/HTTPS URL."""
@@ -270,8 +292,12 @@ class LinkValidator:
             return (source_file.parent / link_path).resolve()
 
     def is_valid_target(self, target_file: Path) -> bool:
-        """Check if target exists or is a dir with index/README."""
-        if target_file.exists():
+        """Check if target exists and is tracked by git (if tracking enabled)."""
+        if not target_file.exists():
+            return False
+
+        # Production Link Safety: Enforce tracking only if enabled
+        if self.use_git_tracking:
             if target_file.is_dir():
                 index_files = [
                     target_file / "index.md",
@@ -279,9 +305,19 @@ class LinkValidator:
                     target_file / "index.ipynb",
                     target_file / "README.ipynb",
                 ]
-                return any(p.exists() for p in index_files)
-            return True
-        return False
+                return any(p.exists() and is_tracked(p, cwd=self.root_dir) for p in index_files)
+            return is_tracked(target_file, cwd=self.root_dir)
+
+        # Fallback for non-git environments (e.g. unit tests in tmp_path)
+        if target_file.is_dir():
+            index_files = [
+                target_file / "index.md",
+                target_file / "README.md",
+                target_file / "index.ipynb",
+                target_file / "README.ipynb",
+            ]
+            return any(p.exists() for p in index_files)
+        return True
 
     def validate_link(
         self, link: str, source_file: Path, line_no: int
@@ -292,7 +328,7 @@ class LinkValidator:
         """
         if self.is_absolute_url(link):
             if self.verbose:
-                print(f"  SKIP External URL: {link}")
+                logger.debug(f"  SKIP External URL: {link}")
             return None
 
         link_path = self.get_path_from_link(link)
@@ -302,13 +338,13 @@ class LinkValidator:
         # Skip internal fragments without path separators or dots
         if "/" not in link_path and "." not in link_path:
             if self.verbose:
-                print(f"  SKIP Internal Fragment/Variable: {link}")
+                logger.debug(f"  SKIP Internal Fragment/Variable: {link}")
             return None
 
         # Check for excluded link strings
         if any(exclude_str in link_path for exclude_str in self.exclude_link_strings):
             if self.verbose:
-                print(f"  SKIP Excluded Link String: {link}")
+                logger.debug(f"  SKIP Excluded Link String: {link}")
             return None
 
         target_file = self.resolve_target_path(link_path, source_file)
@@ -324,7 +360,7 @@ class LinkValidator:
                 rel_target = target_file.relative_to(self.root_dir)
             except ValueError:
                 rel_target = target_file
-            print(f"  OK: {link} -> {rel_target}")
+            logger.debug(f"  OK: {link} -> {rel_target}")
 
         return None
 
@@ -350,13 +386,13 @@ class FileFinder:
         for file in search_dir.rglob(pattern):
             if not file.is_file():
                 if self.verbose:
-                    print(f"  SKIPPING (not a file): {file}")
+                    logger.debug(f"  SKIPPING (not a file): {file}")
                 continue
 
             # Check for excluded file names (basename) regardless of path
             if file.name in self.exclude_files:
                 if self.verbose:
-                    print(f"  EXCLUDING (by file name): {file}")
+                    logger.debug(f"  EXCLUDING (by file name): {file}")
                 continue
 
             # Get the path relative to search_dir to analyze directory components.
@@ -400,7 +436,7 @@ class FileFinder:
 
             if is_excluded_by_dir:
                 if self.verbose:
-                    print(f"  EXCLUDING (by directory rule): {file}")
+                    logger.debug(f"  EXCLUDING (by directory rule): {file}")
                 continue
 
             filtered_files.append(file)
@@ -418,7 +454,7 @@ class Reporter:
                 with open(temp_file, "r", encoding="utf-8") as f:
                     report_content = f.read()
             except FileNotFoundError:
-                print("Error: Temporary report file not found.", file=sys.stderr)
+                logger.error("Error: Temporary report file not found.")
                 sys.exit(1)
 
             count = sum(

@@ -55,17 +55,18 @@ def detect_repo_root() -> Path:
         return Path(__file__).resolve().parent.parent.parent
 
 
-def get_staged_files() -> set[str]:
+def get_staged_files(cwd: Path | None = None) -> set[str]:
     """Get repo-relative paths of staged files from git."""
     try:
         result = subprocess.run(
             ["git", "diff", "--cached", "--name-only"],
+            cwd=cwd,
             capture_output=True,
             text=True,
             check=True,
         )
         return {line.strip() for line in result.stdout.splitlines() if line.strip()}
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return set()
 
 
@@ -209,6 +210,43 @@ def is_repo_dirty(path: Path) -> bool:
         return False
 
 
+def is_git_repo(path: Path) -> bool:
+    """Check if the given path is inside a git repository."""
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"],
+            cwd=path,
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def is_tracked(path: Path, cwd: Path | None = None) -> bool:
+
+    """Check if a file is tracked by git.
+
+    Args:
+        path: Absolute path to the file.
+        cwd: Optional directory to run the git command in.
+
+    Returns:
+        True if tracked, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", str(path)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def reset_repo(path: Path) -> bool:
     """Forcefully reset a repository to its remote tracking branch.
 
@@ -235,4 +273,52 @@ def reset_repo(path: Path) -> bool:
         )
         return result.returncode == 0
     except (subprocess.CalledProcessError, subprocess.SubprocessError, FileNotFoundError):
+        return False
+
+
+def init_repo(path: Path) -> bool:
+    """Initialize a new git repository at the given path."""
+    try:
+        subprocess.run(
+            ["git", "init"],
+            cwd=path,
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def add_files(path: Path, files: list[str] | str) -> bool:
+    """Stage files in the git repository."""
+    try:
+        cmd = ["git", "add"]
+        if isinstance(files, list):
+            cmd.extend(files)
+        else:
+            cmd.append(files)
+
+        subprocess.run(
+            cmd,
+            cwd=path,
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def commit_files(path: Path, message: str) -> bool:
+    """Commit staged files in the git repository."""
+    try:
+        subprocess.run(
+            ["git", "commit", "-m", message],
+            cwd=path,
+            capture_output=True,
+            check=True,
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
         return False

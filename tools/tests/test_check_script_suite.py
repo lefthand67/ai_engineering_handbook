@@ -176,6 +176,48 @@ index abc123..def456
         )
 
 
+# =======================
+# Unit Tests: check_staging_dyad
+# =======================
+
+
+class TestCheckStagingDyad:
+    """Contract: verifies that staged scripts have staged tests."""
+
+    def test_errors_when_script_staged_but_test_not(self):
+        staged = {"tools/scripts/my_script.py"}
+        # Mock is_mode_only_change to return False (meaning it has content changes)
+        with patch("tools.scripts.check_script_suite.is_mode_only_change", return_value=False):
+            errors = _module.check_staging_dyad(staged_files=staged)
+        assert len(errors) == 1
+        assert "Staging violation" in errors[0]
+        assert "tools/tests/test_my_script.py" in errors[0]
+
+    def test_passes_when_both_staged(self):
+        staged = {"tools/scripts/my_script.py", "tools/tests/test_my_script.py"}
+        with patch("tools.scripts.check_script_suite.is_mode_only_change", return_value=False):
+            errors = _module.check_staging_dyad(staged_files=staged)
+        assert errors == []
+
+    def test_ignores_mode_only_changes(self):
+        staged = {"tools/scripts/my_script.py"}
+        # Mock is_mode_only_change to return True
+        with patch("tools.scripts.check_script_suite.is_mode_only_change", return_value=True):
+            errors = _module.check_staging_dyad(staged_files=staged)
+        assert errors == []
+
+    def test_ignores_excluded_scripts(self):
+        staged = {"tools/scripts/paths.py"}
+        with patch("tools.scripts.check_script_suite.is_mode_only_change", return_value=False):
+            errors = _module.check_staging_dyad(staged_files=staged)
+        assert errors == []
+
+    def test_ignores_non_script_files(self):
+        staged = {"README.md", "pyproject.toml"}
+        errors = _module.check_staging_dyad(staged_files=staged)
+        assert errors == []
+
+
 # ======================
 # Unit Tests: get_all_scripts
 # ======================
@@ -222,29 +264,126 @@ class TestGetAllScripts:
             result = _module.get_all_scripts()
         assert result == []
 
+        assert set(result) == {"script_a", "script_b"}
 
-# ======================
-# Unit Tests: check_naming_convention
-# ======================
-
-
-class TestCheckNamingConvention:
-    """Contract: errors when test is missing for a script. Docs are not checked."""
-
-    def test_no_errors_when_test_exists(self, tmp_path):
+    def test_excludes_paths_py(self, tmp_path):
         scripts_dir = tmp_path / "tools" / "scripts"
-        tests_dir = tmp_path / "tools" / "tests"
         scripts_dir.mkdir(parents=True)
-        tests_dir.mkdir(parents=True)
+        (scripts_dir / "paths.py").touch()
 
-        (scripts_dir / "my_script.py").touch()
-        (tests_dir / "test_my_script.py").touch()
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir):
+            result = _module.get_all_scripts()
 
-        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir), \
-             patch("tools.scripts.check_script_suite.TESTS_DIR", tests_dir):
-            errors = _module.check_naming_convention(verbose=True)
+        assert "paths" not in result
+
+    def test_excludes_init_py(self, tmp_path):
+        scripts_dir = tmp_path / "tools" / "scripts"
+        scripts_dir.mkdir(parents=True)
+        (scripts_dir / "__init__.py").touch()
+
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", scripts_dir):
+            result = _module.get_all_scripts()
+
+        assert "__init__" not in result
+
+    def test_returns_empty_when_dir_not_exists(self, tmp_path):
+        nonexistent = tmp_path / "nonexistent"
+        with patch("tools.scripts.check_script_suite.SCRIPTS_DIR", nonexistent):
+            result = _module.get_all_scripts()
+        assert result == []
+
+
+# ======================
+# Integration Tests: Staging Dyad
+# ======================
+
+
+class TestStagingDyadIntegration:
+    """Contract: verifies staging dyad enforcement using a real Git repository."""
+
+    def setup_repo(self, tmp_path):
+        repo_dir = tmp_path / "repo"
+        repo_dir.mkdir()
+        
+        # Initialize git repo
+        subprocess.run(["git", "init"], cwd=repo_dir, capture_output=True)
+        
+        # Create initial commit to establish state
+        (repo_dir / "init.txt").write_text("init")
+        subprocess.run(["git", "add", "init.txt"], cwd=repo_dir, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=repo_dir, capture_output=True)
+        
+        return repo_dir
+
+    def test_fails_when_script_staged_without_test(self, tmp_path, monkeypatch):
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # Create script and test
+        script_path = Path("tools/scripts/my_script.py")
+        script_path.parent.mkdir(parents=True)
+        script_path.write_text("print('hello')")
+
+        test_path = Path("tools/tests/test_my_script.py")
+        test_path.parent.mkdir(parents=True)
+        test_path.write_text("def test_hello(): pass")
+
+        # Stage ONLY the script
+        subprocess.run(["git", "add", str(script_path)], capture_output=True)
+
+        errors = _module.check_staging_dyad()
+
+        assert len(errors) == 1
+        assert "Staging violation" in errors[0]
+
+    def test_passes_when_both_staged(self, tmp_path, monkeypatch):
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        script_path = Path("tools/scripts/my_script.py")
+        script_path.parent.mkdir(parents=True)
+        script_path.write_text("print('hello')")
+
+        test_path = Path("tools/tests/test_my_script.py")
+        test_path.parent.mkdir(parents=True)
+        test_path.write_text("def test_hello(): pass")
+
+        # Stage BOTH
+        subprocess.run(["git", "add", str(script_path)], capture_output=True)
+        subprocess.run(["git", "add", str(test_path)], capture_output=True)
+
+        errors = _module.check_staging_dyad()
 
         assert errors == []
+
+    def test_handles_renamed_script_dyad(self, tmp_path, monkeypatch):
+        """Adversary: verify that renaming a script still requires staging the renamed test."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # Setup initial state
+        script = Path("tools/scripts/old_script.py")
+        script.parent.mkdir(parents=True)
+        script.write_text("content")
+        test = Path("tools/tests/test_old_script.py")
+        test.parent.mkdir(parents=True)
+        test.write_text("test")
+
+        subprocess.run(["git", "add", "."], capture_output=True)
+        subprocess.run(["git", "commit", "-m", "initial"], capture_output=True)
+
+        # Rename script
+        new_script = Path("tools/scripts/new_script.py")
+        new_script.write_text("content")
+        script.unlink()
+
+        # Stage only the renamed script
+        subprocess.run(["git", "add", "."], capture_output=True)
+
+        errors = _module.check_staging_dyad()
+
+        assert len(errors) == 1
+        assert "test_new_script.py" in errors[0]
 
     def test_error_when_test_missing(self, tmp_path):
         scripts_dir = tmp_path / "tools" / "scripts"

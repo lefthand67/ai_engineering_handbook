@@ -11,6 +11,7 @@ Naming convention:
 
 Validates:
 1. Each script has a matching test file (naming convention)
+2. If a script is staged for commit, its matching test must also be staged
 
 Does NOT validate: documentation existence, doc staging, config co-staging.
 """
@@ -110,19 +111,19 @@ def get_all_scripts() -> list[str]:
 
 def check_naming_convention(verbose: bool = False, files: list[str] | None = None) -> list[str]:
     """Check that each script has a matching test file.
-    
+
     If 'files' is provided, only validate those specific files.
     Otherwise, validate all discovered scripts.
     """
     errors = []
-    
+
     if files:
         # Validate only the provided files
         for file_path in files:
             path = Path(file_path)
             if path.suffix != ".py" or "tools/scripts/" not in str(path):
                 continue
-                
+
             name = path.stem
             script, test = script_name_to_paths(name)
 
@@ -141,6 +142,40 @@ def check_naming_convention(verbose: bool = False, files: list[str] | None = Non
 
             if verbose and test.exists():
                 print(f"OK: {name} has script and test")
+
+    return errors
+
+
+def check_staging_dyad(verbose: bool = False, staged_files: set[str] | None = None) -> list[str]:
+    """Verify that if a script is staged for commit, its matching test is also staged.
+
+    This ensures the 'Script + Test Dyad' is maintained during commits.
+    """
+    errors = []
+    files_to_check = staged_files if staged_files is not None else get_staged_files()
+
+    for file_path in files_to_check:
+        path = Path(file_path)
+        if path.suffix != ".py" or "tools/scripts/" not in str(path):
+            continue
+
+        name = path.stem
+        # Respect excluded scripts
+        if name in EXCLUDED_SCRIPTS or (SCRIPTS_DIR / f"{name}.py").name in EXCLUDED_SCRIPTS:
+            continue
+
+        # Only enforce dyad if the script actually has content changes
+        if not has_content_changed(file_path, files_to_check):
+            continue
+
+        script, test = script_name_to_paths(name)
+        test_str = str(test)
+
+        if test_str not in files_to_check:
+            errors.append(f"Staging violation: {script} is staged, but its matching test {test} is not. Please run 'git add {test}'")
+
+        if verbose and test_str in files_to_check:
+            print(f"OK: {name} dyad is staged")
 
     return errors
 
@@ -166,8 +201,12 @@ def main() -> int:
 
     errors = []
 
-    # Check naming convention (every script has a test)
+    # 1. Check naming convention (every script has a test)
     errors.extend(check_naming_convention(args.verbose, files=args.files))
+
+    # 2. Check staging dyad (unless --check-convention-only is set)
+    if not args.check_convention_only:
+        errors.extend(check_staging_dyad(args.verbose))
 
     if errors:
         print("\nErrors found:")

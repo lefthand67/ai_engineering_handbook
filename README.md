@@ -16,6 +16,16 @@ Content is **generated through a hybrid LLM methodology**, **cross-validated by 
 
 > **Mission**: To build reliable, machine-readable documentation infrastructure that AI systems can trust as authoritative input — while enabling MLOps engineers and AI architects to construct audit-ready AI systems using a hybrid LLM+SLM methodology.
 
+## 🛠️ Developer & Agent Governance
+
+**ADRs are the Primary Source of Truth (PSoT) and the authoritative root for all other files in this repository.** Every structural, methodological, or tooling decision is recorded as an ADR before implementation; all other governance files (including `AGENTS.md` and Modular SOPs) are derived from and must align with the established ADRs.
+
+This repository is a strictly governed environment. AI agents and human developers **MUST** adhere to the following knowledge discovery chain before performing any modification:
+
+1. **Project Governance (`AGENTS.md` / `QWEN.md`)**: Read this first. It defines the global invariants (Always/Never rules) and the mandatory agentic loop: `Analysis` $\rightarrow$ `Knowledge Discovery (Pull)` $\rightarrow$ `Execution` $\rightarrow$ `Verification`.
+2. **Modular SOPs (`.qwen/skills/`)**: For complex tasks, do not guess. Search for and invoke the corresponding Standard Operating Procedure (SOP) in the skills directory.
+
+**Failure to follow this chain is a violation of the project's architectural integrity.**
 
 ## What's new?
 
@@ -63,7 +73,7 @@ See the full rationale in [architecture/manifesto.md](/architecture/manifesto.md
 
 ## Architectural Governance
 
-ADRs are the **main context for development** in this repository. Every structural, methodological, or tooling decision is recorded as an ADR before implementation.
+ADRs provide the formal record of decisions that drive the repository's evolution.
 
 - **36 active ADRs** govern the repo — see the full list in [architecture/adr_index.md](/architecture/adr_index.md)
 - **RFC→ADR workflow**: proposed ADRs serve as living RFCs; accepted ADRs are authoritative ({term}`ADR-26025`)

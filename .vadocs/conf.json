@@ -240,7 +240,7 @@
 
   "governed_extensions": [".md", ".ipynb"],
   "governance_excludes": {
-    "dirs": ["misc", ".github", "tests"],
+    "dirs": ["misc", ".github", "tests", ".qwen"],
     "files": [
       "README.md",
       "CONTRIBUTING.md",

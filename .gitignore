@@ -294,4 +294,7 @@ ai_agents/research/ai_infrastructure/
 
 # Qwen Code session settings
 .qwen/
+!.qwen/
+.qwen/*
+!.qwen/skills/
 ai_agents/research/ai_skills_plugins/

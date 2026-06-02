@@ -99,67 +99,74 @@ def _build_valid_frontmatter(doc_type: str) -> dict:
     if spoke:
         required.update(spoke.get("required_fields", []))
 
-    fm: dict = {"options": {"type": doc_type}}
+    # Canonical order for top-level fields
+    canonical_top = ["id", "title", "authors", "date", "description", "tags", "status", "superseded_by"]
+    
+    fm: dict = {}
+    options: dict = {"type": doc_type}
 
-    for field in required:
-        if field == "title":
-            fm["title"] = f"Test {doc_type.capitalize()} Title"
-        elif field == "type":
-            # Already in options.type
-            pass
-        elif field == "authors":
-            fm["authors"] = [{"name": "Test Author", "email": "test@example.com"}]
-        elif field == "description":
-            fm["description"] = "Test description"
-        elif field == "tags":
-            fm["tags"] = [_VALID_TAGS[0]] if _VALID_TAGS else []
-        elif field == "date":
-            fm["date"] = "2026-01-15"
-        elif field == "token_size":
-            fm["options"]["token_size"] = 100
-        elif field == "birth":
-            fm["options"]["birth"] = "2026-01-01"
-        elif field == "version":
-            fm["options"]["version"] = "1.0.0"
-        elif field == "id":
-            if doc_type == "adr":
-                val = 26099
-            else:
-                val = "X-26099"
-            fm["options"]["id"] = val
-        elif field == "status":
-            if spoke and "statuses" in spoke:
-                statuses = spoke["statuses"]
-            elif spoke and "artifact_types" in spoke:
-                # evidence spoke: statuses per artifact sub-type
-                for at in spoke["artifact_types"].values():
-                    if at.get("statuses"):
-                        statuses = at["statuses"]
-                        break
+    # Add top-level fields in canonical order
+    for field in canonical_top:
+        if field in required:
+            if field == "title":
+                fm["title"] = f"Test {doc_type.capitalize()} Title"
+            elif field == "authors":
+                fm["authors"] = [{"name": "Test Author", "email": "test@example.com"}]
+            elif field == "description":
+                fm["description"] = "Test description"
+            elif field == "tags":
+                fm["tags"] = [_VALID_TAGS[0]] if _VALID_TAGS else []
+            elif field == "date":
+                fm["date"] = "2026-01-15"
+            elif field == "id":
+                fm["id"] = 26099 if doc_type == "adr" else "X-26099"
+            elif field == "status":
+                if spoke and "statuses" in spoke:
+                    statuses = spoke["statuses"]
+                elif spoke and "artifact_types" in spoke:
+                    for at in spoke["artifact_types"].values():
+                        if at.get("statuses"):
+                            statuses = at["statuses"]
+                            break
+                    else:
+                        statuses = ["active"]
                 else:
                     statuses = ["active"]
-            else:
-                statuses = ["active"]
-            fm["options"]["status"] = statuses[0] if statuses else "active"
-        elif field == "severity":
-            if spoke and "artifact_types" in spoke:
-                for at in spoke["artifact_types"].values():
-                    if "severity" in at:
-                        fm["options"]["severity"] = at["severity"][0]
-                        break
-            else:
-                fm["options"]["severity"] = "low"
-        elif field == "model":
-            fm["options"]["model"] = "test-model"
-        else:
-            fm["options"][field] = f"test-{field}"
+                fm["status"] = statuses[0] if statuses else "active"
+            elif field == "superseded_by":
+                fm["superseded_by"] = None
 
+    # Add any other required fields that aren't in canonical_top to options
+    for field in required:
+        if field not in canonical_top and field != "type":
+            if field == "token_size":
+                options["token_size"] = 100
+            elif field == "birth":
+                options["birth"] = "2026-01-01"
+            elif field == "version":
+                options["version"] = "1.0.0"
+            elif field == "severity":
+                if spoke and "artifact_types" in spoke:
+                    for at in spoke["artifact_types"].values():
+                        if "severity" in at:
+                            options["severity"] = at["severity"][0]
+                            break
+                    else:
+                        options["severity"] = "low"
+                else:
+                    options["severity"] = "low"
+            elif field == "model":
+                options["model"] = "test-model"
+            else:
+                options[field] = f"test-{field}"
+
+    fm["options"] = options
     return fm
 
 
 def _frontmatter_to_md(fm: dict) -> str:
     """Convert a frontmatter dict to markdown file content with YAML fences."""
-    return f"---\n{yaml.dump(fm, default_flow_style=False)}---\n\n# Test Document\n"
+    return f"---\n{yaml.dump(fm, default_flow_style=False, sort_keys=False)}---\n\n# Test Document\n"
 
 
 # ======================
@@ -387,8 +394,266 @@ class TestLoadConfigChain:
 
 
 # ======================
-# Tests: Frontmatter Parsing
+# Tests: Asymmetric Fences
 # ======================
+
+
+class TestAsymmetricFences:
+    """Contract: Detect asymmetric YAML fences (closing without opening).
+
+    A file that has a closing fence ('---') but no opening fence at the start
+    should be flagged as corrupted/invalid, NOT as 'missing_frontmatter'.
+    """
+
+    def test_single_block_missing_opening_fence(self, frontmatter_env):
+        """Single block: closing fence present, opening fence missing -> corrupted."""
+        content = (
+            "title: Asymmetric Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "single_asymmetric.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert not any(e.error_type == "missing_frontmatter" for e in errors), \
+            "Should not be reported as missing_frontmatter when a closing fence exists"
+        assert any(e.error_type == "broken_dual_block" for e in errors), \
+            "Should be reported as broken_dual_block (corrupted) when closing fence exists without opening"
+
+    def test_dual_block_missing_second_opening_fence(self, frontmatter_env):
+        """Dual block: first block OK, second block missing opening fence -> corrupted."""
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "---\n"
+            "\n"
+            "title: Asymmetric Dual Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "dual_asymmetric.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert not any(e.error_type == "missing_frontmatter" for e in errors), \
+            "Should not be reported as missing_frontmatter when blocks exist"
+        assert any(e.error_type == "broken_dual_block" for e in errors), \
+            "Should be reported as broken_dual_block when second block is asymmetric"
+
+    def test_no_fences_reported_as_missing(self, frontmatter_env):
+        """No fences at all -> reported as missing_frontmatter."""
+        content = (
+            "title: No Fences\n"
+            "options:\n"
+            "  type: guide\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "no_fences.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert any(e.error_type == "missing_frontmatter" for e in errors), \
+            "Files with no fences at all should be reported as missing_frontmatter"
+
+    def test_proper_fences_pass_parsing(self, frontmatter_env):
+        """Proper symmetric fences should not trigger asymmetric errors."""
+        content = (
+            "---\n"
+            "title: Proper Doc\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "proper.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert not any(e.error_type == "broken_dual_block" for e in errors), \
+            "Proper symmetric fences should not be flagged as broken"
+
+    def test_leading_newline_now_parses_correctly(self, frontmatter_env):
+        """File starting with a newline before the opening fence should now be parsed correctly.
+        
+        This reflects the bug fix where leading whitespace is stripped before checking for fences.
+        """
+        content = (
+            "\n"
+            "---\n"
+            "title: Leading Newline\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        file_path = frontmatter_env / "leading_newline.md"
+        file_path.write_text(content, encoding="utf-8")
+    
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+    
+        assert not any(e.error_type == "broken_dual_block" for e in errors), \
+            "Files starting with a newline before the fence should no longer be reported as broken_dual_block"
+
+# ======================
+# Tests: Key Order
+# ======================
+
+
+class TestKeyOrder:
+    """Contract: Enforce canonical sequence of top-level YAML keys.
+
+    Canonical order: id > title > authors > date > description > tags > status > superseded_by > options.
+    """
+
+    def test_canonical_order_passes(self, frontmatter_env):
+        """Fields in exact canonical order should pass."""
+        fm = {
+            "id": 26001,
+            "title": "Canonical Doc",
+            "authors": [{"name": "A", "email": "a@e.com"}],
+            "date": "2026-01-01",
+            "description": "Desc",
+            "tags": ["tag1"],
+            "status": "accepted",
+            "superseded_by": None,
+            "options": {"type": "adr"}
+        }
+        file_path = frontmatter_env / "canonical.md"
+        file_path.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert not any(e.error_type == "invalid_order" for e in errors)
+
+    def test_partial_canonical_order_passes(self, frontmatter_env):
+        """Fields in correct relative order (even if some are missing) should pass."""
+        fm = {
+            "id": 26001,
+            "date": "2026-01-01",
+            "options": {"type": "adr"}
+        }
+        file_path = frontmatter_env / "partial_canonical.md"
+        file_path.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert not any(e.error_type == "invalid_order" for e in errors)
+
+    def test_incorrect_order_fails(self, frontmatter_env):
+        """Fields in incorrect relative order should produce 'invalid_order' error."""
+        fm = {
+            "title": "Wrong Order",
+            "id": 26001, # id should be first
+            "options": {"type": "adr"}
+        }
+        file_path = frontmatter_env / "wrong_order.md"
+        file_path.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert any(e.error_type == "invalid_order" for e in errors), \
+            "Should detect that 'title' comes before 'id'"
+
+    def test_options_out_of_place_fails(self, frontmatter_env):
+        """'options' block must be the final canonical field."""
+        fm = {
+            "options": {"type": "adr"},
+            "date": "2026-01-01" # date should be before options
+        }
+        file_path = frontmatter_env / "options_first.md"
+        file_path.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert any(e.error_type == "invalid_order" for e in errors), \
+            "Should detect that 'options' comes before 'date'"
+
+
+class TestDualBlockParsing:
+    """Contract: Correctly distinguish between Jupytext-only blocks and project metadata blocks.
+
+    A Jupytext block may contain an 'options' field. The parser must not mistake this
+    for the project governance block. If a Jupytext block is found, the parser
+    should look for a second governance block.
+    """
+
+    def test_jupytext_block_with_options_does_not_block_governance_block(self):
+        """Jupytext block with 'options' should still be identified as jupytext_only,
+        allowing the parser to collect the second project metadata block.
+        """
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "options:\n"
+            "  type: source\n"
+            "---\n"
+            "---\n"
+            "title: Project Title\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        # We only test the parse_frontmatter function here
+        merged_data, block_count, anomalies = _module.parse_frontmatter(content)
+
+        assert block_count == 2, f"Expected 2 blocks, found {block_count}"
+        assert merged_data is not None
+        assert merged_data["title"] == "Project Title"
+        assert merged_data["options"]["type"] == "guide"
+        assert "jupytext" in merged_data
+        assert not anomalies
+
+    def test_single_governance_block_with_options_is_not_jupytext(self):
+        """A single block with 'options' and 'title' is correctly identified as governance."""
+        content = (
+            "---\n"
+            "title: Project Title\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        merged_data, block_count, anomalies = _module.parse_frontmatter(content)
+
+        assert block_count == 1
+        assert merged_data["title"] == "Project Title"
+        assert not anomalies
+
+    def test_jupytext_block_missing_second_block_fence(self):
+        """Jupytext block followed by project metadata without an opening fence -> broken_dual_block."""
+        content = (
+            "---\n"
+            "jupytext:\n"
+            "  text_representation: {format_name: myst}\n"
+            "---\n"
+            "\n"
+            "title: Project Title\n"
+            "options:\n"
+            "  type: guide\n"
+            "---\n"
+            "\n"
+            "# Body\n"
+        )
+        merged_data, block_count, anomalies = _module.parse_frontmatter(content)
+
+        assert "broken_dual_block" in anomalies
+        # It should still merge the data if it can
+        assert merged_data["title"] == "Project Title"
 
 
 class TestParseFrontmatter:
@@ -1085,7 +1350,7 @@ class TestIDPrefixValidation:
         """ADR with valid ID (ADR-123 or 123) → no errors."""
         for valid_id in ["ADR-123", "123"]:
             fm = _build_valid_frontmatter("adr")
-            fm["options"]["id"] = valid_id
+            fm["id"] = valid_id
             md_file = frontmatter_env / f"test_{valid_id}.md"
             md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
             errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1095,7 +1360,7 @@ class TestIDPrefixValidation:
     def test_adr_invalid_id(self, frontmatter_env):
         """ADR with invalid ID (e.g. A-123) → error."""
         fm = _build_valid_frontmatter("adr")
-        fm["options"]["id"] = "A-123"
+        fm["id"] = "A-123"
         md_file = frontmatter_env / "test_bad_adr.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1105,7 +1370,7 @@ class TestIDPrefixValidation:
     def test_evidence_analysis_valid_id(self, frontmatter_env):
         """Evidence analysis with valid ID (A-123) → no errors."""
         fm = _build_valid_frontmatter("analysis")
-        fm["options"]["id"] = "A-123"
+        fm["id"] = "A-123"
         md_file = frontmatter_env / "test_analysis.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1115,7 +1380,7 @@ class TestIDPrefixValidation:
     def test_evidence_analysis_invalid_id(self, frontmatter_env):
         """Evidence analysis with invalid ID (e.g. S-123) → error."""
         fm = _build_valid_frontmatter("analysis")
-        fm["options"]["id"] = "S-123"
+        fm["id"] = "S-123"
         md_file = frontmatter_env / "test_bad_analysis.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1125,7 +1390,7 @@ class TestIDPrefixValidation:
     def test_evidence_source_valid_id(self, frontmatter_env):
         """Evidence source with valid ID (S-123) → no errors."""
         fm = _build_valid_frontmatter("source")
-        fm["options"]["id"] = "S-123"
+        fm["id"] = "S-123"
         md_file = frontmatter_env / "test_source.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1135,7 +1400,7 @@ class TestIDPrefixValidation:
     def test_evidence_source_invalid_id(self, frontmatter_env):
         """Evidence source with invalid ID (e.g. A-123) → error."""
         fm = _build_valid_frontmatter("source")
-        fm["options"]["id"] = "A-123"
+        fm["id"] = "A-123"
         md_file = frontmatter_env / "test_bad_source.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1147,7 +1412,7 @@ class TestIDPrefixValidation:
         fm = _build_valid_frontmatter("guide")
         # guide might not have a required ID, but if it does, it must not be reserved
         for reserved in ["A-123", "S-123", "ADR-123"]:
-            fm["options"]["id"] = reserved
+            fm["id"] = reserved
             md_file = frontmatter_env / f"test_reserved_{reserved}.md"
             md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
             errors = _module.validate_frontmatter(md_file, frontmatter_env)
@@ -1174,14 +1439,14 @@ class TestOptionsNamespace:
         assert len(myst_errors) == 0
 
     def test_non_myst_native_at_top_level_produces_error(self, frontmatter_env):
-        """id at top level (myst_native=false) → invalid_namespace error."""
+        """Field with myst_native=false at top level → invalid_namespace error."""
         fm = _build_valid_frontmatter("adr")
-        # manually move id to top level to create a namespace violation
-        fm["id"] = fm["options"].pop("id")
+        # 'version' is non-myst_native, so moving it to top level is a violation
+        fm["version"] = fm["options"].pop("version")
         md_file = frontmatter_env / "test.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
-        namespace_errors = [e for e in errors if e.error_type == "invalid_namespace" and e.field == "id"]
+        namespace_errors = [e for e in errors if e.error_type == "invalid_namespace" and e.field == "version"]
         assert len(namespace_errors) > 0
 
 
@@ -1302,8 +1567,8 @@ class TestMainExitCodes:
     def test_exit_1_on_namespace_violation(self, frontmatter_env):
         """File with non-myst_native field at top level → exit 1."""
         fm = _build_valid_frontmatter("adr")
-        # Move 'id' to top level to trigger invalid_namespace
-        fm["id"] = fm["options"].pop("id")
+        # Move 'version' to top level to trigger invalid_namespace
+        fm["version"] = fm["options"].pop("version")
         md_file = frontmatter_env / "test.md"
         md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
         exit_code = _module.main([str(md_file)])
@@ -1552,13 +1817,13 @@ class TestMandatoryGovernance:
         assert "no YAML frontmatter present" not in captured.out
 
     def test_excluded_filename_is_skipped(self, frontmatter_env, capsys):
-        """Explicitly excluded filename (e.g. README.md) → silently skipped (exit 0)."""
-        # 'README.md' is in our governed_excludes.files config
-        readme_file = frontmatter_env / "README.md"
-        readme_file.write_text("# Project README\nNo frontmatter here.", encoding="utf-8")
-        
-        exit_code = _module.main([str(readme_file)])
-        
+        """Explicitly excluded filename (e.g. CONTRIBUTING.md) → silently skipped (exit 0)."""
+        # 'CONTRIBUTING.md' is in our governed_excludes.files config
+        contrib_file = frontmatter_env / "CONTRIBUTING.md"
+        contrib_file.write_text("# Contributing\nNo frontmatter here.", encoding="utf-8")
+    
+        exit_code = _module.main([str(contrib_file)])
+    
         captured = capsys.readouterr()
         assert exit_code == 0
         assert "no YAML frontmatter present" not in captured.out
@@ -1593,8 +1858,8 @@ class TestMandatoryGovernance:
         exit_code = _module.main([str(md_file)])
 
         assert exit_code == 1
-        # Either treated as missing frontmatter OR as frontmatter with missing type
-        assert "no YAML frontmatter present" in caplog.text or "missing required 'options.type'" in caplog.text
+        # Should be reported as broken_dual_block due to asymmetric fence
+        assert "Broken Dual-Block pattern" in caplog.text
 
     def test_adversary_invalid_yaml(self, frontmatter_env, caplog):
         """Frontmatter with invalid YAML syntax → treated as missing/invalid (exit 1)."""
@@ -1604,7 +1869,7 @@ class TestMandatoryGovernance:
         exit_code = _module.main([str(md_file)])
 
         assert exit_code == 1
-        assert "no YAML frontmatter present" in caplog.text
+        assert "YAML syntax error in frontmatter block" in caplog.text
 
     def test_adversary_scalar_yaml(self, frontmatter_env, caplog):
         """Frontmatter that is valid YAML but not a dict (e.g. just a string) → exit 1."""
@@ -1614,7 +1879,7 @@ class TestMandatoryGovernance:
 
             exit_code = _module.main([str(md_file)])
             assert exit_code == 1
-            assert "no YAML frontmatter present" in caplog.text
+            assert "YAML syntax error in frontmatter block" in caplog.text
     def test_adversary_notebook_edge_cases(self, frontmatter_env, capsys):
         """Notebook structural edge cases → exit 1 or skip based on governance."""
         # 1. Notebook with no cells
@@ -1761,8 +2026,8 @@ class TestDuplicateFields:
         governed_fm["options"]["token_size"] = 100
 
         content = (
-            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
-            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            f"---\n{yaml.dump(jupytext_fm, sort_keys=False)}---\n\n"
+            f"---\n{yaml.dump(governed_fm, sort_keys=False)}---\n\n"
             "# Body\n"
         )
         
@@ -1790,8 +2055,8 @@ class TestDuplicateFields:
         # We generate the content first to know the actual token count
         # Note: we use a placeholder for token_size to calculate the length of the rest of the file
         content_template = (
-            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
-            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            f"---\n{yaml.dump(jupytext_fm, sort_keys=False)}---\n\n"
+            f"---\n{yaml.dump(governed_fm, sort_keys=False)}---\n\n"
             "# Body\n"
         )
         
@@ -1805,8 +2070,8 @@ class TestDuplicateFields:
         
         # Re-generate content with the correct token size
         content = (
-            f"---\n{yaml.dump(jupytext_fm)}---\n\n"
-            f"---\n{yaml.dump(governed_fm)}---\n\n"
+            f"---\n{yaml.dump(jupytext_fm, sort_keys=False)}---\n\n"
+            f"---\n{yaml.dump(governed_fm, sort_keys=False)}---\n\n"
             "# Body\n"
         )
     
@@ -1878,7 +2143,7 @@ class TestFieldAllowList:
         # 'id' is governed (in registry) but NOT in those blocks, 
         # nor in required/optional for 'guide' (see conf.json)
         fm = _build_valid_frontmatter("guide")
-        fm["options"]["id"] = 26062
+        fm["id"] = 26062
         
         # We need to use validate_parsed_frontmatter since we have a dict
         errors = _module.validate_parsed_frontmatter(fm, Path("test.md"), frontmatter_env)
@@ -1917,6 +2182,7 @@ class TestDualBlockEnforcement:
         )
         assert has_merged_error, "Jupytext metadata merged into governance block should be rejected"
 
+
     def test_accepts_single_block_without_jupytext(self, frontmatter_env):
         """Standard governed files without Jupytext should be fine with a single block."""
         content = (
@@ -1931,11 +2197,92 @@ class TestDualBlockEnforcement:
         file_path.write_text(content, encoding="utf-8")
 
         errors = _module.validate_frontmatter(file_path, frontmatter_env)
-        
+
         has_merged_error = any(
-            e.error_type == "merged_blocks" 
+            e.error_type == "merged_blocks"
             for e in errors
         )
         assert not has_merged_error, "Single block without Jupytext should NOT be flagged as merged"
 
 
+# ======================
+# Adversary Testing
+# ======================
+
+class TestAdversaryFrontmatter:
+    """Adversary tests for critical failure modes that bypassed hooks.
+    
+    Contract:
+    - YAML syntax errors must be blocking (exit 1).
+    - Missing options.type must be blocking (exit 1).
+    - Reserved keys (id) in options must be blocking (exit 1).
+    - Unknown fields in identity block must be blocked.
+    """
+
+    def setup_method(self):
+        import logging
+        logging.basicConfig(level=logging.DEBUG)
+
+    def test_rejects_invalid_yaml_syntax(self, frontmatter_env):
+        """Invalid YAML syntax must trigger a blocking error, not a warning."""
+        # malformed YAML: colon in key without quotes or unbalanced brackets
+        content = "---\ntitle: : Test\noptions:\n  type: adr\n---\n\n# Body\n"
+        file_path = frontmatter_env / "malformed.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert len(errors) > 0, "YAML syntax error should be recorded as an error"
+        assert any(e.error_type == "invalid_yaml" or "syntax" in e.message.lower() for e in errors)
+
+    def test_rejects_missing_type_as_blocking(self, frontmatter_env):
+        """Frontmatter present but missing options.type must be a blocking error."""
+        content = "---\ntitle: No Type\nauthors: [{name: A, email: a@b.com}]\n---\n\n# Body\n"
+        file_path = frontmatter_env / "no_type.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        
+        assert any(e.error_type == "missing_type" for e in errors), "Missing type must be a blocking error"
+
+    def test_rejects_reserved_id_in_options(self, frontmatter_env):
+        """Reserved key 'id' inside 'options' must trigger an error."""
+        fm = _build_valid_frontmatter("adr")
+        # Move id to options if it isn't already (the builder might put it there)
+        if "id" in fm: del fm["id"]
+        fm["options"]["id"] = "ADR-123"
+        
+        content = _frontmatter_to_md(fm)
+        file_path = frontmatter_env / "reserved_id.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        
+        assert any(e.error_type == "invalid_namespace" or "reserved" in e.message.lower() for e in errors), \
+            "id in options must be forbidden"
+
+    def test_rejects_unknown_identity_field(self, frontmatter_env):
+        """Fields like 'author' (singular) instead of 'authors' must be rejected."""
+        fm = _build_valid_frontmatter("adr")
+        fm["author"] = "Vadim Rudakov" # Incorrect key
+        
+        content = _frontmatter_to_md(fm)
+        file_path = frontmatter_env / "bad_field.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        
+        assert any(e.error_type == "invalid_field" and e.field == "author" for e in errors), \
+            "Unknown field 'author' should be rejected"
+
+    def test_rejects_missing_starting_fence(self, frontmatter_env):
+        """Files that start with metadata but lack the opening '---' fence must be flagged."""
+        # Mimics README.md corruption: starts with fields but no fence
+        content = "title: Corrupted README\nauthor: Vadim\n---\n# Body\n"
+        file_path = frontmatter_env / "no_start_fence.md"
+        file_path.write_text(content, encoding="utf-8")
+    
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+    
+        assert any(e.error_type == "broken_dual_block" for e in errors), \
+            "Missing starting fence should be reported as broken_dual_block for governed files"

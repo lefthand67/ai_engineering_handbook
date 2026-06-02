@@ -79,7 +79,7 @@ repos:
 
       - id: check-adr-index
         name: Check ADR Index
-        entry: uv run --active tools/scripts/check_adr.py --fix
+        entry: uv run --active tools/scripts/check_adr.py --fix --check-staged
         language: python
         files: ^(architecture/(adr/adr_.*\.md|adr_index\.md)|\.vadocs/(conf\.json|types/adr\.conf\.json))$
         pass_filenames: false

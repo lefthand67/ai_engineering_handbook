@@ -71,7 +71,7 @@
     "id": {
       "description": "Cross-reference identifier (numeric for ADRs, prefixed for evidence)",
       "maintenance": "human",
-      "myst_native": false
+      "myst_native": true
     },
     "status": {
       "description": "Lifecycle state (valid values defined per doc type config)",
@@ -242,7 +242,6 @@
   "governance_excludes": {
     "dirs": ["misc", ".github", "tests", ".qwen"],
     "files": [
-      "README.md",
       "CONTRIBUTING.md",
       "AGENTS.md",
       "RELEASE_NOTES.md",

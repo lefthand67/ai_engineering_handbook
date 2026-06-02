@@ -57,7 +57,6 @@ def get_valid_frontmatter(doc_type: str, **overrides) -> dict:
         required.update(spoke.get("common_required_fields", []))
 
     # Populate with minimal valid defaults
-    fm = {"options": {"type": doc_type}}
     defaults = {
         "title": "Default Title",
         "date": "2024-01-01",
@@ -69,34 +68,39 @@ def get_valid_frontmatter(doc_type: str, **overrides) -> dict:
         "birth": "2024-01-01",
     }
 
-    for field in required:
-        if field in ("type", "options.type"):
-            continue
-        
-        # Clean field name for lookup (remove 'options.' prefix if present)
+    # SSoT: Canonical order for native fields
+    native_order = ["id", "title", "authors", "date", "description", "tags", "status", "superseded_by"]
+    
+    fm = {}
+    all_fields = required | set(overrides.keys())
+
+    # 1. Native fields in canonical order
+    for field in native_order:
+        if field in all_fields:
+            if FIELD_REGISTRY.get(field, {}).get("myst_native", True):
+                val = overrides.get(field, defaults.get(field, "default_value"))
+                fm[field] = val
+
+    # 2. Any other native fields not in the canonical list
+    for field in all_fields:
         clean_field = field.replace("options.", "")
-        
-        # Determine if field should be under options.* (non-myst_native)
-        # SSoT: FIELD_REGISTRY in check_frontmatter.py
-        is_native = FIELD_REGISTRY.get(clean_field, {}).get("myst_native", True)
-        
-        val = defaults.get(clean_field, "default_value")
-        if not is_native:
-            fm["options"][clean_field] = val
-        else:
+        if FIELD_REGISTRY.get(clean_field, {}).get("myst_native", True) and clean_field not in fm:
+            val = overrides.get(field, defaults.get(field, "default_value"))
             fm[clean_field] = val
 
-    # Apply overrides
-    for key, value in overrides.items():
-        clean_key = key.replace("options.", "")
-        is_native = FIELD_REGISTRY.get(clean_key, {}).get("myst_native", True)
-        if not is_native:
-            fm["options"][clean_key] = value
-        else:
-            fm[clean_key] = value
+    # 3. Options block
+    options = {"type": doc_type}
+    for field in all_fields:
+        clean_field = field.replace("options.", "")
+        if clean_field == "type":
+            continue
+        if not FIELD_REGISTRY.get(clean_field, {}).get("myst_native", True):
+            val = overrides.get(field, defaults.get(field, "default_value"))
+            options[clean_field] = val
+    
+    fm["options"] = options
 
     return fm
-
 
 def create_adr_file(directory: Path, number: int, title: str, slug: str | None = None) -> Path:
     """Create an ADR file with given number and title.
@@ -603,7 +607,7 @@ class TestFrontmatterParsingBug:
 
         # Create ADR with leading newline
         adr_file_path = adr_env.adr_dir / "adr_26000_bug.md"
-        content = "\n---\ntitle: Bug Test\nstatus: proposed\nid: 26000\ntags: [bug]\n---\n\n# ADR-26000: Bug Test\n\n## Context\nContent."
+        content = "\n---\nid: 26000\ntitle: Bug Test\ntags: [bug]\noptions:\n  status: proposed\n---\n\n# ADR-26000: Bug Test\n\n## Context\nContent."
         adr_file_path.write_text(content, encoding="utf-8")
 
         # Use get_adr_files to load the file into an AdrFile object
@@ -2111,10 +2115,8 @@ def _make_adr_content(
         "adr",
         title="Test",
         status=status,
+        id=str(number),
     )
-    if "options" not in fm:
-        fm["options"] = {}
-    fm["options"]["id"] = str(number)
 
     # 2. Define the body
     body = (
@@ -2385,8 +2387,7 @@ class TestDuplicateSections:
         from tools.scripts.check_adr import validate_sections
 
         content = (
-            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\n"
-            "status: proposed\ntags: [architecture]\nsuperseded_by: null\n---\n\n"
+            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\ntags: [architecture]\noptions:\n  status: proposed\n  superseded_by: null\n---\n\n"
             "# ADR-26099: Test\n\n"
             "## Context\n\nSome context.\n\n"
             "## Decision\n\nSome decision.\n\n"
@@ -2426,8 +2427,7 @@ class TestDuplicateSections:
         from tools.scripts.check_adr import validate_sections
 
         content = (
-            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\n"
-            "status: proposed\ntags: [architecture]\nsuperseded_by: null\n---\n\n"
+            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\ntags: [architecture]\noptions:\n  status: proposed\n  superseded_by: null\n---\n\n"
             "# ADR-26099: Test\n\n"
             "## Context\n\nSome context.\n\n"
             "## Decision\n\nSome decision.\n\n"
@@ -2463,8 +2463,7 @@ class TestFixDuplicateSections:
         from tools.scripts.check_adr import fix_duplicate_sections
 
         content = (
-            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\n"
-            "status: accepted\ntags: [architecture]\nsuperseded_by: null\n---\n\n"
+            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\ntags: [architecture]\noptions:\n  status: accepted\n  superseded_by: null\n---\n\n"
             "# ADR-26099: Test\n\n"
             "## Context\n\nSome context.\n\n"
             "## Decision\n\nSome decision.\n\n"
@@ -2523,8 +2522,7 @@ class TestFixDuplicateSections:
         from tools.scripts.check_adr import fix_duplicate_sections
 
         content = (
-            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\n"
-            "status: accepted\ntags: [architecture]\nsuperseded_by: null\n---\n\n"
+            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\ntags: [architecture]\noptions:\n  status: accepted\n  superseded_by: null\n---\n\n"
             "# ADR-26099: Test\n\n"
             "## Context\n\nSome context.\n\n"
             "## Decision\n\nSome decision.\n\n"
@@ -2561,8 +2559,7 @@ class TestFixDuplicateSections:
         from tools.scripts.check_adr import fix_duplicate_sections
 
         content = (
-            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\n"
-            "status: accepted\ntags: [architecture]\nsuperseded_by: null\n---\n\n"
+            "---\nid: 26099\ntitle: Test\ndate: 2026-01-01\ntags: [architecture]\noptions:\n  status: accepted\n  superseded_by: null\n---\n\n"
             "# ADR-26099: Test\n\n"
             "## Context\n\nSome context.\n\n"
             "## Decision\n\nSome decision.\n\n"

@@ -145,6 +145,7 @@ class FrontmatterError:
         "broken_dual_block"     — missing separator fence between jupytext and project blocks (blocking)
         "invalid_field"      — field present but not defined in hub registry (blocking)
         "invalid_namespace"  — non-myst_native field at top level instead of options.* (blocking)
+        "invalid_order"      — fields present in non-canonical sequence (blocking)
 
     all error_types cause exit 1.
     """,
@@ -267,31 +268,25 @@ def main(argv: list[str] | None = None) -> int:
     all_errors: list[FrontmatterError] = []
     for file_path in files:
         logger.debug(f"Processing file: {file_path}")
-        # Skip explicitly excluded files or directories
-        if any(part in exclude_dirs for part in file_path.parts) or file_path.name in exclude_files:
+        
+        # Skip files based on:
+        # 1. Hub-defined governance exclusions (conf.json)
+        # 2. Centralized validation exclusions (paths.py -> includes external repos)
+        hub_excludes = HUB_CONFIG.get("governance_excludes", {})
+        exclude_dirs = hub_excludes.get("dirs", [])
+        exclude_files = hub_excludes.get("files", [])
+        
+        if any(part in exclude_dirs for part in file_path.parts) or \
+           file_path.name in exclude_files or \
+           any(excl in str(file_path) for excl in VALIDATION_EXCLUDE_DIRS):
             logger.debug(f"Skipping excluded file: {file_path}")
             continue
 
         content = file_path.read_text(encoding="utf-8")
         frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
 
-        # Files without frontmatter are checked against governed extensions.
-        # If a file has a governed extension but no frontmatter, it's a blocking error.
-        # Non-governed files (e.g. plain scripts) are silently skipped.
-        if frontmatter is None:
-            if file_path.suffix in governed_exts:
-                all_errors.append(
-                    FrontmatterError(
-                        file_path=file_path,
-                        error_type="missing_frontmatter",
-                        field=None,
-                        message="file has governed extension but no YAML frontmatter present — all governed files must have frontmatter to be subject to validation",
-                        config_source=f"{HUB_CONFIG_REL} → governed_extensions",
-                    )
-                )
-            continue
-
-        # Structural anomalies detected during parsing (e.g. broken Dual-Block pattern)
+        # Structural anomalies detected during parsing (e.g. broken Dual-Block pattern, YAML syntax errors)
+        # These must be checked first, as they can occur even if frontmatter is None (asymmetric fences).
         for anomaly in anomalies:
             if anomaly == "broken_dual_block":
                 all_errors.append(
@@ -303,6 +298,37 @@ def main(argv: list[str] | None = None) -> int:
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
                     )
                 )
+            elif anomaly == "invalid_yaml":
+                all_errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_yaml",
+                        field=None,
+                        message="YAML syntax error in frontmatter block — the file is corrupted and cannot be validated. To fix: check for indentation errors or missing colons in the YAML frontmatter",
+                        config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                    )
+                )
+
+        # Files without frontmatter are checked against governed extensions.
+        # If a file has a governed extension but no frontmatter, it's a blocking error.
+        # Non-governed files (e.g. plain scripts) are silently skipped.
+        if frontmatter is None:
+            # If we already found a structural anomaly (like asymmetric fences), 
+            # we don't also report it as 'missing' to avoid redundant/confusing errors.
+            if not anomalies:
+                if file_path.suffix in governed_exts:
+                    all_errors.append(
+                        FrontmatterError(
+                            file_path=file_path,
+                            error_type="missing_frontmatter",
+                            field=None,
+                            message="file has governed extension but no YAML frontmatter present — all governed files must have frontmatter to be subject to validation",
+                            config_source=f"{HUB_CONFIG_REL} → governed_extensions",
+                        )
+                    )
+            continue
+
+        # Files with frontmatter but no options.type: this is now a blocking error.
 
         # Files with frontmatter but no options.type: this is now a blocking error.
         # All governed files MUST declare their type to be subject to validation.
@@ -396,6 +422,37 @@ def validate_frontmatter(
     """
     content = file_path.read_text(encoding="utf-8")
     frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
+    logger.debug(f"Validating {file_path}: frontmatter={frontmatter}, blocks={block_count}, anomalies={anomalies}")
+
+    # 1. Prioritize structural anomalies (including YAML syntax errors)
+    # This ensures that corrupted frontmatter is reported as a syntax error
+    # rather than a 'missing' frontmatter error.
+    errors = []
+    for anomaly in anomalies:
+        if anomaly == "invalid_yaml":
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="invalid_yaml",
+                    field=None,
+                    message="Frontmatter contains invalid YAML syntax. To fix: check for missing colons, incorrect indentation, or unquoted special characters in strings.",
+                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                )
+            )
+        elif anomaly == "broken_dual_block":
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="broken_dual_block",
+                    field=None,
+                    message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
+                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                )
+            )
+
+    if errors:
+        return errors
+
     if frontmatter is None:
         # If file has a governed extension but no frontmatter, it's a blocking error.
         governed_exts = HUB_CONFIG.get("governed_extensions", [])
@@ -411,22 +468,42 @@ def validate_frontmatter(
             ]
         return []
 
-    errors = []
-    # Add structural anomalies from parsing
-    for anomaly in anomalies:
-        if anomaly == "broken_dual_block":
-            errors.append(
-                FrontmatterError(
-                    file_path=file_path,
-                    error_type="broken_dual_block",
-                    field=None,
-                    message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
-                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
-                )
-            )
-
     errors.extend(validate_parsed_frontmatter(frontmatter, file_path, repo_root, content=content, block_count=block_count))
     return errors
+
+
+def _check_key_order(frontmatter: dict, file_path: Path) -> list[FrontmatterError]:
+    """Enforce the canonical sequence of top-level YAML keys (ADR-26042).
+
+    Canonical order: id > title > authors > date > description > tags > status > superseded_by > options.
+    Only fields present in the frontmatter are checked for relative order.
+    """
+    canonical_order = [
+        "id", "title", "authors", "date", "description", "tags", "status", "superseded_by", "options"
+    ]
+    # Extract only keys that are part of the canonical set, preserving current order
+    present_canonical_keys = [k for k in frontmatter.keys() if k in canonical_order]
+
+    # Check if the extracted keys match their relative order in the canonical list
+    # We can do this by comparing the index of each key in the canonical list
+    indices = [canonical_order.index(k) for k in present_canonical_keys]
+
+    if indices != sorted(indices):
+        # Identify the first pair that is out of order for a better error message
+        for i in range(len(present_canonical_keys) - 1):
+            k1, k2 = present_canonical_keys[i], present_canonical_keys[i+1]
+            if canonical_order.index(k1) > canonical_order.index(k2):
+                return [
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_order",
+                        field=None,
+                        message=f"Fields present in non-canonical sequence: '{k1}' appears before '{k2}'. "
+                                f"Canonical order is: {', '.join(canonical_order)}",
+                        config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                    )
+                ]
+    return []
 
 
 def validate_parsed_frontmatter(
@@ -464,6 +541,9 @@ def validate_parsed_frontmatter(
                 config_source=f"{HUB_CONFIG_REL} → structural_spec",
             )
         )
+
+    # Enforce canonical key order (id > title > authors > ...)
+    errors.extend(_check_key_order(frontmatter, file_path))
 
     # Step 1: Determine document type from the configured type field.
     # Files without this field are not governed — this is now a blocking error.
@@ -561,7 +641,7 @@ def validate_parsed_frontmatter(
             errors.append(error)
 
     # Step 7: Check options.* namespace compliance (warnings only until Phase 1.15).
-    errors.extend(_check_options_namespace(frontmatter, file_path, hub))
+    errors.extend(_check_options_namespace(frontmatter, file_path, hub, doc_type))
 
     # Step 8: Unknown field detection ( forbid anything not in registry/infra )
     errors.extend(_check_unknown_fields(frontmatter, file_path, hub))
@@ -928,24 +1008,13 @@ def _check_unknown_fields(
             suggestion = "remove it"
             if key in common_mistakes:
                 suggestion = f"replace it with the registered '{common_mistakes[key]}' field"
-            
+
             errors.append(
                 FrontmatterError(
                     file_path=file_path,
                     error_type="invalid_field",
                     field=key,
                     message=f"field '{key}' is not defined in the hub registry — unknown fields are forbidden — To fix: {suggestion}",
-                    config_source=f"{HUB_CONFIG_REL} → field_registry",
-                )
-            )
-        elif not field_registry[key].get("myst_native", False):
-            # Field is registered, but belongs in 'options' (non-MyST native)
-            errors.append(
-                FrontmatterError(
-                    file_path=file_path,
-                    error_type="invalid_namespace",
-                    field=key,
-                    message=f"field '{key}' is present at top level but is not a MyST-native governed field — To fix: move it under 'options'",
                     config_source=f"{HUB_CONFIG_REL} → field_registry",
                 )
             )
@@ -961,6 +1030,17 @@ def _check_unknown_fields(
                         error_type="invalid_field",
                         field=f"options.{key}",
                         message=f"field 'options.{key}' is not defined in the hub registry — unknown fields are forbidden",
+                        config_source=f"{HUB_CONFIG_REL} → field_registry",
+                    )
+                )
+            elif field_registry[key].get("myst_native", False):
+                # Reserved MyST-native keys (like 'id') MUST NOT be in options
+                errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_namespace",
+                        field=f"options.{key}",
+                        message=f"reserved MyST-native field '{key}' found in options block — it must reside at the top level",
                         config_source=f"{HUB_CONFIG_REL} → field_registry",
                     )
                 )
@@ -1058,37 +1138,64 @@ def _check_governed_field_placement(
 
 
 def _check_options_namespace(
-    frontmatter: dict, file_path: Path, hub_config: dict
+    frontmatter: dict, file_path: Path, hub_config: dict, doc_type: str | None = None
 ) -> list[FrontmatterError]:
-    """Enforce that non-myst_native fields reside under options.*
+    """Enforce that non-myst_native fields reside under options.* and
+    myst_native fields reside at the top level.
 
     ADR-26042 says: MyST-native fields (title, authors, date, description,
     tags) live at top level; all others belong under options.*. The hub config
     field_registry has a myst_native boolean per field.
 
+    Exception (ADR-26042): 'status' and 'superseded_by' are permitted at the top
+    level specifically for 'adr' type documents.
+
     Returns invalid_namespace (blocking error) to ensure clean top-level
-    frontmatter.
+    frontmatter and avoid MyST reserved key conflicts.
     """
     errors: list[FrontmatterError] = []
     field_registry = hub_config.get("field_registry", {})
+    adr_top_level_exceptions = {"status", "superseded_by"}
     logger.debug(f"Checking namespace for {file_path}")
-    logger.debug(f"Frontmatter keys: {list(frontmatter.keys())}")
-    logger.debug(f"Field registry keys: {list(field_registry.keys())}")
 
+    # 1. Check top-level keys: Forbid non-native fields here
     for key in frontmatter:
         if key == "options":
             continue
-        if key in field_registry and not field_registry[key].get("myst_native", False):
-            logger.debug(f"Found non-myst_native field at top level: {key}")
-            errors.append(
-                FrontmatterError(
-                    file_path=file_path,
-                    error_type="invalid_namespace",
-                    field=key,
-                    message=f"field '{key}' is not MyST-native and must be under options.*. To fix: move the field into the 'options' block",
-                    config_source=".vadocs/conf.json → field_registry",
+        if key in field_registry:
+            native = field_registry[key].get("myst_native", False)
+            logger.debug(f"Field '{key}' native status: {native}")
+            if not native:
+                # Check for ADR exception
+                if doc_type == "adr" and key in adr_top_level_exceptions:
+                    continue
+
+                logger.debug(f"Found non-myst_native field at top level: {key}")
+                errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_namespace",
+                        field=key,
+                        message=f"field '{key}' is not MyST-native and must be under options.*. To fix: move the field into the 'options' block",
+                        config_source=".vadocs/conf.json → field_registry",
+                    )
                 )
-            )
+
+    # 2. Check options block: Forbid native fields here (prevents reserved key conflicts)
+    options = frontmatter.get("options")
+    if isinstance(options, dict):
+        for opt_key in options:
+            if opt_key in field_registry and field_registry[opt_key].get("myst_native", False):
+                logger.debug(f"Found MyST-native field inside options: {opt_key}")
+                errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_namespace",
+                        field=f"options.{opt_key}",
+                        message=f"field '{opt_key}' is MyST-native and must reside at the top level, not under 'options'. To fix: move the field out of the 'options' block",
+                        config_source=".vadocs/conf.json → field_registry",
+                    )
+                )
 
     return errors
 
@@ -1122,44 +1229,52 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
     blocks = []
     anomalies = []
     current_pos = 0
+    
     # Use split to find all blocks between fences. Fences must be on their own line.
-    # If the file starts with a fence, parts[0] is empty, and parts[1, 3, ...] are the blocks.
-    if content.strip().startswith("---"):
-        parts = re.split(r"^\s*---\s*$", content, flags=re.MULTILINE)
-        # The first part must be empty for the file to start with a fence.
-        if not parts[0].strip():
-            # Collect the first block
-            if len(parts) > 1:
-                first_block_text = parts[1].strip("\n")
-                blocks.append(first_block_text)
+    parts = re.split(r"^[ \t]*---\s*$", content, flags=re.MULTILINE)
+    logger.debug(f"SPLIT PARTS: {repr(parts)}")
+    
+    # Case 1: The file starts with a fence (Standard behavior)
+    # We strip leading whitespace to allow for leading newlines before the first fence.
+    if parts[0].strip() == "":
+        # Collect the first block
+        if len(parts) > 1:
+            first_block_text = parts[1].strip("\n")
+            blocks.append(first_block_text)
 
-                # Determine if this is a Jupytext-only block (expects a second governance block)
-                # or a full governance block (single-block file).
-                try:
-                    first_block_data = yaml.safe_load(first_block_text)
-                    is_jupytext_only = (
-                        isinstance(first_block_data, dict) and
-                        "jupytext" in first_block_data and
-                        "title" not in first_block_data and
-                        "options" not in first_block_data
-                    )
-                except yaml.YAMLError:
-                    is_jupytext_only = False
+            # Determine if this is a Jupytext-only block (expects a second governance block)
+            # or a full governance block (single-block file).
+            try:
+                first_block_data = yaml.safe_load(first_block_text)
+                is_jupytext_only = (
+                    isinstance(first_block_data, dict) and
+                    "jupytext" in first_block_data and
+                    "title" not in first_block_data
+                )
+            except yaml.YAMLError:
+                is_jupytext_only = False
 
-                if is_jupytext_only:
-                    # Collect the second block ONLY if the gap between first and second is empty
-                    if len(parts) > 3 and not parts[2].strip():
-                        blocks.append(parts[3].strip("\n"))
-                    elif len(parts) > 2 and parts[2].strip():
-                        # BROKEN DUAL-BLOCK: Jupytext block found, but metadata exists
-                        # without an opening fence.
-                        blocks.append(parts[2].strip("\n"))
-                        anomalies.append("broken_dual_block")
-            # We only support up to 2 blocks (Jupytext + Project) at the start.
-            # Anything after that is treated as body content.
-
-    if not blocks:
+            if is_jupytext_only:
+                # Collect the second block ONLY if the gap between first and second is empty
+                if len(parts) > 3 and not parts[2].strip():
+                    blocks.append(parts[3].strip("\n"))
+                elif len(parts) > 2 and parts[2].strip():
+                    # BROKEN DUAL-BLOCK: Jupytext block found, but metadata exists
+                    # without an opening fence.
+                    blocks.append(parts[2].strip("\n"))
+                    anomalies.append("broken_dual_block")
+    # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric)
+    elif len(parts) > 1:
+        # Found a closing fence without a preceding opening fence.
+        # This is structural corruption.
+        anomalies.append("broken_dual_block")
+        return None, 0, anomalies
+    # Case 3: No fences present at all
+    else:
         return None, 0, []
+
+    # We only support up to 2 blocks (Jupytext + Project) at the start.
+    # Anything after that is treated as body content.
 
     # Parser Transparency: log discovered blocks for debuggability
     file_id = str(file_path) if file_path else "content"
@@ -1181,8 +1296,10 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
                 has_valid_block = True
             else:
                 logger.warning(f"YAML block {i} in {file_id} is not a dictionary (got {type(data).__name__})")
+                anomalies.append("invalid_yaml")
         except yaml.YAMLError as e:
             logger.warning(f"YAML syntax error in block {i} of {file_id}: {e}")
+            anomalies.append("invalid_yaml")
             continue
 
     return (merged_data if has_valid_block else None), len(blocks), anomalies

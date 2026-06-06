@@ -17,9 +17,18 @@
     "      evidence.conf.json",
     "    validation/            <- operational rules (excludes, patterns)",
     "",
+    "Blueprints:",
+    "  Files listed in 'blueprints' are gold standards (e.g. templates).",
+    "  They are validated regardless of whether they were modified, ensuring",
+    "  the blueprints themselves never drift from the current SSoT rules.",
+    "",
     "Governed by: ADR-26036 (Config File Location and Naming Conventions)",
     "             ADR-26042 (Common Frontmatter Standard)",
     "             ADR-26054 (JSON as Governance Config Format)"
+  ],
+
+  "blueprints": [
+    "architecture/adr/adr_template.md"
   ],
 
   "field_registry": {
@@ -252,5 +261,6 @@
       "QWEN.md"
     ]
   },
-  "token_size_exclusions": [".ipynb"]
+  "token_size_exclusions": [".ipynb"],
+  "canonical_top_level_order": ["id", "title", "description", "tags", "date", "authors", "options"]
 }

@@ -1858,6 +1858,28 @@ class TestMainExitCodes:
     Blocking errors (missing fields, invalid formats, namespace violations) cause exit 1.
     """
 
+    def test_full_scan_detects_unstaged_errors(self, frontmatter_env):
+        """
+        VERIFICATION: The script must now perform a full scan regardless of staged status.
+        If an invalid file exists in the environment, it must be detected.
+        """
+        # Create an invalid file (broken order: date before description)
+        invalid_fm = {
+            "title": "Invalid Order",
+            "date": "2026-01-01",
+            "description": "Wrong order",
+            "options": {"type": "guide"}
+        }
+        (frontmatter_env / "invalid.md").write_text(_frontmatter_to_md(invalid_fm), encoding="utf-8")
+
+        # Mock get_staged_files to return nothing (though the script shouldn't use it anymore)
+        with patch("tools.scripts.check_frontmatter.get_staged_files", return_value=[]):
+            # We call main without the --check-staged flag, as it's been removed.
+            # It should now perform a full scan of the current environment.
+            exit_code = _module.main([])
+
+        assert exit_code == 1, "S-S-o-T Violation: Script must detect invalid files regardless of staged status"
+
     def test_exit_0_all_valid(self, frontmatter_env):
         """All files valid → exit 0."""
         fm = _build_valid_frontmatter("adr")
@@ -2661,54 +2683,4 @@ class TestFrontmatterBlockConstraints:
         assert any(e.error_type == "broken_dual_block" for e in errors), "More than 2 blocks must be flagged"
 
 
-class TestStagedValidation:
-    """Contract: --check-staged restricts validation to staged files + blueprints.
-
-    Files that are modified but not staged MUST be ignored.
-    Blueprints MUST always be validated to prevent drift.
-    """
-
-    def test_check_staged_filters_out_unstaged_files(self, frontmatter_env, monkeypatch, caplog):
-        """Only files returned by get_staged_files() and blueprints are validated."""
-        # 1. Setup files
-        # Staged file (invalid: missing type)
-        staged_path = frontmatter_env / "staged_invalid.md"
-        staged_path.write_text("---\ntitle: Staged\n---\n", encoding="utf-8")
-
-        # Unstaged file (invalid: missing type)
-        unstaged_path = frontmatter_env / "unstaged_invalid.md"
-        unstaged_path.write_text("---\ntitle: Unstaged\n---\n", encoding="utf-8")
-
-        # Blueprint file (invalid: missing type)
-        # We must ensure this path is in .vadocs/conf.json blueprints
-        bp_rel_path = "architecture/adr/adr_template.md"
-        bp_path = frontmatter_env / bp_rel_path
-        bp_path.parent.mkdir(parents=True, exist_ok=True)
-        bp_path.write_text("---\ntitle: Blueprint\n---\n", encoding="utf-8")
-
-        # Update hub config to include this blueprint
-        hub_config = json.loads((frontmatter_env / ".vadocs/conf.json").read_text())
-        hub_config["blueprints"] = [bp_rel_path]
-        (frontmatter_env / ".vadocs/conf.json").write_text(json.dumps(hub_config))
-
-        # Re-patch HUB_CONFIG after modification
-        monkeypatch.setattr(_module, "HUB_CONFIG", hub_config)
-
-        # 2. Mock get_staged_files to return only the staged file (relative path)
-        staged_rel_path = str(staged_path.relative_to(frontmatter_env))
-        monkeypatch.setattr(
-            _module, "get_staged_files", lambda cwd=None: {staged_rel_path}
-        )
-
-        # 3. Run main with --check-staged
-        exit_code = _module.main(argv=["--check-staged", "-v"])
-
-        # Get logs from caplog
-        logs = caplog.text
-
-        # 4. Assertions
-        assert exit_code == 1
-        assert str(staged_path) in logs, "Staged invalid file should be flagged"
-        assert str(bp_path) in logs, "Blueprint invalid file should always be flagged"
-        assert str(unstaged_path) not in logs, "Unstaged invalid file MUST be ignored"
 

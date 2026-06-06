@@ -92,6 +92,12 @@ Public interface:
     validate_parsed_frontmatter() — validate already-parsed frontmatter dict
     scan_paths() — resolve input paths to file list
 
+T-S-o-T Enforcement:
+    To prevent documentation drift when governance rules change, the script
+    performs a full repository scan of all governed files by default.
+    Staged-only filtering is intentionally disabled to ensure that a change
+    to the rules (.vadocs/) triggers a full re-validation of the codebase.
+
 Dependencies:
     - .vadocs/conf.json (hub — shared vocabulary, blocks, types, tags)
     - .vadocs/types/<type>.conf.json (spoke — type-specific rules)
@@ -229,11 +235,6 @@ def main(argv: list[str] | None = None) -> int:
         help="Files or directories to validate. Defaults to repo root.",
     )
     parser.add_argument(
-        "--check-staged",
-        action="store_true",
-        help="Only validate files currently staged in Git (plus blueprints).",
-    )
-    parser.add_argument(
         "--format",
         dest="fmt",
         choices=["md", "ipynb"],
@@ -259,20 +260,8 @@ def main(argv: list[str] | None = None) -> int:
     input_paths = [Path(p) for p in args.paths] if args.paths else [REPO_ROOT]
     files = scan_paths(input_paths, REPO_ROOT, fmt=args.fmt)
 
-    # Commit-Scoped Validation: filter by staged files if requested
-    if args.check_staged:
-        staged = get_staged_files()
-        logger.debug(f"Staged files from git: {staged}")
-        filtered_files = []
-        for f in files:
-            rel = f.relative_to(REPO_ROOT).as_posix()
-            logger.debug(f"Checking file: {rel} in {staged} -> {rel in staged}")
-            if rel in staged:
-                filtered_files.append(f)
-        files = filtered_files
-        logger.debug(f"Files after staged filter: {files}")
-
     # Blueprint Validation: Ensure gold-standard files are always validated
+    # regardless of the input paths, preventing blueprint drift from SSoT.
     # regardless of the input paths, preventing blueprint drift from SSoT.
     blueprints = HUB_CONFIG.get("blueprints", [])
     for bp_rel_path in blueprints:

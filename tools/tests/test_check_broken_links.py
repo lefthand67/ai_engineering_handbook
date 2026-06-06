@@ -409,40 +409,6 @@ class TestLinkCheckerGitIntegration:
         subprocess.run(["git", "commit", "-m", "init"], cwd=repo_dir, capture_output=True)
         return repo_dir
 
-    def test_check_staged_only_scans_staged_files(self, tmp_path, monkeypatch):
-        repo = self.setup_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        # 1. Staged file: valid link
-        staged_file = Path("staged.md")
-        staged_file.write_text("[link](target.md)", encoding="utf-8")
-        (repo / "target.md").touch()
-        subprocess.run(["git", "add", "staged.md", "target.md"], cwd=repo, capture_output=True)
-
-        # 2. Unstaged file: broken link
-        unstaged_file = Path("unstaged.md")
-        unstaged_file.write_text("[bad](missing.md)", encoding="utf-8")
-
-        # Run with --check-staged
-        with pytest.raises(SystemExit) as exc_info:
-            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
-        
-        # Should be 0 because the broken link is in an unstaged file
-        assert exc_info.value.code == 0
-
-    def test_fails_when_staged_file_has_broken_link(self, tmp_path, monkeypatch):
-        repo = self.setup_repo(tmp_path)
-        monkeypatch.chdir(repo)
-
-        staged_file = Path("staged.md")
-        staged_file.write_text("[bad](missing.md)", encoding="utf-8")
-        subprocess.run(["git", "add", "staged.md"], cwd=repo, capture_output=True)
-
-        with pytest.raises(SystemExit) as exc_info:
-            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
-        
-        assert exc_info.value.code == 1
-
     def test_fails_when_link_target_is_untracked(self, tmp_path, monkeypatch):
         """Production Safety: A link to a file that exists on disk but is not tracked is broken."""
         repo = self.setup_repo(tmp_path)
@@ -457,7 +423,7 @@ class TestLinkCheckerGitIntegration:
         subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
 
         with pytest.raises(SystemExit) as exc_info:
-            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
+            LinkCheckerCLI().run(["--pattern", "*.md"])
         
         assert exc_info.value.code == 1
         # The error should specifically mention that the target is untracked
@@ -477,10 +443,31 @@ class TestLinkCheckerGitIntegration:
         subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
 
         with pytest.raises(SystemExit) as exc_info:
-            LinkCheckerCLI().run(["--check-staged", "--pattern", "*.md"])
-        
+            LinkCheckerCLI().run(["--pattern", "*.md"])
+
         assert exc_info.value.code == 0
 
+    def test_check_staged_blind_spot(self, tmp_path, monkeypatch):
+        """Verify the blind spot is CLOSED: broken links in unstaged files are now detected."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # 1. Staged file: valid link
+        staged_file = Path("staged.md")
+        staged_file.write_text("[link](target.md)", encoding="utf-8")
+        (repo / "target.md").touch()
+        subprocess.run(["git", "add", "staged.md", "target.md"], cwd=repo, capture_output=True)
+
+        # 2. Unstaged file: BROKEN link
+        unstaged_file = Path("unstaged.md")
+        unstaged_file.write_text("[bad](missing.md)", encoding="utf-8")
+
+        # Run without --check-staged (which is now the only way)
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md"])
+
+        # Should now return 1 because the broken link in the unstaged file is detected.
+        assert exc_info.value.code == 1, "Blind spot still exists: script passed despite broken link in unstaged file"
 
 class TestLinkCheckerCLI:
     @pytest.fixture

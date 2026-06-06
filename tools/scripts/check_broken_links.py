@@ -65,12 +65,6 @@ Default pattern: *.md""",
             help="File glob pattern to match (default: *.md) - ignored if a single file is specified",
         )
         parser.add_argument(
-            "--check-staged",
-            action="store_true",
-            default=False,
-            help="Check only files currently staged in the git index.",
-        )
-        parser.add_argument(
             "--exclude-dirs",
             nargs="*",
             default=VALIDATION_EXCLUDE_DIRS,
@@ -119,53 +113,35 @@ Default pattern: *.md""",
         files = []
         file_finder = FileFinder(args.exclude_dirs, args.exclude_files, verbose)
 
-        if args.check_staged:
-            # Only check staged files
-            staged_files = get_staged_files()
-            for rel_path in staged_files:
-                resolved = (root_dir / rel_path).resolve()
-                if resolved.is_file():
-                    # Apply pattern filter if applicable
-                    if not (len(staged_files) == 1 or resolved.match(pattern)):
-                        continue
-                    # Check exclusions
-                    if is_excluded(str(resolved)):
-                        if verbose:
-                            logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
-                        continue
-                    files.append(resolved)
-            is_current_dir = False
-            input_paths = [f"Git Staged Files"]
+        is_current_dir = False
+        if args.paths:
+            input_paths = args.paths
         else:
-            is_current_dir = False
-            if args.paths:
-                input_paths = args.paths
+            is_current_dir = True
+            input_paths = [str(Path.cwd())]
+
+        resolved_paths_list = list()
+        for p in input_paths:
+            # Resolve input path relative to current working directory (not root_dir!)
+            path_obj = Path(p)
+            if path_obj.is_absolute():
+                resolved = path_obj.resolve()
             else:
-                is_current_dir = True
-                input_paths = [str(Path.cwd())]
+                resolved = (Path.cwd() / path_obj).resolve()
+            resolved_paths_list.append(resolved)
 
-            resolved_paths_list = list()
-            for p in input_paths:
-                # Resolve input path relative to current working directory (not root_dir!)
-                path_obj = Path(p)
-                if path_obj.is_absolute():
-                    resolved = path_obj.resolve()
-                else:
-                    resolved = (Path.cwd() / path_obj).resolve()
-                resolved_paths_list.append(resolved)
-
-                if resolved.is_file():
-                    # CRITICAL: Always check exclusions for explicit file arguments.
-                    # Prevents processing of files in external research repos when passed directly.
-                    if is_excluded(str(resolved)):
-                        if verbose:
-                            logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
-                        continue
-                    files.append(resolved)
-                elif resolved.is_dir():
-                    files.extend(file_finder.find(resolved, pattern))
-                else:
-                    logger.warning(f"Warning: Path does not exist: {resolved}")
+            if resolved.is_file():
+                # CRITICAL: Always check exclusions for explicit file arguments.
+                # Prevents processing of files in external research repos when passed directly.
+                if is_excluded(str(resolved)):
+                    if verbose:
+                        logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
+                    continue
+                files.append(resolved)
+            elif resolved.is_dir():
+                files.extend(file_finder.find(resolved, pattern))
+            else:
+                logger.warning(f"Warning: Path does not exist: {resolved}")
 
         if not files:
             logger.info(f"No files matching '{pattern}' found!")

@@ -2151,16 +2151,15 @@ class TestMandatoryGovernance:
         assert "no YAML frontmatter present" not in captured.out
 
     def test_adversary_empty_fences(self, frontmatter_env, caplog):
-        """File with empty YAML fences (--- \n ---) → treat as missing frontmatter (exit 1)."""
+        """File with empty YAML fences (--- \n ---) → treat as structural corruption (exit 1)."""
         md_file = frontmatter_env / "empty_fences.md"
         md_file.write_text("---\n---\n\n# Body", encoding="utf-8")
-
+    
         exit_code = _module.main([str(md_file)])
-
-        # Since parse_frontmatter returns None for empty blocks or failed YAML
+    
+        # Should be flagged as broken_dual_block since empty blocks are not allowed
         assert exit_code == 1
-        assert "no YAML frontmatter present" in caplog.text
-
+        assert "Broken Dual-Block pattern" in caplog.text
     def test_adversary_misplaced_fences(self, frontmatter_env, caplog):
         """Fences not at start of file → not recognized as frontmatter (exit 1)."""
         md_file = frontmatter_env / "misplaced.md"
@@ -2631,3 +2630,85 @@ class TestADRNamespaceStrictness:
         errors = _module.validate_frontmatter(md_file, frontmatter_env)
         namespace_errors = [e for e in errors if e.error_type == "invalid_namespace" and e.field == "superseded_by"]
         assert len(namespace_errors) > 0, "Top-level superseded_by in ADR should be rejected"
+
+class TestFrontmatterBlockConstraints:
+    """Contract: Frontmatter must contain 1 or 2 non-empty blocks.
+    
+    - 0 blocks: flagged as missing_frontmatter (if governed).
+    - 1 block: valid.
+    - 2 blocks: valid (Dual-Block pattern).
+    - 3+ blocks: invalid.
+    - Any block that is empty (just fences) is invalid.
+    """
+
+    def test_rejects_empty_block(self, frontmatter_env):
+        """A block consisting only of fences must be flagged as an anomaly."""
+        # Empty first block, valid second block
+        content = "---\n---\n---\ntitle: Valid\noptions:\n  type: guide\n---\n"
+        file_path = frontmatter_env / "empty_block.md"
+        file_path.write_text(content, encoding="utf-8")
+        
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert any(e.error_type == "broken_dual_block" for e in errors), "Empty blocks must be flagged as broken_dual_block"
+
+    def test_rejects_too_many_blocks(self, frontmatter_env):
+        """More than 2 YAML blocks must be flagged."""
+        content = "---\nblock1: a\n---\n---\nblock2: b\n---\n---\nblock3: c\n---\n"
+        file_path = frontmatter_env / "too_many_blocks.md"
+        file_path.write_text(content, encoding="utf-8")
+        
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+        assert any(e.error_type == "broken_dual_block" for e in errors), "More than 2 blocks must be flagged"
+
+
+class TestStagedValidation:
+    """Contract: --check-staged restricts validation to staged files + blueprints.
+
+    Files that are modified but not staged MUST be ignored.
+    Blueprints MUST always be validated to prevent drift.
+    """
+
+    def test_check_staged_filters_out_unstaged_files(self, frontmatter_env, monkeypatch, caplog):
+        """Only files returned by get_staged_files() and blueprints are validated."""
+        # 1. Setup files
+        # Staged file (invalid: missing type)
+        staged_path = frontmatter_env / "staged_invalid.md"
+        staged_path.write_text("---\ntitle: Staged\n---\n", encoding="utf-8")
+
+        # Unstaged file (invalid: missing type)
+        unstaged_path = frontmatter_env / "unstaged_invalid.md"
+        unstaged_path.write_text("---\ntitle: Unstaged\n---\n", encoding="utf-8")
+
+        # Blueprint file (invalid: missing type)
+        # We must ensure this path is in .vadocs/conf.json blueprints
+        bp_rel_path = "architecture/adr/adr_template.md"
+        bp_path = frontmatter_env / bp_rel_path
+        bp_path.parent.mkdir(parents=True, exist_ok=True)
+        bp_path.write_text("---\ntitle: Blueprint\n---\n", encoding="utf-8")
+
+        # Update hub config to include this blueprint
+        hub_config = json.loads((frontmatter_env / ".vadocs/conf.json").read_text())
+        hub_config["blueprints"] = [bp_rel_path]
+        (frontmatter_env / ".vadocs/conf.json").write_text(json.dumps(hub_config))
+
+        # Re-patch HUB_CONFIG after modification
+        monkeypatch.setattr(_module, "HUB_CONFIG", hub_config)
+
+        # 2. Mock get_staged_files to return only the staged file (relative path)
+        staged_rel_path = str(staged_path.relative_to(frontmatter_env))
+        monkeypatch.setattr(
+            _module, "get_staged_files", lambda cwd=None: {staged_rel_path}
+        )
+
+        # 3. Run main with --check-staged
+        exit_code = _module.main(argv=["--check-staged", "-v"])
+
+        # Get logs from caplog
+        logs = caplog.text
+
+        # 4. Assertions
+        assert exit_code == 1
+        assert str(staged_path) in logs, "Staged invalid file should be flagged"
+        assert str(bp_path) in logs, "Blueprint invalid file should always be flagged"
+        assert str(unstaged_path) not in logs, "Unstaged invalid file MUST be ignored"
+

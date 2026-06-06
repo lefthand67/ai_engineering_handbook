@@ -63,9 +63,9 @@ repos:
 
       - id: check-frontmatter
         name: Validate frontmatter (ADR-26042)
-        entry: uv run --active python -m tools.scripts.check_frontmatter
+        entry: uv run --active python -m tools.scripts.check_frontmatter --check-staged
         language: system
-        pass_filenames: true
+        pass_filenames: false
         files: \.md$
         stages: [pre-commit, manual]
 

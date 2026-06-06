@@ -120,7 +120,7 @@ from typing import Any
 import tiktoken
 import yaml
 
-from tools.scripts.git import detect_repo_root
+from tools.scripts.git import detect_repo_root, get_staged_files
 from tools.scripts.paths import VALIDATION_EXCLUDE_DIRS, get_config_path
 
 logger = logging.getLogger(__name__)
@@ -229,6 +229,11 @@ def main(argv: list[str] | None = None) -> int:
         help="Files or directories to validate. Defaults to repo root.",
     )
     parser.add_argument(
+        "--check-staged",
+        action="store_true",
+        help="Only validate files currently staged in Git (plus blueprints).",
+    )
+    parser.add_argument(
         "--format",
         dest="fmt",
         choices=["md", "ipynb"],
@@ -247,11 +252,36 @@ def main(argv: list[str] | None = None) -> int:
         level=logging.DEBUG if args.verbose else logging.WARNING,
         format='%(levelname)s: %(message)s'
     )
+    logger.setLevel(logging.DEBUG if args.verbose else logging.WARNING)
 
     # -- Resolve input paths ---------------------------------------------
     # Empty paths → scan from repo root (monkeypatched in tests)
     input_paths = [Path(p) for p in args.paths] if args.paths else [REPO_ROOT]
     files = scan_paths(input_paths, REPO_ROOT, fmt=args.fmt)
+
+    # Commit-Scoped Validation: filter by staged files if requested
+    if args.check_staged:
+        staged = get_staged_files()
+        logger.debug(f"Staged files from git: {staged}")
+        filtered_files = []
+        for f in files:
+            rel = f.relative_to(REPO_ROOT).as_posix()
+            logger.debug(f"Checking file: {rel} in {staged} -> {rel in staged}")
+            if rel in staged:
+                filtered_files.append(f)
+        files = filtered_files
+        logger.debug(f"Files after staged filter: {files}")
+
+    # Blueprint Validation: Ensure gold-standard files are always validated
+    # regardless of the input paths, preventing blueprint drift from SSoT.
+    blueprints = HUB_CONFIG.get("blueprints", [])
+    for bp_rel_path in blueprints:
+        bp_path = REPO_ROOT / bp_rel_path
+        if bp_path.exists():
+            if bp_path not in files:
+                files.append(bp_path)
+        else:
+            logger.warning(f"Blueprint file not found: {bp_rel_path}")
 
     # Load governance scope and exclusions from hub config
     governed_exts = HUB_CONFIG.get("governed_extensions", [])
@@ -1320,13 +1350,14 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
     
     # Case 1: The file starts with a fence (Standard behavior)
     if parts[0] == "":
-        # Collect the first block
+        # Collect all consecutive YAML blocks at the start.
+        # A block is valid if it's separated by an empty or whitespace-only part.
+        # parts[1] is the first block.
         if len(parts) > 1:
             first_block_text = parts[1].strip("\n")
             blocks.append(first_block_text)
 
-            # Determine if this is a Jupytext-only block (expects a second governance block)
-            # or a full governance block (single-block file).
+            # Determine if this is a Jupytext-only block to handle the Dual-Block pattern
             try:
                 first_block_data = yaml.safe_load(first_block_text)
                 is_jupytext_only = (
@@ -1337,15 +1368,25 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
             except yaml.YAMLError:
                 is_jupytext_only = False
 
-            if is_jupytext_only:
-                # Collect the second block ONLY if the gap between first and second is empty
-                if len(parts) > 3 and not parts[2].strip():
-                    blocks.append(parts[3].strip("\n"))
-                elif len(parts) > 2 and parts[2].strip():
-                    # BROKEN DUAL-BLOCK: Jupytext block found, but metadata exists
-                    # without an opening fence.
-                    blocks.append(parts[2].strip("\n"))
-                    anomalies.append("broken_dual_block")
+            # Look for subsequent blocks.
+            block_idx = 1
+            while block_idx + 2 < len(parts):
+                gap = parts[block_idx + 1]
+
+                if gap.strip():
+                    # Gap contains content -> we've reached the body.
+                    # If the first block was Jupytext, and we find content before the next fence,
+                    # it's a Broken Dual-Block (missing opening fence for the second block).
+                    # We treat the gap as the second block so we can still validate its content.
+                    if is_jupytext_only:
+                        blocks.append(gap.strip("\n"))
+                        anomalies.append("broken_dual_block")
+                    break
+
+                # Gap is empty, next part is a block.
+                blocks.append(parts[block_idx + 2].strip("\n"))
+                block_idx += 2
+    # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric/Leading Newline)
     # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric/Leading Newline)
     elif len(parts) > 1:
         # Check if it's just leading whitespace/newlines (First-Line Invariant violation)
@@ -1376,14 +1417,18 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
     else:
         return None, 0, []
 
-    # We only support up to 2 blocks (Jupytext + Project) at the start.
-    # Anything after that is treated as body content.
-
     # Parser Transparency: log discovered blocks for debuggability
     file_id = str(file_path) if file_path else "content"
     logger.debug(f"Found {len(blocks)} YAML blocks in {file_id}")
     for i, block in enumerate(blocks):
         logger.debug(f"Block {i} content:\n---\n{block}\n---")
+    logger.debug(f"Anomalies detected in {file_id}: {anomalies}")
+
+    # We only support up to 2 blocks (Jupytext + Project) at the start.
+    # Anything after that is treated as body content.
+    if len(blocks) > 2:
+        logger.warning(f"Too many YAML blocks ({len(blocks)}) in {file_id}. Max 2 allowed.")
+        anomalies.append("broken_dual_block")
 
     merged_data: dict = {}
     has_valid_block = False
@@ -1393,6 +1438,7 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
             data = yaml.safe_load(block_text)
             if data is None:
                 logger.warning(f"YAML block {i} in {file_id} is empty or contains only whitespace")
+                anomalies.append("broken_dual_block")
                 continue
             if isinstance(data, dict):
                 merged_data.update(data)

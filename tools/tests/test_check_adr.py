@@ -68,26 +68,27 @@ def get_valid_frontmatter(doc_type: str, **overrides) -> dict:
         "birth": "2024-01-01",
     }
 
-    # SSoT: Canonical order for native fields
-    native_order = ["id", "title", "authors", "date", "description", "tags", "status", "superseded_by"]
+    # SSoT: Resolve canonical order dynamically from hub blocks and type definition
+    canonical_native_fields = []
     
+    # 1. 'id' comes first if it's defined as native in the registry
+    if "id" in FIELD_REGISTRY and FIELD_REGISTRY["id"].get("myst_native", True):
+        canonical_native_fields.append("id")
+
+    # 2. Follow the block sequence defined for this doc type
+    for block_name in type_def.get("blocks", []):
+        for field in blocks.get(block_name, []):
+            if field != "id" and FIELD_REGISTRY.get(field, {}).get("myst_native", True):
+                canonical_native_fields.append(field)
+
     fm = {}
     all_fields = required | set(overrides.keys())
 
-    # 1. Native fields in canonical order
-    for field in native_order:
+    # Populate native fields in the dynamically resolved canonical order
+    for field in canonical_native_fields:
         if field in all_fields:
-            if FIELD_REGISTRY.get(field, {}).get("myst_native", True):
-                val = overrides.get(field, defaults.get(field, "default_value"))
-                fm[field] = val
-
-    # 2. Any other native fields not in the canonical list
-    for field in all_fields:
-        clean_field = field.replace("options.", "")
-        if FIELD_REGISTRY.get(clean_field, {}).get("myst_native", True) and clean_field not in fm:
             val = overrides.get(field, defaults.get(field, "default_value"))
-            fm[clean_field] = val
-
+            fm[field] = val
     # 3. Options block
     options = {"type": doc_type}
     for field in all_fields:

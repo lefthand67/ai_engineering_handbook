@@ -146,6 +146,7 @@ class FrontmatterError:
         "invalid_field"      — field present but not defined in hub registry (blocking)
         "invalid_namespace"  — non-myst_native field at top level instead of options.* (blocking)
         "invalid_order"      — fields present in non-canonical sequence (blocking)
+        "invalid_encoding"   — file contains invalid UTF-8 bytes (blocking)
 
     all error_types cause exit 1.
     """,
@@ -282,7 +283,20 @@ def main(argv: list[str] | None = None) -> int:
             logger.debug(f"Skipping excluded file: {file_path}")
             continue
 
-        content = file_path.read_text(encoding="utf-8")
+        content, read_anomalies = _safe_read_text(file_path)
+        if content is None:
+            if "invalid_encoding" in read_anomalies:
+                all_errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="invalid_encoding",
+                        field=None,
+                        message="file contains invalid UTF-8 bytes and cannot be read — governed files must be valid UTF-8 text. To fix: save the file with UTF-8 encoding",
+                        config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                    )
+                )
+            continue
+
         frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
 
         # Structural anomalies detected during parsing (e.g. broken Dual-Block pattern, YAML syntax errors)
@@ -295,6 +309,16 @@ def main(argv: list[str] | None = None) -> int:
                         error_type="broken_dual_block",
                         field=None,
                         message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
+                        config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                    )
+                )
+            elif anomaly == "leading_newline":
+                all_errors.append(
+                    FrontmatterError(
+                        file_path=file_path,
+                        error_type="leading_newline",
+                        field=None,
+                        message="Governed file must start immediately with '---' fence — leading newlines or whitespace are forbidden. To fix: remove all characters preceding the first '---'",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
                     )
                 )
@@ -412,6 +436,18 @@ def scan_paths(
 # ======================
 
 
+def _safe_read_text(file_path: Path) -> tuple[str | None, list[str]]:
+    """Read file content safely with UTF-8 encoding.
+
+    Returns (content, anomalies). If a UnicodeDecodeError occurs, content is None
+    and 'invalid_encoding' is added to anomalies.
+    """
+    try:
+        return file_path.read_text(encoding="utf-8"), []
+    except UnicodeDecodeError:
+        return None, ["invalid_encoding"]
+
+
 def validate_frontmatter(
     file_path: Path, repo_root: Path
 ) -> list[FrontmatterError]:
@@ -420,7 +456,20 @@ def validate_frontmatter(
     Orchestrates: read file -> parse -> resolve type -> load configs -> check.
     Returns empty list if valid or if file is not governed.
     """
-    content = file_path.read_text(encoding="utf-8")
+    content, read_anomalies = _safe_read_text(file_path)
+    if content is None:
+        if read_anomalies:
+            return [
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="invalid_encoding",
+                    field=None,
+                    message="file contains invalid UTF-8 bytes and cannot be read — governed files must be valid UTF-8 text. To fix: save the file with UTF-8 encoding",
+                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                )
+            ]
+            return []
+
     frontmatter, block_count, anomalies = parse_frontmatter(content, file_path=file_path)
     logger.debug(f"Validating {file_path}: frontmatter={frontmatter}, blocks={block_count}, anomalies={anomalies}")
 
@@ -436,6 +485,16 @@ def validate_frontmatter(
                     error_type="invalid_yaml",
                     field=None,
                     message="Frontmatter contains invalid YAML syntax. To fix: check for missing colons, incorrect indentation, or unquoted special characters in strings.",
+                    config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                )
+            )
+        elif anomaly == "leading_newline":
+            errors.append(
+                FrontmatterError(
+                    file_path=file_path,
+                    error_type="leading_newline",
+                    field=None,
+                    message="Governed file must start immediately with '---' fence — leading newlines or whitespace are forbidden. To fix: remove all characters preceding the first '---'",
                     config_source=f"{HUB_CONFIG_REL} → structural_spec",
                 )
             )
@@ -472,20 +531,49 @@ def validate_frontmatter(
     return errors
 
 
-def _check_key_order(frontmatter: dict, file_path: Path) -> list[FrontmatterError]:
+def _check_key_order(
+    frontmatter: dict, file_path: Path, doc_type: str, hub_config: dict
+) -> list[FrontmatterError]:
     """Enforce the canonical sequence of top-level YAML keys (ADR-26042).
 
-    Canonical order: id > title > authors > date > description > tags > status > superseded_by > options.
-    Only fields present in the frontmatter are checked for relative order.
+    The order is built dynamically ("lego style") from the hub config:
+    1. 'id' (if myst_native and relevant for this type)
+    2. Fields from blocks listed in types[doc_type]["blocks"] (if myst_native)
+    3. 'options' block (always last)
+
+    Contract:
+        - Precondition: `frontmatter` is a parsed YAML dictionary.
+        - Precondition: `doc_type` exists in `hub_config["types"]`.
+        - Postcondition: Returns a list containing exactly one `FrontmatterError`
+          of type "invalid_order" if a violation is found, otherwise an empty list.
+        - Invariant: Does not modify the `frontmatter` dictionary.
     """
-    canonical_order = [
-        "id", "title", "authors", "date", "description", "tags", "status", "superseded_by", "options"
-    ]
+    field_registry = hub_config.get("field_registry", {})
+    blocks = hub_config.get("blocks", {})
+    type_cfg = hub_config.get("types", {}).get(doc_type, {})
+    blocks_sequence = type_cfg.get("blocks", [])
+
+    canonical_order = []
+
+    # 1. 'id' comes first if it's an identity field for this type
+    if "id" in field_registry and field_registry["id"].get("myst_native"):
+        if "id" in type_cfg.get("required", []) or "id" in type_cfg.get("optional", []):
+            canonical_order.append("id")
+
+    # 2. Add fields from the type's defined blocks in sequence
+    for block_name in blocks_sequence:
+        for field in blocks.get(block_name, []):
+            if field in field_registry and field_registry[field].get("myst_native"):
+                if field not in canonical_order:
+                    canonical_order.append(field)
+
+    # 3. 'options' is always the final top-level key
+    canonical_order.append("options")
+
     # Extract only keys that are part of the canonical set, preserving current order
     present_canonical_keys = [k for k in frontmatter.keys() if k in canonical_order]
 
     # Check if the extracted keys match their relative order in the canonical list
-    # We can do this by comparing the index of each key in the canonical list
     indices = [canonical_order.index(k) for k in present_canonical_keys]
 
     if indices != sorted(indices):
@@ -499,7 +587,7 @@ def _check_key_order(frontmatter: dict, file_path: Path) -> list[FrontmatterErro
                         error_type="invalid_order",
                         field=None,
                         message=f"Fields present in non-canonical sequence: '{k1}' appears before '{k2}'. "
-                                f"Canonical order is: {', '.join(canonical_order)}",
+                                f"Canonical order for type '{doc_type}' is: {', '.join(canonical_order)}",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
                     )
                 ]
@@ -520,11 +608,11 @@ def validate_parsed_frontmatter(
     avoids double-parsing during the migration period where both the domain
     script and check_frontmatter.py run on the same files.
 
-    Returns [FrontmatterError] for files with frontmatter but no options.type —
-    all governed files must declare their type to be validated. The type
-    determines which spoke config is loaded, which required fields apply, and
-    which status/severity values are allowed. Without a type, validation
-    cannot proceed meaningfully.
+    Contract:
+        - Precondition: `frontmatter` is a parsed YAML dictionary.
+        - Precondition: `file_path` is an absolute path to the governed file.
+        - Postcondition: Returns a list of all `FrontmatterError` objects found.
+        - Invariant: Does not modify the input `frontmatter` dictionary.
     """
     errors: list[FrontmatterError] = []
 
@@ -541,9 +629,6 @@ def validate_parsed_frontmatter(
                 config_source=f"{HUB_CONFIG_REL} → structural_spec",
             )
         )
-
-    # Enforce canonical key order (id > title > authors > ...)
-    errors.extend(_check_key_order(frontmatter, file_path))
 
     # Step 1: Determine document type from the configured type field.
     # Files without this field are not governed — this is now a blocking error.
@@ -584,6 +669,9 @@ def validate_parsed_frontmatter(
     # a .conf.json in .vadocs/types/ (currently: adr, evidence). Types without
     # a spoke config (tutorial, guide, etc.) are validated against hub rules only.
     hub, spoke = load_config_chain(repo_root, doc_type)
+
+    # Enforce canonical key order (dynamic lego order based on type config)
+    errors.extend(_check_key_order(frontmatter, file_path, doc_type, hub))
 
     # Step 4: Compute the full required field set from three sources (union merge).
     # See _get_required_fields docstring for the merge semantics (ADR-26042).
@@ -1147,15 +1235,15 @@ def _check_options_namespace(
     tags) live at top level; all others belong under options.*. The hub config
     field_registry has a myst_native boolean per field.
 
-    Exception (ADR-26042): 'status' and 'superseded_by' are permitted at the top
-    level specifically for 'adr' type documents.
-
-    Returns invalid_namespace (blocking error) to ensure clean top-level
-    frontmatter and avoid MyST reserved key conflicts.
+    Contract:
+        - Precondition: `frontmatter` is a parsed YAML dictionary.
+        - Precondition: `hub_config` contains a valid `field_registry`.
+        - Postcondition: Returns a list of `FrontmatterError` of type "invalid_namespace"
+          if a field is in the wrong block, otherwise an empty list.
+        - Invariant: Does not modify the `frontmatter` dictionary.
     """
     errors: list[FrontmatterError] = []
     field_registry = hub_config.get("field_registry", {})
-    adr_top_level_exceptions = {"status", "superseded_by"}
     logger.debug(f"Checking namespace for {file_path}")
 
     # 1. Check top-level keys: Forbid non-native fields here
@@ -1166,10 +1254,6 @@ def _check_options_namespace(
             native = field_registry[key].get("myst_native", False)
             logger.debug(f"Field '{key}' native status: {native}")
             if not native:
-                # Check for ADR exception
-                if doc_type == "adr" and key in adr_top_level_exceptions:
-                    continue
-
                 logger.debug(f"Found non-myst_native field at top level: {key}")
                 errors.append(
                     FrontmatterError(
@@ -1235,8 +1319,7 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
     logger.debug(f"SPLIT PARTS: {repr(parts)}")
     
     # Case 1: The file starts with a fence (Standard behavior)
-    # We strip leading whitespace to allow for leading newlines before the first fence.
-    if parts[0].strip() == "":
+    if parts[0] == "":
         # Collect the first block
         if len(parts) > 1:
             first_block_text = parts[1].strip("\n")
@@ -1263,12 +1346,32 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
                     # without an opening fence.
                     blocks.append(parts[2].strip("\n"))
                     anomalies.append("broken_dual_block")
-    # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric)
+    # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric/Leading Newline)
     elif len(parts) > 1:
-        # Found a closing fence without a preceding opening fence.
-        # This is structural corruption.
-        anomalies.append("broken_dual_block")
-        return None, 0, anomalies
+        # Check if it's just leading whitespace/newlines (First-Line Invariant violation)
+        if not parts[0].strip():
+            anomalies.append("leading_newline")
+            # We still try to parse the blocks if they exist, but mark it as abnormal
+            # To keep it simple and consistent with current logic:
+            # If it's just a leading newline, we treat it as if the fence started at parts[1]
+            # but we report the anomaly.
+            first_block_text = parts[1].strip("\n")
+            blocks.append(first_block_text)
+            try:
+                first_block_data = yaml.safe_load(first_block_text)
+                if isinstance(first_block_data, dict) and "jupytext" in first_block_data and "title" not in first_block_data:
+                    if len(parts) > 3 and not parts[2].strip():
+                        blocks.append(parts[3].strip("\n"))
+                    elif len(parts) > 2 and parts[2].strip():
+                        blocks.append(parts[2].strip("\n"))
+                        anomalies.append("broken_dual_block")
+            except yaml.YAMLError:
+                pass
+        else:
+            # Found a closing fence without a preceding opening fence, and there's content before it.
+            # This is structural corruption.
+            anomalies.append("broken_dual_block")
+            return None, 0, anomalies
     # Case 3: No fences present at all
     else:
         return None, 0, []

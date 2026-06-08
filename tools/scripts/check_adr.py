@@ -14,6 +14,10 @@ Core Responsibilities:
     3. Promotion Gates: Enforces quality criteria for ADRs transitioning to
        'accepted' (e.g., minimum number of Alternatives, non-empty Participants).
 
+This script performs a full scan of all ADR files in the repository to prevent
+documentation drift, ensuring that updates to governance rules are applied
+consistently across all records, regardless of whether they were recently modified.
+
 Note: Generic frontmatter validation (field presence, date format, tag
 vocabulary) is handled by tools/scripts/check_frontmatter.py.
 
@@ -379,7 +383,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate ADR structural contract")
     parser.add_argument("--verbose", "-v", action="store_true", help="Detailed output")
     parser.add_argument("--fix", action="store_true", help="Fix structural issues (status, titles, sections)")
-    parser.add_argument("--check-staged", action="store_true", help="Only check staged ADR files")
     parser.add_argument("--migrate", action="store_true", help="Migrate legacy ADRs to frontmatter")
     args = parser.parse_args(argv)
 
@@ -391,7 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         logger.info(f"Migrated {migrated} ADR files.")
         return 0
 
-    adr_files = get_staged_adr_files() if args.check_staged else get_adr_files()
+    adr_files = get_adr_files()
     if not adr_files:
         if args.verbose: logger.info("No ADR files found to check.")
         return 0

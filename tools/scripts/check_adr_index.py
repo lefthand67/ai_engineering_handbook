@@ -5,6 +5,10 @@ ADR Index Synchronizer.
 This script ensures that the ADR index (architecture/adr_index.md) is synchronized
 with the ADR files in architecture/adr/ and validates project-wide MyST term
 references to these ADRs.
+
+This script performs a full scan of all ADR files in the repository to prevent
+documentation drift, ensuring that updates to governance rules are applied
+consistently across all records, regardless of whether they were recently modified.
 """
 
 import argparse
@@ -395,11 +399,6 @@ def main(argv: list[str] | None = None) -> int:
         help="Automatically regenerate the ADR index",
     )
     parser.add_argument(
-        "--check-staged",
-        action="store_true",
-        help="Only check staged ADR files (for pre-commit)",
-    )
-    parser.add_argument(
         "--check-terms",
         action="store_true",
         help="Validate {term}`ADR-XXXXX` references in all .md files",
@@ -451,16 +450,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             logger.info("Index is already in sync.")
         return 0
-
-    # Handle check-staged mode
-    if args.check_staged:
-        staged = get_staged_adr_files()
-        if not staged:
-            if args.verbose:
-                logger.info("No staged ADR files to check.")
-            return 0
-        if args.verbose:
-            logger.info(f"Checking {len(staged)} staged ADR files...")
 
     # Standard validation
     adr_files = adr_utils.get_adr_files()

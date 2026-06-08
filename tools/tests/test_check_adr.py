@@ -688,15 +688,6 @@ class TestConditionalFieldsNamespace:
 class TestCli:
     """Integration tests for command-line interface."""
 
-    def test_check_staged_with_no_staged_files(self, adr_env, capsys):
-        """Check-staged with no staged ADR files should pass."""
-        from tools.scripts.check_adr import main
-
-        with patch("tools.scripts.adr_utils.get_staged_adr_files", return_value=[]):
-            exit_code = main(["--check-staged"])
-
-        assert exit_code == 0
-
     def test_main_entry_point(self, adr_env, monkeypatch):
         """Cover the __main__ block."""
         monkeypatch.setattr("sys.argv", ["check_adr.py", "--help"])
@@ -722,42 +713,19 @@ class TestCli:
         # Should fail because duplicates can't be auto-fixed
         assert exit_code == 1
         assert caplog.text  # Should explain why fix failed
-    def test_check_staged_verbose_with_staged_files(self, adr_env, caplog):
-        """Check-staged with verbose should produce output when files are staged."""
-        import logging
-        caplog.set_level(logging.INFO)
-        from tools.scripts.check_adr import main
-        from tools.scripts.adr_utils import AdrFile
+    def test_check_staged_blind_spot(self, adr_env, monkeypatch):
+        """Verify the blind spot is CLOSED: invalid ADRs in unstaged files are now detected."""
+        # Create an invalid ADR (missing required sections)
+        bad_adr = adr_env.adr_dir / "adr_26999_bad.md"
+        bad_adr.write_text("# ADR-26999: Bad ADR\n\n## Status\n\nAccepted\n", encoding="utf-8")
 
-        with patch("tools.scripts.adr_utils.get_staged_adr_files") as mock_staged:
-            mock_staged.return_value = [
-                AdrFile(
-                    path=Path("architecture/adr/adr_26001_first_feature.md"),
-                    number=26001,
-                    title="First Feature",
-                    status="proposed",
-                    body_status="proposed",
-                    frontmatter_title="First Feature",
-                    frontmatter={},
-                    content=""
-                )
-            ]
-            exit_code = main(["--check-staged", "--verbose"])
+        # Ensure no files are staged
+        with patch("tools.scripts.adr_utils.get_staged_adr_files", return_value=[]):
+            from tools.scripts.check_adr import main
+            exit_code = main(["--verbose"])
 
-        assert exit_code == 0
-        assert caplog.text  # Verbose should produce output
-    def test_check_staged_verbose_no_staged_files(self, adr_env, caplog):
-        """Check-staged with verbose and no staged files should produce output."""
-        import logging
-        caplog.set_level(logging.INFO)
-        from tools.scripts.check_adr import main
-    
-        with patch("tools.scripts.adr_utils.get_staged_adr_files") as mock_staged:
-            mock_staged.return_value = []
-            exit_code = main(["--check-staged", "--verbose"])
-    
-        assert exit_code == 0
-        assert caplog.text  # Verbose should produce output
+        # SHOULD now return 1 because the broken ADR in the unstaged file is detected.
+        assert exit_code == 1, "Blind spot still exists: script passed despite broken ADR in unstaged file"
 
 
 # ======================

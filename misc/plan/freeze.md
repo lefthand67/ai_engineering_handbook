@@ -1,32 +1,32 @@
 # Project Freeze State - ADR Governance Merge
 
-This file captures the unfinished state of the ADR governance tooling consolidation.
+**Verified: 2026-06-28** — Logic migrated and old script deleted (commit `889028c`). CLI integration, ADR-26058 doc, and term-reference flags remain pending.
 
 ## Objective
 Merge `tools/scripts/check_adr_index.py` into `tools/scripts/check_adr.py` to create a single authoritative tool for ADR structural and relational validation.
 
-## Current Progress
-- **Logic Migration**: The core functions for index synchronization (`validate_index_sync`, `fix_index`) and term reference validation (`find_broken_term_references`, `validate_term_references`, `fix_term_references`) have been copied into `tools/scripts/check_adr.py`.
-- **Cleanup**: `tools/scripts/check_adr_index.py` and `tools/tests/test_check_adr_index.py` have been deleted in the latest commit.
-- **Test Adjustments**: Initial updates to `tools/tests/test_check_adr.py` were made to remove broken imports.
+## Completed Work
+- **Logic Migration**: Core functions `validate_index_sync`, `fix_index`, `find_broken_term_references`, `validate_term_references`, `fix_term_references` are present in `tools/scripts/check_adr.py`.
+- **Cleanup**: `tools/scripts/check_adr_index.py` and `tools/tests/test_check_adr_index.py` deleted (commit `889028c`). `check_adr_index_recovered.py` also removed.
+- **Test Adjustments**: `test_check_adr.py` imports updated; `TestIndexSyncEdgeCases` and `TestPartitionedIndex` cover index sync logic. All 130 tests pass (`uv run pytest tools/tests/test_check_adr.py`).
 
 ## Pending Tasks
-1. **CLI Integration**: Update the `main()` function in `tools/scripts/check_adr.py` to handle the flags previously managed by the index script:
-   - `--fix` (expand to include index regeneration)
-   - `--check-terms`
-   - `--fix-terms`
-2. **Test Migration**: Port all remaining test cases from the deleted `test_check_adr_index.py` into `test_check_adr.py` and ensure they pass.
-3. **Documentation**: Create `architecture/adr/adr_26058_consolidation_of_adr_governance_tooling.md` to formalize this architectural change.
-4. **Verification**: Run `uv run pytest tools/tests/test_check_adr.py` to verify the integrated tool.
+1. **CLI Integration**: The `main()` function in `tools/scripts/check_adr.py` (lines 559–679) currently defines only `--verbose`, `--fix` (structural only), and `--migrate`. The following flags are **not wired**:
+   - `--fix` must be expanded to call `fix_index()` for index regeneration (currently only calls `fix_invalid_status`, `fix_title_mismatch`, `fix_duplicate_sections`).
+   - `--check-terms` — call `validate_term_references()`, report errors, exit 1 if blocking.
+   - `--fix-terms` — call `fix_term_references()`, report fixed files.
+2. **Test Coverage for Term Refs**: No tests reference `--check-terms` or `--fix-terms` CLI paths (since the flags don't exist). Once implemented, add tests mirroring the old `test_check_adr_index.py` cases.
+3. **Documentation**: Create `architecture/adr/adr_26058_consolidation_of_adr_governance_tooling.md` to formalize this architectural change. File does not exist yet.
 
 ## Artifacts
-- `tools/scripts/check_adr.py`: Contains the merged logic but incomplete CLI.
-- `tools/tests/test_check_adr.py`: Partial test suite.
-- `tools/scripts/check_adr_index_recovered.py`: A temporary recovery of the deleted script used for reference during the merge.
+- `tools/scripts/check_adr.py` (679 lines): Contains merged logic but CLI is incomplete.
+- `tools/tests/test_check_adr.py` (2500+ lines): 130 tests pass; missing term-reference CLI tests.
 
 ---
 
 # Project Freeze: 2026-06-13 (SkillOpt Adoption)
+
+**Verified: 2026-06-28** — Frontmatter fix and tests already committed. SkillOpt artifacts remain untracked; `adr_index.md` modified but unstaged.
 
 ## Status: In-Progress
 
@@ -38,19 +38,23 @@ Finalize the adoption of SkillOpt for empirical agent skill optimization and fix
 - Added TDD tests in `tools/tests/test_check_frontmatter.py` (`TestMermaidFalsePositives`) to prevent regressions.
 - Corrected frontmatter in `architecture/evidence/sources/S-26025_skillopt_adoption_analysis.md` (removed illegal fields, updated token size, moved model to options).
 - Verified that SkillOpt adoption artifacts (`S-26025`, `A-26026`, `ADR-26057`) and `architecture/adr_index.md` pass validation with the fixed parser.
+- `tools/scripts/check_frontmatter.py` and `tools/tests/test_check_frontmatter.py` are **already committed** (no modifications in working tree).
 
 ### Pending Tasks
-- [ ] Stage and commit the following files:
-    - `tools/scripts/check_frontmatter.py`
-    - `tools/tests/test_check_frontmatter.py`
+- [ ] Stage and commit the following **untracked** files (`git status` shows `??`):
     - `architecture/evidence/sources/S-26025_skillopt_adoption_analysis.md`
     - `architecture/evidence/analyses/A-26026_skillopt_adoption_comparative_analysis.md`
     - `architecture/adr/adr_26057_adoption_of_skillopt_for_empirical_agent_skill_optimization.md`
-    - `architecture/adr_index.md`
+- [ ] Stage and commit the **modified** file (`git status` shows `M`):
+    - `architecture/adr_index.md` (updated with ADR-26057 entry)
+- [x] ~~`tools/scripts/check_frontmatter.py`~~ — already committed
+- [x] ~~`tools/tests/test_check_frontmatter.py`~~ — already committed
 
 ---
 
 # Critical Next Step: Agent Workflow & Governance Transition
+
+**Verified: 2026-06-28** — ADR-26055 exists. `CONSTITUTION.md` not created. Symlinks unchanged (`QWEN.md`, `CLAUDE.md` → `AGENTS.md`). Not started.
 
 ## Objective
 Implement the transition to the **Modular Knowledge Pull Architecture** as defined in [ADR-26055](/architecture/adr/adr_26055_modular_knowledge_pull_architecture.md).
@@ -71,6 +75,8 @@ The implementation must find a "Logical Single Point" that preserves maintenance
 ---
 
 # Future Brainstorming: AI-Native Evolution via Knowledge Pull
+
+**Verified: 2026-06-28** — Correctly deferred. Sections 1 and 2 still incomplete; this section must not be started until they are resolved.
 
 **Status: Unsolved Problem**
 **Constraint**: This must be brainstormed and designed **ONLY after** all current unfinished work (ADR Governance Merge and SkillOpt Adoption) is fully completed and committed.

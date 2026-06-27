@@ -107,6 +107,12 @@ Default pattern: *.md""",
             default=False,
             help="Enable verbose mode for more output information.",
         )
+        parser.add_argument(
+            "--no-exclude",
+            action="store_true",
+            default=False,
+            help="Bypass directory exclusion rules — force-check files in excluded dirs (e.g., misc/, research/).",
+        )
         return parser
 
     def run(self, argv: Optional[List[str]] = None) -> None:
@@ -119,6 +125,7 @@ Default pattern: *.md""",
         verbose = args.verbose
         pattern = args.pattern
         fail_on_legacy = args.fail_on_legacy
+        no_exclude = args.no_exclude
 
         # Configure logging
         logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -140,6 +147,10 @@ Default pattern: *.md""",
         if args.files:
             for f in args.files:
                 p = Path(f).resolve()
+                if not no_exclude and is_excluded(str(p)):
+                    if verbose:
+                        logger.debug(f"  EXCLUDING (by directory rule): {p}")
+                    continue
                 blocking_sources.add(p)
 
         files = []
@@ -166,7 +177,7 @@ Default pattern: *.md""",
             resolved_paths_list.append(resolved)
 
             if resolved.is_file():
-                if is_excluded(str(resolved)):
+                if not no_exclude and is_excluded(str(resolved)):
                     if verbose:
                         logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
                     continue

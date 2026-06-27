@@ -1,14 +1,13 @@
-
 ---
 title: OpenCode Agent Guide
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-26
 description: Technical overview and usage guide for the OpenCode AI coding agent
 tags:
 - agents
 - development
+date: 2026-04-26
 options:
   type: guide
   birth: 2026-04-26

@@ -1,4 +1,3 @@
-
 ---
 title: Creating Consultant Skills for Claude Code
 authors:

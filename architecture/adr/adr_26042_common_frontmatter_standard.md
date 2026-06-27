@@ -1,9 +1,9 @@
 ---
+id: 26042
 title: Common Frontmatter Standard
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-14
 description: Adopts a composable block frontmatter schema as the universal standard
   for all governed documents. Defines 3 block types (identity, discovery, lifecycle)
   that compose additively per document type. Requires every file with frontmatter
@@ -17,12 +17,12 @@ tags:
 - governance
 - documentation
 - context_management
+date: 2026-04-14
 options:
   type: adr
   birth: 2026-03-11
   version: 1.1.0
   token_size: 2858
-  id: 26042
   status: accepted
   superseded_by: null
 ---

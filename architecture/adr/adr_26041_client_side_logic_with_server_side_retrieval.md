@@ -1,22 +1,20 @@
-
 ---
+id: 26041
 title: Client-Side Logic with Server-Side Retrieval
-date: 2026-03-09
-tags:
-- architecture
-options:
-  token_size: 1963
-  id: 26041
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-03-09'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
-  -->.'
+description: Separates agent logic (client) from data retrieval (server) to minimize latency and token overhead.
+tags:
+- architecture
+date: 2026-03-09
+options:
+  type: adr
+  birth: '2026-03-09'
+  version: 1.0.0
+  token_size: 1963
+  status: proposed
+  superseded_by: null
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

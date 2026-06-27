@@ -3500,6 +3500,22 @@ class TestValidateConditionalFields:
         errors = validate_conditional_fields(adr, all_adr_numbers={26072})
         assert any(e.error_type == "invalid_field_reference" for e in errors)
 
+    def test_superseded_with_empty_reference_set_fails(self, adr_env):
+        """An empty all_adr_numbers set must cause all superseded_by refs to fail."""
+        from tools.scripts.adr_utils import AdrFile
+        from tools.scripts.check_adr import validate_conditional_fields
+
+        adr = AdrFile(
+            path=adr_env.adr_dir / "adr_26075_test.md",
+            number=26075, title="Empty Set Ref",
+            status="superseded",
+            frontmatter={"id": 26075, "title": "Empty Set Ref",
+                         "date": "2024-01-15", "status": "superseded",
+                         "tags": ["architecture"], "superseded_by": "ADR-26099"},
+        )
+        errors = validate_conditional_fields(adr, all_adr_numbers=set())
+        assert any(e.error_type == "invalid_field_reference" for e in errors)
+
     def test_accepted_adr_ignores_superseded_by(self, adr_env):
         from tools.scripts.adr_utils import AdrFile
         from tools.scripts.check_adr import validate_conditional_fields
@@ -3530,6 +3546,77 @@ class TestValidateConditionalFields:
         )
         errors = validate_conditional_fields(adr)
         assert any(e.error_type == "invalid_field_type" for e in errors)
+
+
+@pytest.fixture
+def suppress_frontmatter_noise(monkeypatch):
+    """Suppress frontmatter validation noise from main() integration tests.
+
+    main() calls validate_parsed_frontmatter which produces token_size
+    errors for test fixtures with non-production frontmatter. This noise
+    obscures the actual contract under test (cross-ADR reference resolution).
+    """
+    import tools.scripts.check_frontmatter
+    monkeypatch.setattr(
+        tools.scripts.check_frontmatter,
+        "validate_parsed_frontmatter",
+        lambda *a, **kw: [],
+    )
+
+
+class TestBatchReferenceValidation:
+    """Contract: cross-ADR references must resolve against ALL repo ADRs,
+    not just the files passed via args.paths.
+
+    Pre-commit batches staged files into chunks. A partial batch must not
+    cause false 'invalid_field_reference' errors for ADRs in other batches.
+    """
+
+    def test_superseded_by_resolves_across_batches(self, adr_env, suppress_frontmatter_noise):
+        """ADR with superseded_by referencing an ADR not in the current batch
+        must not produce invalid_field_reference errors."""
+        create_adr_file_full(
+            directory=adr_env.adr_dir,
+            number=26100,
+            title="Successor ADR",
+            slug="successor",
+            status="accepted",
+            include_subsections=True,
+        )
+
+        rationale = "## Supersession Rationale\n\nThis ADR was superseded by ADR-26100 which provides better approach.\n"
+        content = _adr_content(26099, "Superseded ADR", "superseded",
+                               extra_sections=rationale, superseded_by="ADR-26100")
+        path = adr_env.adr_dir / "adr_26099_superseded.md"
+        path.write_text(content)
+
+        create_index(
+            adr_env.index_path,
+            [
+                (26099, "Superseded ADR", "/architecture/adr/adr_26099_superseded.md"),
+                (26100, "Successor ADR", "/architecture/adr/adr_26100_successor.md"),
+            ],
+        )
+
+        exit_code = _module.main([str(path)])
+        assert exit_code == 0
+
+    def test_superseded_by_genuinely_missing_still_fails(self, adr_env, suppress_frontmatter_noise):
+        """A reference to a truly non-existent ADR must still fail,
+        even with the full-repo reference set."""
+        rationale = "## Supersession Rationale\n\nThis ADR references a non-existent ADR for testing.\n"
+        content = _adr_content(26101, "Ghost Reference ADR", "superseded",
+                               extra_sections=rationale, superseded_by="ADR-99999")
+        path = adr_env.adr_dir / "adr_26101_ghost_ref.md"
+        path.write_text(content)
+
+        create_index(
+            adr_env.index_path,
+            [(26101, "Ghost Reference ADR", "/architecture/adr/adr_26101_ghost_ref.md")],
+        )
+
+        exit_code = _module.main([str(path)])
+        assert exit_code == 1
 
 
 class TestConditionalSectionContent:

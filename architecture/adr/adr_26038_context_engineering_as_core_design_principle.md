@@ -1,21 +1,20 @@
-
 ---
+id: 26038
 title: Context Engineering as Core Design Principle
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-03-08
 description: Single-agent architecture with skill dispatch over multi-agent systems;
   context quality determines agent success, not orchestration complexity.
 tags:
 - context_management
 - architecture
+date: 2026-03-08
 options:
   type: adr
   birth: 2026-03-08
   version: 1.0.0
   token_size: 2853
-  id: 26038
   status: accepted
   superseded_by: null
 ---

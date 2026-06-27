@@ -1,22 +1,21 @@
-
 ---
+id: 26014
 title: Semantic Notebook Pairing Strategy
-date: 2026-01-31
-tags:
-- documentation
-options:
-  token_size: 787
-  id: 26014
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-01-31'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: Adoption of Jupytext Paired `.md`/`.ipynb` Artifacts for AI-Ready Version
   Control..
+tags:
+- documentation
+date: 2026-01-31
+options:
+  type: adr
+  birth: '2026-01-31'
+  version: 1.0.0
+  token_size: 787
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26014: Semantic Notebook Pairing Strategy
 

@@ -1,10 +1,9 @@
-
 ---
+id: 26046
 title: External Product Repos as Research Directories
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-06
 description: Governance for directories containing nested git repos of external products
   used for comparative source-level research — centralized path registry with relocation
   safety.
@@ -12,12 +11,12 @@ tags:
 - architecture
 - agents
 - governance
+date: 2026-04-06
 options:
   type: adr
   birth: 2026-04-06
   version: 0.1.0
   token_size: 1237
-  id: 26046
   status: proposed
   superseded_by: null
 ---

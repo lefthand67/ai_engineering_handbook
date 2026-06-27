@@ -624,7 +624,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 adr_files = get_adr_files()
 
-    all_numbers = {adr.number for adr in adr_files}
+    # Build reference set from ALL ADR files in the repo, not just the batch.
+    # Pre-commit batches staged files into chunks; a partial batch would miss
+    # referenced ADRs in other batches and falsely report them as non-existent.
+    all_adr_files = get_adr_files()
+    all_numbers = {adr.number for adr in all_adr_files}
     blocking_errors = 0
     all_errors: list[ValidationError] = []
 

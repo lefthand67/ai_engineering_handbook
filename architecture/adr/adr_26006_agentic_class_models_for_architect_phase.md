@@ -1,21 +1,20 @@
-
 ---
+id: 26006
 title: Requirement for Agentic-Class Models for the Architect Phase
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-01
 description: Agentic-Class models (high instruction adherence) are required for the
   aidx Architect phase to prevent instruction drift in generated plans.
 tags:
 - model
 - workflow
+date: 2026-04-01
 options:
   type: adr
   birth: 2026-01-24
   version: 1.0.1
   token_size: 1329
-  id: 26006
   status: superseded
   superseded_by: ADR-26027
 ---

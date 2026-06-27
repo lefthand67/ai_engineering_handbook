@@ -1,23 +1,22 @@
-
 ---
+id: 26030
 title: Stateless JIT Context Injection for Agentic Git Workflows
-date: 2026-02-24
-tags:
-- context_management
-- git
-- workflow
-options:
-  token_size: 1070
-  id: 26030
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-24'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-24.
+tags:
+- context_management
+- git
+- workflow
+date: 2026-02-24
+options:
+  type: adr
+  birth: '2026-02-24'
+  version: 1.0.0
+  token_size: 1070
+  status: proposed
+  superseded_by: null
 ---
 # ADR-26030: Stateless JIT Context Injection for Agentic Git Workflows
 

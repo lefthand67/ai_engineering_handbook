@@ -1,23 +1,21 @@
-
 ---
+id: 26043
 title: Ecosystem Package Boundary
-date: 2026-03-14
-tags:
-- governance
-- architecture
-options:
-  token_size: 2056
-  id: 26043
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-03-14'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
-  -->.'
+description: Defines the boundaries of the ecosystem package to isolate core governance from external tools.
+tags:
+- governance
+- architecture
+date: 2026-03-14
+options:
+  type: adr
+  birth: '2026-03-14'
+  version: 1.0.0
+  token_size: 2056
+  status: proposed
+  superseded_by: null
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

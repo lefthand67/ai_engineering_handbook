@@ -1,22 +1,21 @@
-
 ---
+id: 26022
 title: Standardization of Public Documentation Hosting on GitHub Pages
-date: 2026-02-06
-tags:
-- devops
-- documentation
-options:
-  token_size: 1033
-  id: 26022
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-06'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-06.
+tags:
+- devops
+- documentation
+date: 2026-02-06
+options:
+  type: adr
+  birth: '2026-02-06'
+  version: 1.0.0
+  token_size: 1033
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26022: Standardization of Public Documentation Hosting on GitHub Pages
 

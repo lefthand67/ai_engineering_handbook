@@ -1,22 +1,20 @@
-
 ---
+id: 26044
 title: Skills as Progressive Disclosure Units
-date: 2026-03-18
-tags:
-- context_management
-options:
-  token_size: 2686
-  id: 26044
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-03-18'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
-  -->.'
+description: Defines skills as versioned, testable units of expertise that are injected into the agent's context on demand.
+tags:
+- context_management
+date: 2026-03-18
+options:
+  type: adr
+  birth: '2026-03-18'
+  version: 1.0.0
+  token_size: 2686
+  status: proposed
+  superseded_by: null
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

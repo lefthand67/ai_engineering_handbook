@@ -1,22 +1,22 @@
 ---
+id: 26035
 title: Architecture Knowledge Base Taxonomy
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-02-26
 description: Adopt a three-category Architecture Knowledge Base taxonomy aligned with
   ISO 42010, formalized as a directory structure and machine-readable configuration.
 tags:
 - governance
 - documentation
+date: 2026-02-26
 options:
   type: adr
-  id: 26035
   birth: 2026-02-26
   version: 1.0.0
+  token_size: 2348
   status: accepted
   superseded_by: null
-  token_size: 2348
 ---
 # ADR-26035: Architecture Knowledge Base Taxonomy
 
@@ -91,8 +91,7 @@ Each artifact type gets an independent ID namespace with a year prefix:
 All schemas are defined in the evidence validation config in `.vadocs/` (the single source of truth, see {term}`ADR-26036`). Tags are inherited from the shared governance config — no duplication. The ADR establishes the principle; the config is the living specification that can evolve without amending this ADR.
 
 **Analysis** (`evidence/analyses/A-YYNNN_slug.md`):
-```yaml
----
+```yaml---
 title: Architecture Knowledge Base Taxonomy
 date: 2026-02-26
 tags:

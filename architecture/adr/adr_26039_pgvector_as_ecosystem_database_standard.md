@@ -1,23 +1,21 @@
-
 ---
+id: 26039
 title: pgvector as Ecosystem Database Standard
-date: 2026-03-08
-tags:
-- context_management
-- devops
-options:
-  token_size: 2741
-  id: 26039
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-03-08'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
-  -->.'
+description: Adopts PostgreSQL with pgvector as the unified database for both structured and vector data across the ecosystem.
+tags:
+- context_management
+- devops
+date: 2026-03-08
+options:
+  type: adr
+  birth: '2026-03-08'
+  version: 1.0.0
+  token_size: 2741
+  status: proposed
+  superseded_by: null
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

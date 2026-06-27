@@ -1,21 +1,20 @@
-
 ---
+id: 26032
 title: 'Tiered Cognitive Memory: Procedural Skills vs. Declarative RAG'
-date: 2026-02-25
-tags:
-- context_management
-options:
-  token_size: 446
-  id: 26032
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-25'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-25.
+tags:
+- context_management
+date: 2026-02-25
+options:
+  type: adr
+  birth: '2026-02-25'
+  version: 1.0.0
+  token_size: 446
+  status: proposed
+  superseded_by: null
 ---
 # ADR-26032: Tiered Cognitive Memory: Procedural Skills vs. Declarative RAG
 

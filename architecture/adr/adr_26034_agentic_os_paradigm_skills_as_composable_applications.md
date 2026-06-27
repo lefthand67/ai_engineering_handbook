@@ -1,21 +1,20 @@
-
 ---
+id: 26034
 title: 'Agentic OS Paradigm: Skills as Composable Applications'
-date: 2026-02-25
-tags:
-- context_management
-options:
-  token_size: 1390
-  id: 26034
-  status: rejected
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-25'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-25.
+tags:
+- context_management
+date: 2026-02-25
+options:
+  type: adr
+  birth: '2026-02-25'
+  version: 1.0.0
+  token_size: 1390
+  status: rejected
+  superseded_by: null
 ---
 # ADR-26034: Agentic OS Paradigm: Skills as Composable Applications
 

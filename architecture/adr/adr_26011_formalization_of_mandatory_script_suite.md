@@ -1,22 +1,21 @@
-
 ---
+id: 26011
 title: Formalization of the Mandatory Script Suite Workflow
-date: 2026-01-31
-tags:
-- governance
-- development
-options:
-  token_size: 1120
-  id: 26011
-  status: superseded
-  superseded_by: ADR-26045
-  type: adr
-  version: 1.0.0
-  birth: '2026-01-31'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: Mandating a synchronized 1:1:1 ratio for Scripts, Tests, and Documentation..
+tags:
+- governance
+- development
+date: 2026-01-31
+options:
+  type: adr
+  birth: '2026-01-31'
+  version: 1.0.0
+  token_size: 1120
+  status: superseded
+  superseded_by: ADR-26045
 ---
 # ADR-26011: Formalization of the Mandatory Script Suite Workflow
 

@@ -1,23 +1,22 @@
-
 ---
+id: 26023
 title: MyST-Aligned Frontmatter Standard
-date: 2026-02-08
-tags:
-- governance
-- documentation
-- context_management
-options:
-  id: 26023
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-08'
-  token_size: 1765
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-08.
+tags:
+- governance
+- documentation
+- context_management
+date: 2026-02-08
+options:
+  type: adr
+  birth: '2026-02-08'
+  version: 1.0.0
+  token_size: 1765
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26023: MyST-Aligned Frontmatter Standard
 

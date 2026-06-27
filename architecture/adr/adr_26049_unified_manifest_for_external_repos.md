@@ -1,21 +1,20 @@
-
 ---
+id: 26049
 title: Unified Manifest for External Repository Management
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-21
 description: Transition from a registry-only system to a state-based synchronization
   system using a unified manifest as the Single Source of Truth (SSoT).
 tags:
 - devops
 - architecture
+date: 2026-04-21
 options:
   type: adr
   birth: 2026-04-21
   version: 1.0.0
   token_size: 1026
-  id: 26049
   status: accepted
   superseded_by: null
 ---

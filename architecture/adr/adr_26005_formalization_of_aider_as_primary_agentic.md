@@ -1,22 +1,21 @@
-
 ---
+id: 26005
 title: Formalization of Aider as the Primary Agentic Orchestrator
-date: 2026-01-24
-tags:
-- workflow
-options:
-  token_size: 1212
-  id: 26005
-  status: rejected
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-01-24'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: Standardizing AI-assisted development and automation using the `aider`
   orchestration framework in a Hybrid Architect-Editor configuration..
+tags:
+- workflow
+date: 2026-01-24
+options:
+  type: adr
+  birth: '2026-01-24'
+  version: 1.0.0
+  token_size: 1212
+  status: rejected
+  superseded_by: null
 ---
 # ADR-26005: Formalization of Aider as the Primary Agentic Orchestrator
 

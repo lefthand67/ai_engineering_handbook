@@ -1,22 +1,21 @@
-
 ---
+id: 26045
 title: AI-Native Development — Code as Primary Documentation
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-01
 description: Contract docstrings are mandatory for all code in all languages across
   the ecosystem. Code structure is the primary documentation layer for both human
   and agent consumers.
 tags:
 - development
 - governance
+date: 2026-04-01
 options:
   type: adr
   birth: 2026-04-01
   version: 1.0.0
   token_size: 1399
-  id: 26045
   status: accepted
   superseded_by: null
 ---

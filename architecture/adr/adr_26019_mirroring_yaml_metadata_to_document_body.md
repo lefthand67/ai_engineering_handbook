@@ -1,10 +1,9 @@
-
 ---
+id: 26019
 title: Mirroring YAML Metadata to Document Body for Human Verification
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: 2026-04-01
 description: A pre-commit hook automatically mirrors YAML frontmatter fields into
   a prose reflection block in the document body, making metadata visible on the MyST-rendered
   static site.
@@ -12,12 +11,12 @@ tags:
 - governance
 - documentation
 - context_management
+date: 2026-04-01
 options:
   type: adr
   birth: 2026-02-01
   version: 1.0.1
   token_size: 1745
-  id: 26019
   status: superseded
   superseded_by: ADR-26023
 ---

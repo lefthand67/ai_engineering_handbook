@@ -1,22 +1,21 @@
-
 ---
+id: 26010
 title: Adoption of Molecule for Automated Ansible Role Validation
-date: 2026-01-24
-tags:
-- testing
-options:
-  token_size: 846
-  id: 26010
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-01-24'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: Implementation of the **Molecule** testing framework with **Podman**
   for automated verification of Ansible roles..
+tags:
+- testing
+date: 2026-01-24
+options:
+  type: adr
+  birth: '2026-01-24'
+  version: 1.0.0
+  token_size: 843
+  status: proposed
+  superseded_by: null
 ---
 # ADR-26010: Adoption of Molecule for Automated Ansible Role Validation
 

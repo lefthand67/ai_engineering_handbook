@@ -1,24 +1,23 @@
-
 ---
+id: 26024
 title: Structured Commit Bodies for Automated CHANGELOG Generation
-date: 2026-02-18
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: Structured Commit Bodies for Automated CHANGELOG Generation.
 tags:
 - workflow
 - ci
 - documentation
 - git
+date: 2026-02-18
 options:
+  type: adr
+  birth: '2026-02-18'
+  version: 1.0.0
   token_size: 4053
-  id: ADR-26024
   status: accepted
   superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-18'
-authors:
-- name: Vadim Rudakov
-  email: rudakow.wadim@gmail.com
-description: Structured Commit Bodies for Automated CHANGELOG Generation.
 ---
 # ADR-26024: Structured Commit Bodies for Automated CHANGELOG Generation
 

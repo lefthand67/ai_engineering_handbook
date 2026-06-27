@@ -1,22 +1,21 @@
-
 ---
+id: 26013
 title: Just-in-Time Prompt Transformation
-date: 2026-01-31
-tags:
-- workflow
-options:
-  token_size: 759
-  id: 26013
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-01-31'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: Implementation of Just-in-Time (JIT) JSON-to-YAML conversion for LLM
   prompt loading..
+tags:
+- workflow
+date: 2026-01-31
+options:
+  type: adr
+  birth: '2026-01-31'
+  version: 1.0.0
+  token_size: 759
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26013: Just-in-Time Prompt Transformation
 

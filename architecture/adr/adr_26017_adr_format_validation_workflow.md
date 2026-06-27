@@ -1,23 +1,22 @@
-
 ---
+id: 26017
 title: ADR Format Validation Workflow
-date: 2026-02-01
-tags:
-- governance
-- documentation
-- ci
-options:
-  token_size: 820
-  id: 26017
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-01'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: ADR Format Validation Workflow.
+tags:
+- governance
+- documentation
+- ci
+date: 2026-02-01
+options:
+  type: adr
+  birth: '2026-02-01'
+  version: 1.0.0
+  token_size: 809
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26017: ADR Format Validation Workflow
 

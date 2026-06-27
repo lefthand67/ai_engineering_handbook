@@ -1,22 +1,21 @@
-
 ---
+id: 26026
 title: Dedicated Research Monorepo for Volatile Experimental Projects
-date: 2026-02-15
-tags:
-- governance
-- workflow
-options:
-  token_size: 1279
-  id: 26026
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-15'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: 2026-02-15.
+tags:
+- governance
+- workflow
+date: 2026-02-15
+options:
+  type: adr
+  birth: '2026-02-15'
+  version: 1.0.0
+  token_size: 1279
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26026: Dedicated Research Monorepo for Volatile Experimental Projects
 

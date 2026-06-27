@@ -1,23 +1,22 @@
-
 ---
+id: 26025
 title: RFC→ADR Workflow Formalization
-date: 2026-02-10
-tags:
-- governance
-- documentation
-- workflow
-options:
-  token_size: 1455
-  id: ADR-26025
-  status: accepted
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-02-10'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: RFC→ADR Workflow Formalization.
+tags:
+- governance
+- documentation
+- workflow
+date: 2026-02-10
+options:
+  type: adr
+  birth: '2026-02-10'
+  version: 1.0.0
+  token_size: 1455
+  status: accepted
+  superseded_by: null
 ---
 # ADR-26025: RFC→ADR Workflow Formalization
 

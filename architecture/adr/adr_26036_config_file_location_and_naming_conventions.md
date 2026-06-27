@@ -1,23 +1,22 @@
-
 ---
+id: 26036
 title: Config File Location and Naming Conventions
-date: 2026-03-23
-tags:
-- governance
-- architecture
-options:
-  token_size: 1602
-  id: 26036
-  status: proposed
-  superseded_by: null
-  type: adr
-  version: 1.0.0
-  birth: '2026-03-23'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
 description: '<!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md
   -->.'
+tags:
+- governance
+- architecture
+date: 2026-03-23
+options:
+  type: adr
+  birth: '2026-03-23'
+  version: 1.0.0
+  token_size: 1602
+  status: proposed
+  superseded_by: null
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

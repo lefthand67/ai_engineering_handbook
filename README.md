@@ -1,11 +1,20 @@
-
+---
 title: AI Engineering Handbook
-author: rudakow.wadim@gmail.com
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
+description: The authoritative knowledge base for building production-grade AI systems
+  using a hybrid LLM+SLM methodology.
+tags:
+- documentation
+- governance
+- architecture
 date: 2026-04-13
 options:
-  version: "3.1.0"
+  type: guide
+  version: 3.1.0
   birth: 2025-10-19
-  token_size: 3371
+  token_size: 3595
 ---
 # AI Engineering Handbook
 

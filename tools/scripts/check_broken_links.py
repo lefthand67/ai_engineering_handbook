@@ -4,6 +4,20 @@ Script to check broken links in files (default: Markdown files .md).
 
 Usage: check_broken_links.py [--paths PATH ...] [--pattern PATTERN] [options]
 
+This script implements Dual-Mode Broken Link Validation to prevent \"Validation Deadlock\"
+while preserving \"Production Link Safety\".
+
+Dual-Mode Logic:
+1. [BLOCKING] Errors: Occur when a link in a STAGED file (passed as positional arguments
+   via pre-commit) points to a missing or untracked target. These errors cause exit 1
+   and block the commit.
+2. [LEGACY] Warnings: Occur when a link in an UNSTAGED file points to a broken target.
+   These are reported for visibility (to encourage incremental cleanup) but cause exit 0,
+   allowing the commit to proceed.
+
+Production Link Safety: Any link to an untracked or ignored target is considered broken,
+even if the file exists on disk, ensuring the codebase is deployable and reproducible.
+
 This script is fully SVA (Smallest Viable Architecture) compliant, using only
 Python's standard library (pathlib, re, sys, argparse, tempfile) for robust, local-only
 link validation with full exclusion capabilities.
@@ -217,26 +231,86 @@ Default pattern: *.md""",
 
 
 class LinkExtractor:
-    """Extracts Markdown-style links from a given file."""
+    """Extracts Markdown-style links from a given file.
+
+    Context-Aware Extraction (R-26002, R-26003):
+        For .py files, links are extracted only from comments and docstrings.
+        Regex patterns and string literals containing Markdown-style link syntax
+        are NOT flagged. This prevents "Implementation Leakage" where the tool
+        flags its own regex patterns as broken links.
+
+        For all other file types (.md, .ipynb, etc.), the full extraction logic
+        applies — every line is scanned for Markdown links and MyST include directives.
+    """
 
     def __init__(self, verbose: bool = False):
         self.verbose = verbose
 
+    def _is_docstring_line(self, line: str, in_docstring: bool, docstring_delim: str) -> tuple[bool, bool, str]:
+        """Check if a line is inside a Python docstring.
+
+        Returns (is_in_docstring, new_in_docstring_state, new_delim_state).
+        """
+        stripped = line.strip()
+        if in_docstring:
+            if stripped == docstring_delim or stripped.endswith(docstring_delim):
+                return True, False, ""
+            return True, True, docstring_delim
+        else:
+            if stripped.startswith('"""') or stripped.startswith("'''"):
+                delim = stripped[:3]
+                rest = stripped[3:]
+                if rest.endswith(delim) and len(rest) > 0:
+                    if len(rest) >= 3 and rest == delim:
+                        return False, False, ""
+                    return True, False, ""
+                return True, True, delim
+            return False, False, ""
+
+    def _is_comment_line(self, line: str) -> bool:
+        """Check if a line is a Python comment (starts with #, ignoring whitespace)."""
+        return line.lstrip().startswith("#")
+
     def extract(self, file: Path) -> List[Tuple[str, int]]:
-        """Extract all Markdown links from the file with their line numbers."""
+        """Extract all Markdown links from the file with their line numbers.
+
+        For .py files, only comments and docstrings are scanned (R-26002).
+        For all other file types, every line is scanned.
+
+        Self-Referential Trap: Since comments ARE scanned for .py files, a comment
+        that contains the literal triple-backtick include sequence (e.g. in
+        documentation explaining the regex below) will be matched by the MyST
+        include regex on the next line. Comments must describe the pattern without
+        embedding the literal sequence it matches.
+        """
         try:
             lines = file.read_text(encoding="utf-8").splitlines()
             matches = []
+            is_python = file.suffix == ".py"
+
+            in_docstring = False
+            docstring_delim = ""
+
             for i, line in enumerate(lines, 1):
+                if is_python:
+                    in_ds_now = in_docstring
+                    is_comment = self._is_comment_line(line) and not in_docstring
+                    in_docstring, in_docstring, docstring_delim = self._is_docstring_line(
+                        line, in_docstring, docstring_delim
+                    )
+
+                    if not is_comment and not in_ds_now and not in_docstring:
+                        continue
+
                 # Standard Markdown links: [text](link)
                 md_links = re.findall(r"\[[^\]]*\]\(([^)]+)\)", line)
                 for link in md_links:
                     matches.append((link, i))
 
                 # MyST include directives: {include} path
-                # Matches ```{include} followed by everything until newline or backticks.
-                # We strip exactly one leading space if it exists and is not followed by another space,
-                # and ignore matches that are only whitespace, to satisfy test expectations.
+                # Matches the triple-backtick include directive, capturing the path
+                # until newline or backticks. We strip one leading space if present
+                # (but not two), and ignore whitespace-only matches per test expectations.
                 myst_includes = [
                     m[1:] if m.startswith(" ") and not m.startswith("  ") else m
                     for m in re.findall(r"```\{include\}([^`\n]+)", line)

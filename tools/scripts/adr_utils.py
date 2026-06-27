@@ -153,6 +153,7 @@ class ValidationError:
     number: int
     error_type: str
     message: str
+    is_blocking: bool = True
 
 @dataclass
 class BrokenTermReference:

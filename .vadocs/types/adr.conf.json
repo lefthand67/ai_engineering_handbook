@@ -1,6 +1,7 @@
 {
   "$comment": "ADR Configuration — operational rules for Architecture Decision Records. Tags and date_format inherited from parent config.",
   "parent_config": ".vadocs/conf.json",
+  "id_example": "26001 (where 26 is year and 001 is the order number)",
 
   "term_reference": {
     "separator": "-",

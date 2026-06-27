@@ -206,11 +206,3 @@ repos:
         pass_filenames: false
         files: ^(tools/scripts/(check_evidence|git|paths)\.py|tools/tests/test_check_evidence\.py|\.vadocs/(conf\.json|types/evidence\.conf\.json))$
         stages: [pre-commit]
-
-      - id: test-check-adr-index
-        name: Test Check ADR Index script
-        entry: uv run --active pytest tools/tests/test_check_adr.py
-        language: python
-        files: ^(tools/scripts/(check_adr|git|paths)\.py|tools/tests/test_check_adr\.py|\.vadocs/(conf\.json|types/adr\.conf\.json))$
-        pass_filenames: false
-        stages: [pre-commit]

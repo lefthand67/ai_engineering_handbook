@@ -1,20 +1,19 @@
-
 ---
+id: 00000
 title: Short Description
-date: "2026-01-01"
-tags: []
+authors:
+- name: Vadim Rudakov
+  email: rudakow.wadim@gmail.com
 description: ''
+tags: []
+date: "2026-01-01"
 options:
-  token_size: 457
-  id: YY001
   status: proposed
   superseded_by: null
   type: adr
   version: 1.0.0
   birth: "2026-01-01"
-authors:
-- name: Vadim Rudakov
-  email: rudakow.wadim@gmail.com
+  token_size: 457
 ---
 <!-- Quality guidelines: /architecture/architecture_decision_workflow_guide.md -->
 

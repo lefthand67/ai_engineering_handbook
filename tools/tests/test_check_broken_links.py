@@ -899,3 +899,129 @@ def test_link_extractor_verbose_output(tmp_path, capsys, caplog):
     captured = capsys.readouterr()
     assert "Links found in" in caplog.text
     assert "target.md" in caplog.text
+
+
+# =============================================================================
+# Context-Aware Link Extraction (R-26002, R-26003)
+# =============================================================================
+
+class TestLinkExtractorContextAware:
+    """Contract: LinkExtractor must be context-aware of file type.
+
+    For .py files, regex patterns and string literals containing Markdown-style
+    link syntax must NOT be flagged as broken links. Only links in comments and
+    docstrings should be extracted from .py files.
+
+    This prevents "Implementation Leakage" (R-26003 L4) where the tool flags its
+    own regex patterns as broken links.
+    """
+
+    def test_py_file_regex_pattern_not_flagged(self, tmp_path):
+        """A .py file containing regex patterns must not have them extracted as links."""
+        py_file = tmp_path / "script.py"
+        py_file.write_text(
+            'FRONTMATTER_PATTERN = re.compile(r"\\[{\\^{2}([^`\\n]+)", re.DOTALL)\n',
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        assert links == []
+
+    def test_py_file_myst_include_regex_not_flagged(self, tmp_path):
+        """The MyST include regex pattern in check_broken_links.py source must not be flagged."""
+        py_file = tmp_path / "check_broken_links.py"
+        py_file.write_text(
+            'myst_includes = re.findall(r"```{include}([^`\\n]+)", line)\n',
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        assert links == []
+
+    def test_py_file_myst_include_literal_in_comment_not_flagged(self, tmp_path):
+        """The actual check_broken_links.py source must not self-reference via MyST include in comments.
+
+        This is a regression test for a self-referential false positive where a comment
+        documenting the MyST include regex contained the literal triple-backtick include
+        sequence that the regex on the next line matched, flagging the script's own source.
+        """
+        repo_root = Path(__file__).resolve().parents[2]
+        py_file = repo_root / "tools" / "scripts" / "check_broken_links.py"
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        myst_links = [link for link, _ in links if "followed" in link or "backticks" in link]
+        assert myst_links == []
+
+    def test_py_file_link_in_comment_extracted(self, tmp_path):
+        """A .py file with a Markdown link in a comment should have it extracted."""
+        py_file = tmp_path / "script.py"
+        py_file.write_text(
+            '# See [ADR-26042](/architecture/adr/adr_26042.md) for details\n',
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        assert links == [("/architecture/adr/adr_26042.md", 1)]
+
+    def test_py_file_link_in_docstring_extracted(self, tmp_path):
+        """A .py file with a Markdown link in a docstring should have it extracted."""
+        py_file = tmp_path / "script.py"
+        py_file.write_text(
+            '"""\nSee [guide](/tools/docs/guide.md) for usage.\n"""\n',
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        assert links == [("/tools/docs/guide.md", 2)]
+
+    def test_py_file_string_literal_not_flagged(self, tmp_path):
+        """A .py file with link-like patterns inside string assignments must not be flagged."""
+        py_file = tmp_path / "script.py"
+        py_file.write_text(
+            'pattern = r"\\[([^\\]]*)\\]\\(([^)]+)\\)"\n',
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(py_file)
+        assert links == []
+
+    def test_md_file_extraction_unchanged(self, tmp_path):
+        """Markdown file extraction must remain unchanged after context-aware fix."""
+        md_file = tmp_path / "doc.md"
+        md_file.write_text(
+            "[text](link.ipynb)\n```{include} /path/to/file.md\n```\n",
+            encoding="utf-8",
+        )
+        extractor = LinkExtractor(verbose=False)
+        links = extractor.extract(md_file)
+        assert ("link.ipynb", 1) in links
+        assert ("/path/to/file.md", 2) in links
+
+
+class TestContextAwareBlocking:
+    """Contract: .py files in tools/scripts/ with broken links are still [BLOCKING]."""
+
+    def test_py_file_broken_link_in_comment_is_blocking(self, tmp_path, monkeypatch, capsys):
+        """A .py file with a broken link in a comment must be flagged as [BLOCKING]."""
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        subprocess.run(["git", "init"], cwd=repo, capture_output=True)
+        (repo / "init.txt").write_text("init")
+        subprocess.run(["git", "add", "init.txt"], cwd=repo, capture_output=True)
+        subprocess.run(["git", "commit", "-m", "init"], cwd=repo, capture_output=True)
+        monkeypatch.chdir(repo)
+
+        py_file = Path("script.py")
+        py_file.write_text(
+            '# See [broken](nonexistent.md) for details\n',
+            encoding="utf-8",
+        )
+        subprocess.run(["git", "add", "script.py"], cwd=repo, capture_output=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.py", str(py_file)])
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "[BLOCKING]" in captured.out
+        assert "nonexistent.md" in captured.out

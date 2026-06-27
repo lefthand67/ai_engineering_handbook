@@ -41,6 +41,7 @@ Naming convention: one test class per contract, method names describe behavior.
 
 import json
 import shutil
+import logging
 from datetime import date
 from pathlib import Path
 from unittest.mock import patch
@@ -161,8 +162,26 @@ def _build_valid_frontmatter(doc_type: str) -> dict:
 
 
 def _frontmatter_to_md(fm: dict) -> str:
-    """Convert a frontmatter dict to markdown file content with YAML fences."""
-    return f"---\n{yaml.dump(fm, default_flow_style=False, sort_keys=False)}---\n\n# Test Document\n"
+    """Convert a frontmatter dict to markdown file content with YAML fences,
+    calculating token_size for the result to avoid brittle tests.
+    """
+    body = "\n\n# Test Document\n"
+    # Generate YAML without token_size first to calculate actual size
+    temp_fm = fm.copy()
+    if "options" in temp_fm:
+        temp_fm["options"] = temp_fm["options"].copy()
+        temp_fm["options"].pop("token_size", None)
+
+    yaml_content = yaml.dump(temp_fm, default_flow_style=False, sort_keys=False)
+    full_text = f"---\n{yaml_content}---\n{body}"
+    
+    # Calculate tokens and add to final fm
+    token_count = _module.calculate_tokens(full_text)
+    if "options" not in fm: fm["options"] = {}
+    fm["options"]["token_size"] = token_count
+    
+    final_yaml = yaml.dump(fm, default_flow_style=False, sort_keys=False)
+    return f"---\n{final_yaml}---\n{body}"
 
 
 # ======================
@@ -389,9 +408,45 @@ class TestLoadConfigChain:
         assert expected.issubset(required), f"Missing required fields: {expected - required}"
 
 
-# ======================
-# Tests: Asymmetric Fences
-# ======================
+class TestMermaidFalsePositives:
+    """Contract: Mermaid diagrams containing '---' fences should not be
+    mistaken for YAML frontmatter blocks.
+    """
+
+    def test_dual_block_with_mermaid_diagram(self, frontmatter_env):
+        """Dual-block frontmatter followed by a Mermaid diagram with '---'
+        should not trigger 'Too many YAML blocks' or 'broken_dual_block'.
+        """
+        jupytext_fm = {
+            "jupytext": {"text_representation": {"format_name": "myst"}},
+            "kernelspec": {"name": "python3"}
+        }
+        project_fm = _build_valid_frontmatter("guide")
+        
+        content = (
+            f"---\n{yaml.dump(jupytext_fm)}---\n"
+            f"---\n{yaml.dump(project_fm)}---\n"
+            "\n"
+            "# Document\n\n"
+            "Here is a diagram:\n\n"
+            "```mermaid\n"
+            "config:\n"
+            "  theme: redux\n"
+            "---\n"
+            "flowchart TB\n"
+            "  A --> B\n"
+            "```\n"
+        )
+        
+        file_path = frontmatter_env / "mermaid_test.md"
+        file_path.write_text(content, encoding="utf-8")
+
+        errors = _module.validate_frontmatter(file_path, frontmatter_env)
+
+        assert not any(e.error_type == "broken_dual_block" for e in errors), \
+            "Mermaid fences should not trigger broken_dual_block error"
+        assert not any("Too many YAML blocks" in e.message for e in errors), \
+            "Mermaid fences should not be counted as YAML blocks"
 
 
 class TestAsymmetricFences:
@@ -506,8 +561,46 @@ class TestAsymmetricFences:
             "Files starting with a newline before the fence must be reported as leading_newline"
 
 # ======================
-# Tests: Key Order
+# Tests: Blueprint UX (TDD)
 # ======================
+
+class TestBlueprintUX:
+    """Contract: Blueprint files that block commits must be explicitly labeled
+    to prevent developer confusion.
+    """
+
+    @pytest.mark.parametrize("error_type, content", [
+        ("structural", "\n---\ntitle: Template\noptions:\n  type: adr\n---\n"), # Leading newline
+        ("missing_field", "---\ntitle: Template\noptions:\n  type: adr\n---\n"), # Missing required fields
+        ("invalid_order", "---\ndate: 2026-01-01\ntitle: Template\noptions:\n  type: adr\n---\n"), # Wrong order
+    ])
+    def test_blueprint_blocking_label_and_message(self, frontmatter_env, caplog, error_type, content):
+        """If a file is blocking because it is a blueprint, output must use
+        '[BLOCKING (Blueprint)]' and explain the rule, regardless of the error type.
+        """
+        # 1. Setup blueprint in the test env
+        bp_rel_path = "architecture/adr/adr_template.md"
+        bp_dir = frontmatter_env / "architecture/adr"
+        bp_dir.mkdir(parents=True)
+        bp_path = bp_dir / "adr_template.md"
+        bp_path.write_text(content, encoding="utf-8")
+
+        # Update the hub config in the test env
+        hub_config = json.loads((frontmatter_env / ".vadocs/conf.json").read_text())
+        hub_config["blueprints"] = [bp_rel_path]
+        (frontmatter_env / ".vadocs/conf.json").write_text(json.dumps(hub_config), encoding="utf-8")
+        _module.HUB_CONFIG = hub_config
+
+        # 2. Execute validator
+        with caplog.at_level(logging.ERROR):
+            exit_code = _module.main([str(bp_path)])
+
+        # 3. Verify
+        assert exit_code == 1
+        output = caplog.text
+        assert "[BLOCKING (Blueprint)]" in output, f"Should use Blueprint label for {error_type} error"
+        assert "gold standard" in output.lower(), f"Should explain blueprint rule for {error_type} error"
+        assert "unblock commits" in output.lower(), f"Should mention unblocking commits for {error_type} error"
 
 
 class TestKeyOrder:
@@ -1852,11 +1945,100 @@ class TestScanPaths:
 # ======================
 
 
-class TestMainExitCodes:
-    """Contract: main() returns 0 for valid files, 1 for errors.
+class TestDualModeValidation:
+    """Contract: Validations distinguish between staged (blocking) and legacy (non-blocking) files.
 
-    Blocking errors (missing fields, invalid formats, namespace violations) cause exit 1.
+    Staged files: Passed via CLI args or listed in blueprints $\rightarrow$ Exit 1 on error.
+    Legacy files: Discovered via global scan but not staged $\rightarrow$ Exit 0 on error.
     """
+
+    def test_staged_violation_blocks(self, frontmatter_env, caplog):
+        """Violation in a staged file must result in Exit 1 and 'BLOCKING' marker."""
+        # Create an invalid file
+        fm = _build_valid_frontmatter("guide")
+        fm.pop("title", None)
+        md_file = frontmatter_env / "staged_invalid.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        # Pass file as argument (simulating pre-commit pass_filenames=true)
+        exit_code = _module.main([str(md_file.resolve())])
+        
+        assert exit_code == 1
+        assert "BLOCKING" in caplog.text
+        assert "staged_invalid.md" in caplog.text
+
+    def test_legacy_violation_warns_but_passes(self, frontmatter_env, caplog):
+        """Violation in a non-staged file must result in Exit 0 and 'LEGACY' marker."""
+        # Create an invalid file
+        fm = _build_valid_frontmatter("guide")
+        fm.pop("title", None)
+        md_file = frontmatter_env / "legacy_invalid.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        # Run with no args (global scan)
+        exit_code = _module.main([])
+        
+        assert exit_code == 0
+        assert "LEGACY" in caplog.text
+        assert "legacy_invalid.md" in caplog.text
+
+    def test_blueprint_violation_blocks(self, frontmatter_env, caplog):
+        """Violation in a blueprint file must ALWAYS result in Exit 1."""
+        # Add a blueprint to hub config
+        bp_file = frontmatter_env / "blueprint.md"
+        fm = _build_valid_frontmatter("guide")
+        fm.pop("title", None)
+        bp_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        # Monkeypatch hub config to include this blueprint
+        updated_hub = _module.HUB_CONFIG.copy()
+        updated_hub["blueprints"] = ["blueprint.md"]
+        with patch.dict(_module.HUB_CONFIG, updated_hub):
+            # Run global scan (not passed as arg)
+            exit_code = _module.main([])
+            
+            assert exit_code == 1
+            assert "BLOCKING" in caplog.text
+            assert "blueprint.md" in caplog.text
+
+    def test_mixed_staged_and_legacy_passes(self, frontmatter_env, caplog):
+        """One valid staged file + one invalid legacy file $\rightarrow$ Exit 0."""
+        # 1. Valid staged file
+        valid_fm = _build_valid_frontmatter("guide")
+        staged_file = frontmatter_env / "staged_valid.md"
+        staged_file.write_text(_frontmatter_to_md(valid_fm), encoding="utf-8")
+
+        # 2. Invalid legacy file
+        invalid_fm = _build_valid_frontmatter("guide")
+        invalid_fm.pop("title", None)
+        legacy_file = frontmatter_env / "legacy_invalid.md"
+        legacy_file.write_text(_frontmatter_to_md(invalid_fm), encoding="utf-8")
+
+        # Run with only the valid file staged
+        exit_code = _module.main([str(staged_file.resolve())])
+    
+        assert exit_code == 0
+
+    def test_mixed_staged_and_legacy_blocks(self, frontmatter_env, caplog):
+        """One invalid staged file + one invalid legacy file $\rightarrow$ Exit 1."""
+        # 1. Invalid staged file
+        invalid_staged_fm = _build_valid_frontmatter("guide")
+        invalid_staged_fm.pop("title", None)
+        staged_file = frontmatter_env / "staged_invalid.md"
+        staged_file.write_text(_frontmatter_to_md(invalid_staged_fm), encoding="utf-8")
+
+        # 2. Invalid legacy file
+        invalid_legacy_fm = _build_valid_frontmatter("guide")
+        invalid_legacy_fm.pop("title", None)
+        legacy_file = frontmatter_env / "legacy_invalid.md"
+        legacy_file.write_text(_frontmatter_to_md(invalid_legacy_fm), encoding="utf-8")
+
+        # Run with invalid file staged
+        exit_code = _module.main([str(staged_file.resolve())])
+
+        assert exit_code == 1
+        assert "BLOCKING" in caplog.text
+
 
     def test_full_scan_detects_unstaged_errors(self, frontmatter_env):
         """
@@ -1878,7 +2060,7 @@ class TestMainExitCodes:
             # It should now perform a full scan of the current environment.
             exit_code = _module.main([])
 
-        assert exit_code == 1, "S-S-o-T Violation: Script must detect invalid files regardless of staged status"
+        assert exit_code == 0, "S-S-o-T Violation: Script must detect invalid files regardless of staged status"
 
     def test_exit_0_all_valid(self, frontmatter_env):
         """All files valid → exit 0."""
@@ -2433,10 +2615,12 @@ class TestTokenSizeExclusions:
         # File with incorrect token_size
         fm = _build_valid_frontmatter("guide")
         fm["options"]["token_size"] = 999999 # Obviously wrong
-        
+    
         file_path = frontmatter_env / "test.md"
-        file_path.write_text(_frontmatter_to_md(fm))
-        
+        # Manually dump to avoid the automatic token fix in _frontmatter_to_md
+        content = f"---\n{yaml.dump(fm, sort_keys=False)}---\n\n# Test Document\n"
+        file_path.write_text(content)
+    
         errors = _module.validate_frontmatter(file_path, frontmatter_env)
         # Should find a token_size error
         assert any(e.field == "token_size" for e in errors)
@@ -2678,9 +2862,37 @@ class TestFrontmatterBlockConstraints:
         content = "---\nblock1: a\n---\n---\nblock2: b\n---\n---\nblock3: c\n---\n"
         file_path = frontmatter_env / "too_many_blocks.md"
         file_path.write_text(content, encoding="utf-8")
-        
+
         errors = _module.validate_frontmatter(file_path, frontmatter_env)
         assert any(e.error_type == "broken_dual_block" for e in errors), "More than 2 blocks must be flagged"
 
+
+class TestADRIDGuide:
+    """Contract: ADR ID validation must provide JIT instructions from config.
+
+    The error message for an invalid ADR ID must contain the 'id_example'
+    defined in the .vadocs/types/adr.conf.json spoke config.
+    """
+
+    def test_invalid_adr_id_provides_config_example(self, frontmatter_env):
+        """Invalid ADR ID should trigger error with example from config."""
+        # 1. Ensure the config has an example
+        adr_conf_path = frontmatter_env / ".vadocs/types/adr.conf.json"
+        adr_conf = json.loads(adr_conf_path.read_text())
+        adr_conf["id_example"] = "26001"
+        adr_conf_path.write_text(json.dumps(adr_conf, indent=2), encoding="utf-8")
+
+        # 2. Create an ADR with an invalid ID
+        fm = _build_valid_frontmatter("adr")
+        fm["id"] = "INVALID-ID"
+
+        md_file = frontmatter_env / "invalid_adr_id.md"
+        md_file.write_text(_frontmatter_to_md(fm), encoding="utf-8")
+
+        # 3. Validate and check error message
+        errors = _module.validate_frontmatter(md_file, frontmatter_env)
+        id_errors = [e for e in errors if e.field == "id" and e.error_type == "invalid_format"]
+        assert len(id_errors) == 1, "Should have exactly one invalid_format error for ID"
+        assert "26001" in id_errors[0].message, f"Error message should contain example '26001', got: {id_errors[0].message}"
 
 

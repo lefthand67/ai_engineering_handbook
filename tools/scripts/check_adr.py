@@ -41,8 +41,10 @@ from tools.scripts.git import detect_repo_root
 from tools.scripts import adr_utils
 from tools.scripts.adr_utils import (
     AdrFile,
+    IndexEntry,
     ValidationError,
     ADR_DIR,
+    INDEX_PATH,
     EXCLUDED_FILES,
     VALID_STATUSES,
     STATUS_SECTIONS,
@@ -57,6 +59,7 @@ from tools.scripts.adr_utils import (
     PRIMARY_TAG_SECTIONING,
     get_adr_files,
     get_staged_adr_files,
+    parse_adr_file,
 )
 
 # ======================
@@ -72,6 +75,181 @@ CODE_FENCE_PATTERN = re.compile(r"```.*?```", re.DOTALL)
 # ======================
 # Core Logic
 # ======================
+
+def _get_primary_tag(adr: AdrFile) -> str:
+    """Extract primary tag (first tag) from ADR frontmatter."""
+    if adr.frontmatter:
+        tags = adr.frontmatter.get("tags", [])
+        if isinstance(tags, list) and tags:
+            return tags[0]
+        if isinstance(tags, str) and tags:
+            return tags
+    return "untagged"
+
+def _format_entry(adr: AdrFile) -> list[str]:
+    """Format a single ADR entry for the index glossary block."""
+    title = adr.title
+    link = f"/architecture/adr/{adr.path.name}"
+
+    annotation = ""
+    if adr.frontmatter and adr.frontmatter.get("superseded_by"):
+        successor = adr.frontmatter["superseded_by"]
+        annotation = f" — superseded by {{term}}`{successor}`"
+
+    entry_lines = [f"ADR-{adr.number}\n"]
+    entry_lines.append(f": [{title}]({link}){annotation}\n")
+
+    if adr.frontmatter:
+        description = adr.frontmatter.get("description")
+        if description:
+            entry_lines.append("\n")
+            entry_lines.append(f"  {description}\n")
+
+    entry_lines.append("\n")
+    return entry_lines
+
+def validate_index_sync(
+    adr_files: list[AdrFile], index_entries: list[adr_utils.IndexEntry]
+) -> list[ValidationError]:
+    """Validate that ADR files and index entries are synchronized."""
+    errors: list[ValidationError] = []
+
+    files_by_number: dict[int, list[AdrFile]] = {}
+    for f in adr_files:
+        files_by_number.setdefault(f.number, []).append(f)
+
+    entries_by_number: dict[int, adr_utils.IndexEntry] = {}
+    for e in index_entries:
+        entries_by_number[e.number] = e
+
+    for number, files in files_by_number.items():
+        if len(files) > 1:
+            filenames = ", ".join(f.path.name for f in files)
+            errors.append(ValidationError(number, "duplicate_number", f"ADR {number} has multiple files: {filenames}"))
+
+        if number not in entries_by_number:
+            file = files[0]
+            errors.append(ValidationError(number, "missing_in_index", f"ADR {number} ({file.path.name}) not in index"))
+
+    for number, entry in entries_by_number.items():
+        if number not in files_by_number:
+            errors.append(ValidationError(number, "orphan_in_index", f"ADR {number} in index but file not found"))
+        else:
+            file = files_by_number[number][0]
+            expected_link = f"/architecture/adr/{file.path.name}"
+            if entry.link != expected_link:
+                errors.append(ValidationError(number, "wrong_link", f"ADR {number} has wrong link: {entry.link} (expected {expected_link})"))
+
+            if file.frontmatter and file.frontmatter.get("title") != entry.title:
+                errors.append(ValidationError(number, "title_mismatch", f"ADR {number} title mismatch: index='{entry.title}', frontmatter='{file.frontmatter['title']}'"))
+
+            effective_status = file.status if file.status else DEFAULT_STATUS
+            expected_section = STATUS_SECTIONS.get(effective_status, STATUS_SECTIONS[DEFAULT_STATUS])
+            if entry.section != expected_section:
+                errors.append(ValidationError(number, "wrong_section", f"ADR {number} is in section '{entry.section}', but its status '{effective_status}' requires '{expected_section}'"))
+
+    return errors
+
+def fix_index() -> list[str]:
+    """Fix the index file by regenerating it from ADR files."""
+    adr_files = adr_utils.get_adr_files()
+    changes: list[str] = []
+
+    # Detect and warn about duplicate ADR numbers
+    files_by_number: dict[int, list[AdrFile]] = {}
+    for adr in adr_files:
+        files_by_number.setdefault(adr.number, []).append(adr)
+
+    for number, files in files_by_number.items():
+        if len(files) > 1:
+            statuses = ", ".join([f"status={f.status}" for f in files])
+            logger.warning(f"ADR-{number} appears in multiple index locations: {statuses}")
+
+    existing_titles: dict[int, str] = {}
+    try:
+        for entry in adr_utils.parse_index():
+            existing_titles[entry.number] = entry.title
+    except FileNotFoundError:
+        pass
+
+    sections: dict[str, list[AdrFile]] = {section: [] for section in SECTION_ORDER}
+    for adr in adr_files:
+        effective_status = adr.status if adr.status else DEFAULT_STATUS
+        section = STATUS_SECTIONS.get(effective_status, STATUS_SECTIONS[DEFAULT_STATUS])
+        sections[section].append(adr)
+
+    lines = ["# ADR Index\n"]
+    for section_name in SECTION_ORDER:
+        section_adrs = sections.get(section_name, [])
+        if not section_adrs:
+            continue
+
+        lines.append(f"\n## **{section_name}**\n")
+        if PRIMARY_TAG_SECTIONING:
+            tag_groups: dict[str, list[AdrFile]] = {}
+            for adr in section_adrs:
+                tag = _get_primary_tag(adr)
+                tag_groups.setdefault(tag, []).append(adr)
+
+            for tag in sorted(tag_groups):
+                lines.append(f"\n### {tag}\n")
+                lines.append("\n:::{glossary}\n")
+                for adr in sorted(tag_groups[tag], key=lambda x: x.number):
+                    lines.extend(_format_entry(adr))
+                    if adr.number not in existing_titles:
+                        changes.append(f"Added ADR {adr.number}: {adr.title}")
+                lines.append(":::\n")
+        else:
+            lines.append("\n:::{glossary}\n")
+            for adr in sorted(section_adrs, key=lambda x: x.number):
+                lines.extend(_format_entry(adr))
+                if adr.number not in existing_titles:
+                    changes.append(f"Added ADR {adr.number}: {adr.title}")
+            lines.append(":::\n")
+
+    for number in existing_titles:
+        if number not in {f.number for f in adr_files}:
+            changes.append(f"Removed orphan entry ADR {number}")
+
+    adr_utils.INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+    adr_utils.INDEX_PATH.write_text("".join(lines), encoding="utf-8")
+    return changes
+
+def find_broken_term_references(files: list[Path]) -> list[adr_utils.BrokenTermReference]:
+    """Scan files for broken MyST term references."""
+    broken_refs = []
+    for filepath in files:
+        try:
+            content = filepath.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        for line_num, line in enumerate(content.splitlines(), start=1):
+            for match in adr_utils.BROKEN_TERM_PATTERN.finditer(line):
+                adr_number = int(match.group(1))
+                broken_refs.append(adr_utils.BrokenTermReference(
+                    file_path=filepath, line_number=line_num, adr_number=adr_number,
+                    original_text=match.group(0), suggested_fix=f"{{term}}`ADR{adr_utils.TERM_SEPARATOR}{adr_number}`"
+                ))
+    return broken_refs
+
+def validate_term_references(files: list[Path]) -> list[ValidationError]:
+    """Validate MyST term references in files."""
+    broken_refs = find_broken_term_references(files)
+    return [ValidationError(ref.adr_number, "broken_term_reference", f"{ref.file_path}:{ref.line_number}: '{ref.original_text}' should be '{ref.suggested_fix}'") for ref in broken_refs]
+
+def fix_term_references(files: list[Path]) -> list[Path]:
+    """Fix broken term references in files."""
+    modified_files = []
+    for filepath in files:
+        try:
+            content = filepath.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        new_content = adr_utils.BROKEN_TERM_PATTERN.sub(rf"{{term}}`ADR{adr_utils.TERM_SEPARATOR}\1`", content)
+        if new_content != content:
+            filepath.write_text(new_content, encoding="utf-8")
+            modified_files.append(filepath)
+    return modified_files
 
 def validate_sections(adr_file: AdrFile) -> list[ValidationError]:
     """Check required/allowed sections and conditional section rules."""
@@ -381,6 +559,11 @@ def migrate_legacy_adr(filepath: Path) -> bool:
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for structural validation."""
     parser = argparse.ArgumentParser(description="Validate ADR structural contract")
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        help="Files or directories to validate. Defaults to ADR directory.",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Detailed output")
     parser.add_argument("--fix", action="store_true", help="Fix structural issues (status, titles, sections)")
     parser.add_argument("--migrate", action="store_true", help="Migrate legacy ADRs to frontmatter")
@@ -394,7 +577,26 @@ def main(argv: list[str] | None = None) -> int:
         logger.info(f"Migrated {migrated} ADR files.")
         return 0
 
-    adr_files = get_adr_files()
+    # Identify staged files for dual-mode validation (ADR-26042)
+    staged_files_set = {Path(p).resolve() for p in args.paths} if args.paths else set()
+
+    # Resolve files to validate
+    if args.paths:
+        # If paths provided, scan those specifically
+        input_paths = [Path(p) for p in args.paths]
+        adr_files = []
+        for p in input_paths:
+            if p.is_dir():
+                for f in p.glob("adr_*.md"):
+                    adr = parse_adr_file(f)
+                    if adr: adr_files.append(adr)
+            elif p.is_file():
+                adr = parse_adr_file(p)
+                if adr: adr_files.append(adr)
+    else:
+        # Default: full repo scan
+        adr_files = get_adr_files()
+
     if not adr_files:
         if args.verbose: logger.info("No ADR files found to check.")
         return 0
@@ -408,19 +610,36 @@ def main(argv: list[str] | None = None) -> int:
             modified.append("multiple_files")
         if modified:
             logger.info(f"Fixed structural issues in {len(set(modified))} files.")
-            adr_files = get_adr_files() # Refresh
+            # Refresh files list after fix
+            if args.paths:
+                adr_files = []
+                for p in [Path(path) for path in args.paths]:
+                    if p.is_dir():
+                        for f in p.glob("adr_*.md"):
+                            adr = parse_adr_file(f)
+                            if adr: adr_files.append(adr)
+                    elif p.is_file():
+                        adr = parse_adr_file(p)
+                        if adr: adr_files.append(adr)
+            else:
+                adr_files = get_adr_files()
 
     all_numbers = {adr.number for adr in adr_files}
-    total_errors = 0
+    blocking_errors = 0
+    all_errors: list[ValidationError] = []
+
     for adr in adr_files:
         if args.verbose:
             logger.info(f"Checking ADR {adr.number}...")
+
+        # Determine if this file is blocking (staged)
+        is_blocking = adr.path.resolve() in staged_files_set
 
         errors = []
         errors.extend(validate_sections(adr))
         errors.extend(validate_conditional_fields(adr, all_numbers))
         errors.extend(validate_conditional_section_content(adr))
-        
+
         # Status sync check
         if adr.status and adr.body_status and adr.status != adr.body_status:
             errors.append(ValidationError(adr.number, "status_mismatch", f"Frontmatter '{adr.status}' vs Body '{adr.body_status}'"))
@@ -428,21 +647,32 @@ def main(argv: list[str] | None = None) -> int:
         # Generic frontmatter delegation
         fm_errs = check_frontmatter.validate_frontmatter(adr.path, detect_repo_root())
         for e in fm_errs:
-            errors.append(ValidationError(adr.number, e.error_type, f"Frontmatter: {e.message}"))
+            # Preserve the is_blocking status from check_frontmatter or the staged set
+            # frontmatter.validate_frontmatter is a global scan, so we override with local staged status
+            errors.append(ValidationError(adr.number, e.error_type, f"Frontmatter: {e.message}", is_blocking=is_blocking))
 
         if errors:
-            total_errors += len(errors)
             for e in errors:
-                logger.error(f"ADR {e.number} [{e.error_type}]: {e.message}")
+                e.is_blocking = is_blocking
+                mode = "[BLOCKING]" if e.is_blocking else "[LEGACY]"
+                logger.error(f"{mode} ADR {e.number} [{e.error_type}]: {e.message}")
+                if e.is_blocking:
+                    blocking_errors += 1
+            all_errors.extend(errors)
 
     # Promotion gate ( warnings don't fail the build)
     for adr in adr_files:
+        is_blocking = adr.path.resolve() in staged_files_set
         errs, warns = validate_promotion_gate(adr)
-        total_errors += len(errs)
-        for e in errs: logger.error(f"ADR {e.number} [gate_error]: {e.message}")
-        for w in warns: logger.warning(f"ADR {w.number} [gate_warning]: {w.message}")
+        for e in errs:
+            e.is_blocking = is_blocking
+            mode = "[BLOCKING]" if e.is_blocking else "[LEGACY]"
+            logger.error(f"{mode} ADR {e.number} [gate_error]: {e.message}")
+            if e.is_blocking:
+                blocking_errors += 1
+        for w in warns:
+            logger.warning(f"ADR {w.number} [gate_warning]: {w.message}")
 
-    return 1 if total_errors > 0 else 0
-
+    return 1 if blocking_errors > 0 else 0
 if __name__ == "__main__":
     sys.exit(main())

@@ -6,6 +6,14 @@ Validates YAML frontmatter in governed markdown files against the hub+spoke
 config chain defined in .vadocs/. Enforces ADR-26042 (Common Frontmatter
 Standard): block composition, field presence, format, and allowed values.
 
+Architecture: Pure Pipe Pattern (R-26003)
+------------------------------------------
+To prevent "Instruction Drift", this tool acts as a pure pipe between the
+SSoT configuration (.vadocs/) and the user. All human-readable examples,
+hints, and format expectations are retrieved dynamically from the config.
+Hardcoded fallbacks are prohibited; missing mandatory config triggers a
+GovernanceConfigError.
+
 STRUCTURAL SPECIFICATION (S-S-o-T):
 ----------------------------------
 Governed files must follow one of two structural patterns based on their pairing:
@@ -162,6 +170,12 @@ class FrontmatterError:
     field: str | None  # which field failed (None for file-level errors)
     message: str  # agent-friendly: what's wrong + what would fix it
     config_source: str  # which config defines the rule, e.g. ".vadocs/conf.json → blocks.identity"
+    is_blocking: bool = True
+
+
+class GovernanceConfigError(Exception):
+    """Raised when a mandatory governance configuration is missing or invalid."""
+    pass
 
 
 # ======================
@@ -260,10 +274,14 @@ def main(argv: list[str] | None = None) -> int:
     input_paths = [Path(p) for p in args.paths] if args.paths else [REPO_ROOT]
     files = scan_paths(input_paths, REPO_ROOT, fmt=args.fmt)
 
+    # Identify staged files for dual-mode validation (ADR-26042)
+    # If files are passed as arguments, they are considered staged.
+    staged_files_set = {Path(p).resolve() for p in args.paths} if args.paths else set()
+
     # Blueprint Validation: Ensure gold-standard files are always validated
     # regardless of the input paths, preventing blueprint drift from SSoT.
-    # regardless of the input paths, preventing blueprint drift from SSoT.
     blueprints = HUB_CONFIG.get("blueprints", [])
+    blueprints_set = {(REPO_ROOT / bp).resolve() for bp in blueprints}
     for bp_rel_path in blueprints:
         bp_path = REPO_ROOT / bp_rel_path
         if bp_path.exists():
@@ -288,14 +306,18 @@ def main(argv: list[str] | None = None) -> int:
     all_errors: list[FrontmatterError] = []
     for file_path in files:
         logger.debug(f"Processing file: {file_path}")
-        
+
+        # Resolve absolute path for blocking check
+        abs_path = file_path.resolve()
+        is_blocking_file = abs_path in staged_files_set or abs_path in blueprints_set
+
         # Skip files based on:
         # 1. Hub-defined governance exclusions (conf.json)
         # 2. Centralized validation exclusions (paths.py -> includes external repos)
         hub_excludes = HUB_CONFIG.get("governance_excludes", {})
         exclude_dirs = hub_excludes.get("dirs", [])
         exclude_files = hub_excludes.get("files", [])
-        
+
         if any(part in exclude_dirs for part in file_path.parts) or \
            file_path.name in exclude_files or \
            any(excl in str(file_path) for excl in VALIDATION_EXCLUDE_DIRS):
@@ -312,6 +334,7 @@ def main(argv: list[str] | None = None) -> int:
                         field=None,
                         message="file contains invalid UTF-8 bytes and cannot be read — governed files must be valid UTF-8 text. To fix: save the file with UTF-8 encoding",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                        is_blocking=is_blocking_file,
                     )
                 )
             continue
@@ -329,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
                         field=None,
                         message="Broken Dual-Block pattern: The project metadata block starts without an opening '---' fence. To fix: add '--- \\n ---' between the Jupytext block and the project metadata",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                        is_blocking=is_blocking_file,
                     )
                 )
             elif anomaly == "leading_newline":
@@ -339,6 +363,7 @@ def main(argv: list[str] | None = None) -> int:
                         field=None,
                         message="Governed file must start immediately with '---' fence — leading newlines or whitespace are forbidden. To fix: remove all characters preceding the first '---'",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                        is_blocking=is_blocking_file,
                     )
                 )
             elif anomaly == "invalid_yaml":
@@ -349,6 +374,7 @@ def main(argv: list[str] | None = None) -> int:
                         field=None,
                         message="YAML syntax error in frontmatter block — the file is corrupted and cannot be validated. To fix: check for indentation errors or missing colons in the YAML frontmatter",
                         config_source=f"{HUB_CONFIG_REL} → structural_spec",
+                        is_blocking=is_blocking_file,
                     )
                 )
 
@@ -356,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
         # If a file has a governed extension but no frontmatter, it's a blocking error.
         # Non-governed files (e.g. plain scripts) are silently skipped.
         if frontmatter is None:
-            # If we already found a structural anomaly (like asymmetric fences), 
+            # If we already found a structural anomaly (like asymmetric fences),
             # we don't also report it as 'missing' to avoid redundant/confusing errors.
             if not anomalies:
                 if file_path.suffix in governed_exts:
@@ -367,6 +393,7 @@ def main(argv: list[str] | None = None) -> int:
                             field=None,
                             message="file has governed extension but no YAML frontmatter present — all governed files must have frontmatter to be subject to validation",
                             config_source=f"{HUB_CONFIG_REL} → governed_extensions",
+                            is_blocking=is_blocking_file,
                         )
                     )
             continue
@@ -388,20 +415,33 @@ def main(argv: list[str] | None = None) -> int:
                     field=f"options.{type_field}",
                     message=f"frontmatter present but missing required 'options.{type_field}' — type determines which validation rules apply and is required for governance. To fix: add 'options:\\n  {type_field}: <type>' to the frontmatter. If the file has a paired .ipynb, use the Dual-Block pattern (separate jupytext block from project metadata with --- \\n ---) to avoid synchronization stripping",
                     config_source=f"{HUB_CONFIG_REL} → field_registry.{type_field}",
+                    is_blocking=is_blocking_file,
                 )
             )
             continue
 
         errors = validate_parsed_frontmatter(frontmatter, file_path, REPO_ROOT, content=content, block_count=block_count)
+        for e in errors:
+            e.is_blocking = is_blocking_file
         all_errors.extend(errors)
 
     # -- Report errors to stdout ------------------------------------------
     for e in all_errors:
-        # Format: file_path:field — message [config_source]
+        # Format: [MODE] file_path:field — message [config_source]
         # Agent-friendly: file path for navigation, field for quick fix,
         # config_source for rule lookup.
+        
+        # Blueprint UX: If blocking because it's a blueprint, use a specific label and explanation.
+        is_blueprint = e.file_path.resolve() in blueprints_set
+        if e.is_blocking and is_blueprint:
+            mode = "[BLOCKING (Blueprint)]"
+            msg = f"{e.message} — Blueprint: This file is a gold standard and must be compliant to unblock commits"
+        else:
+            mode = "[BLOCKING]" if e.is_blocking else "[LEGACY]"
+            msg = e.message
+
         field_part = f":{e.field}" if e.field else ""
-        logger.error(f"{e.file_path}{field_part} — {e.message} [{e.config_source}]")
+        logger.error(f"{mode} {e.file_path}{field_part} — {msg} [{e.config_source}]")
 
     if all_errors:
         logger.info(f"{'-'*80}")
@@ -411,9 +451,8 @@ def main(argv: list[str] | None = None) -> int:
         logger.info(f"  uv run python -m tools.scripts.check_frontmatter <file_path> -v")
         logger.info(f"{'-'*80}")
 
-    # -- Exit code: 0 if no real errors, 1 otherwise ----------------------
-    return 1 if all_errors else 0
-
+    # -- Exit code: 0 if no blocking errors, 1 otherwise ----------------------
+    return 1 if any(e.is_blocking for e in all_errors) else 0
 
 # ======================
 # Scanning
@@ -912,13 +951,19 @@ def _validate_field_value(
         # 1. Type has a defined prefix (e.g., ADR, A, S, R)
         if expected_prefix:
             if expected_prefix == "ADR":
-                # Special rule for ADRs: allow 'ADR-123' or '123'
+                # ADRs use an example ID from the spoke config to guide agents (ADR-26050)
+                if spoke_config is None or "id_example" not in spoke_config:
+                    raise GovernanceConfigError(
+                        f"Missing 'id_example' in spoke config for type 'adr' at "
+                        f"{spoke_config.get('parent_config', 'unknown') if spoke_config else 'None'}"
+                    )
+                id_example = spoke_config["id_example"]
                 if not re.match(r"^(ADR-)?\d+$", str_id):
                     return FrontmatterError(
                         file_path=file_path,
                         error_type="invalid_format",
                         field="id",
-                        message=f"ADR ID '{str_id}' is invalid; expected 'ADR-NNN' or 'NNN' — To fix: change ID to follow 'ADR-NNN' or 'NNN' format",
+                        message=f"ADR ID '{str_id}' is invalid; expected format like '{id_example}' — To fix: change ID to match the project convention",
                         config_source=f"{HUB_CONFIG_REL} → types.adr.prefix",
                     )
             else:
@@ -1359,21 +1404,32 @@ def parse_frontmatter(content: str, file_path: Path | None = None) -> tuple[dict
 
             # Look for subsequent blocks.
             block_idx = 1
+            found_project_block = False
             while block_idx + 2 < len(parts):
                 gap = parts[block_idx + 1]
 
                 if gap.strip():
                     # Gap contains content -> we've reached the body.
-                    # If the first block was Jupytext, and we find content before the next fence,
-                    # it's a Broken Dual-Block (missing opening fence for the second block).
-                    # We treat the gap as the second block so we can still validate its content.
-                    if is_jupytext_only:
+                    # If the first block was Jupytext, and we haven't found a separate 
+                    # project metadata block, this gap is likely the merged project block.
+                    if is_jupytext_only and not found_project_block:
                         blocks.append(gap.strip("\n"))
                         anomalies.append("broken_dual_block")
                     break
 
                 # Gap is empty, next part is a block.
-                blocks.append(parts[block_idx + 2].strip("\n"))
+                next_block_text = parts[block_idx + 2].strip("\n")
+                blocks.append(next_block_text)
+
+                # Detect if this block is the project metadata block to stop "broken_dual_block"
+                # false positives when hitting the body content.
+                try:
+                    next_block_data = yaml.safe_load(next_block_text)
+                    if isinstance(next_block_data, dict) and ("title" in next_block_data or "options" in next_block_data):
+                        found_project_block = True
+                except yaml.YAMLError:
+                    pass
+
                 block_idx += 2
     # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric/Leading Newline)
     # Case 2: The file does NOT start with a fence but HAS one or more fences (Asymmetric/Leading Newline)

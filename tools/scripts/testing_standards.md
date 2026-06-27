@@ -3,16 +3,16 @@ title: Testing Standards for Tooling
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-05-04'
 description: Testing requirements for the repo's internal quality gates and scripts.
 tags:
 - testing
 - documentation
+date: '2026-05-04'
 options:
   type: guide
   birth: '2026-05-04'
   version: 1.0.0
-  token_size: 725
+  token_size: 1103
 ---
 # Testing Standards for Tooling
 
@@ -45,9 +45,33 @@ Avoid testing specific wording or formatting of error messages, as these change 
 
 **Rule:** Verify the side effect (exit code) and the semantic result (which file failed), not the literal string.
 
-## 4. Adversary Testing
+## 4. Logic vs. Plumbing (Unit vs. Integration)
+
+A common failure mode in tooling tests is using "Set Menu" (Integration) tests to verify "A la Carte" (Unit) logic. Testing a logic branch via the CLI is brittle because it couples the core logic to the environment (filesystem, argument parsing, OS).
+
+### The Distinction
+
+| Approach | "A la Carte" (Unit Testing) | "Set Menu" (Integration Testing) |
+| :--- | :--- | :--- |
+| **Focus** | Core Logic / Brains | Plumbing / Hands |
+| **Target** | Individual functions (isolated) | The CLI entry point (`main()`) |
+| **Inputs** | In-memory objects, mocks | Real files, CLI flags |
+| **Goal** | Exhaustive edge-case coverage | Smoke testing the "happy path" |
+| **Speed** | Extremely Fast | Slow (Disk I/O) |
+
+### The Strategy
+To avoid brittleness, distribute your tests according to the Testing Pyramid:
+
+1. **Use Unit Tests for the Heavy Lifting:** Verify all logical branches, regexes, and edge cases by calling functions directly. If you are testing "what happens if the ADR number is duplicate," do it in a unit test by passing a list of mock objects.
+2. **Use Integration Tests for the Final Handshake:** Use CLI tests only to verify that the "plumbing" works—e.g., that flags are parsed correctly, files are found on disk, and the correct exit code is returned to the OS.
+
+**Anti-Pattern:** Creating 20 different physical files on disk to test 20 different regex edge cases.
+**Correct Pattern:** One unit test with `pytest.mark.parametrize` testing 20 strings in memory, and one integration test verifying the script runs on a sample file.
+
+## 5. Adversary Testing
 
 To ensure robustness, scripts must be subjected to "adversary" test cases. Do not only test "happy paths" or "expected failures."
+
 
 Test the following boundary conditions:
 - **Malformed Input:** Files with invalid YAML, truncated JSON, or mixed encoding.

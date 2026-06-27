@@ -2,6 +2,31 @@ import pytest
 from pathlib import Path
 from tools.scripts import adr_utils
 
+
+class TestValidationError:
+    """Tests for the ValidationError dataclass.
+
+    Contract:
+    - ValidationError has an is_blocking field defaulting to True.
+    - is_blocking controls whether the error blocks commits or is a legacy warning.
+    """
+
+    def test_is_blocking_defaults_to_true(self):
+        """ValidationError should default is_blocking to True."""
+        error = adr_utils.ValidationError(
+            number=1, error_type="test", message="test error"
+        )
+        assert error.is_blocking is True
+
+    def test_is_blocking_can_be_false(self):
+        """ValidationError should allow is_blocking=False for legacy warnings."""
+        error = adr_utils.ValidationError(
+            number=1, error_type="test", message="legacy warning",
+            is_blocking=False
+        )
+        assert error.is_blocking is False
+
+
 class TestStatusExtraction:
     """Tests for ADR status extraction logic.
 

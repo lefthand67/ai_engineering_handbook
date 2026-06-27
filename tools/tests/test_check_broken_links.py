@@ -120,24 +120,24 @@ class TestLinkValidator:
     def test_is_valid_target_file_exists(self, validator, tmp_path):
         target = tmp_path / "exists.ipynb"
         target.touch()
-        assert validator.is_valid_target(target) is True
+        assert validator.is_valid_target(target) == (True, None)
 
     def test_is_valid_target_dir_with_index(self, validator, tmp_path):
         target_dir = tmp_path / "folder"
         target_dir.mkdir()
         (target_dir / "index.ipynb").touch()
-        assert validator.is_valid_target(target_dir) is True
+        assert validator.is_valid_target(target_dir) == (True, None)
 
     def test_is_valid_target_dir_with_readme(self, validator, tmp_path):
         target_dir = tmp_path / "folder"
         target_dir.mkdir()
         (target_dir / "README.ipynb").touch()
-        assert validator.is_valid_target(target_dir) is True
+        assert validator.is_valid_target(target_dir) == (True, None)
 
     def test_is_valid_target_dir_no_index(self, validator, tmp_path):
         target_dir = tmp_path / "empty"
         target_dir.mkdir()
-        assert validator.is_valid_target(target_dir) is False
+        assert validator.is_valid_target(target_dir) == (False, "DIR_NO_INDEX")
 
     def test_validate_link_external_skipped(self, validator, tmp_path):
         source = tmp_path / "a.ipynb"
@@ -367,29 +367,45 @@ class TestFileFinder:
 
 class TestReporter:
     def test_report_broken_links_exits_1(self, tmp_path, capsys):
-        report_file = tmp_path / "report.txt"
-        report_file.write_text("BROKEN LINK: ...\n", encoding="utf-8")
+        blocking_errors = [" [BLOCKING] BROKEN LINK: ...\n"]
+        legacy_errors = []
         with pytest.raises(SystemExit) as exc_info:
-            Reporter.report(report_file, broken_links_found=True)
+            Reporter.report(blocking_errors, legacy_errors, fail_on_legacy=False)
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
         assert "❌" in captured.out
 
     def test_report_no_broken_links_exits_0(self, tmp_path, capsys):
-        report_file = tmp_path / "empty.txt"
-        report_file.write_text("", encoding="utf-8")
+        blocking_errors = []
+        legacy_errors = []
         with pytest.raises(SystemExit) as exc_info:
-            Reporter.report(report_file, broken_links_found=False)
+            Reporter.report(blocking_errors, legacy_errors, fail_on_legacy=False)
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
         assert "✅" in captured.out
 
-    def test_report_missing_temp_file(self, tmp_path, caplog):
-        missing = tmp_path / "missing.txt"
+    def test_report_legacy_only_exits_0(self, tmp_path, capsys):
+        blocking_errors = []
+        legacy_errors = [" [LEGACY] BROKEN LINK: ...\n"]
         with pytest.raises(SystemExit) as exc_info:
-            Reporter.report(missing, broken_links_found=True)
+            Reporter.report(blocking_errors, legacy_errors, fail_on_legacy=False)
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+
+    def test_report_legacy_fail_on_legacy_exits_1(self, tmp_path, capsys):
+        blocking_errors = []
+        legacy_errors = [" [LEGACY] BROKEN LINK: ...\n"]
+        with pytest.raises(SystemExit) as exc_info:
+            Reporter.report(blocking_errors, legacy_errors, fail_on_legacy=True)
         assert exc_info.value.code == 1
-        assert "not found" in caplog.text
+        captured = capsys.readouterr()
+        assert "❌" in captured.out
+
+    def test_report_missing_temp_file(self, tmp_path, caplog):
+        # This test is now obsolete because Reporter no longer uses temp files.
+        # We can remove it or replace it with something else.
+        pass
 
 
 # =============================================================================
@@ -409,7 +425,7 @@ class TestLinkCheckerGitIntegration:
         subprocess.run(["git", "commit", "-m", "init"], cwd=repo_dir, capture_output=True)
         return repo_dir
 
-    def test_fails_when_link_target_is_untracked(self, tmp_path, monkeypatch):
+    def test_fails_when_link_target_is_untracked(self, tmp_path, monkeypatch, capsys):
         """Production Safety: A link to a file that exists on disk but is not tracked is broken."""
         repo = self.setup_repo(tmp_path)
         monkeypatch.chdir(repo)
@@ -423,12 +439,39 @@ class TestLinkCheckerGitIntegration:
         subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
 
         with pytest.raises(SystemExit) as exc_info:
-            LinkCheckerCLI().run(["--pattern", "*.md"])
-        
+            LinkCheckerCLI().run(["--pattern", "*.md", str(source)])
+
         assert exc_info.value.code == 1
-        # The error should specifically mention that the target is untracked
-        # (Since we haven't implemented this yet, this test will FAIL - Red Phase)
-        # In the final implementation, the error message will be customized.
+        captured = capsys.readouterr()
+        # The error should explicitly instruct the user to run 'git add'
+        assert "[BLOCKING]" in captured.out
+        assert "Target file exists but is untracked. To fix: run 'git add <path>' to stage it." in captured.out
+        assert "untracked_target.md" in captured.out
+
+    def test_fails_when_link_target_is_ignored(self, tmp_path, monkeypatch, capsys):
+        """Production Safety: A link to a file that is ignored by .gitignore is broken."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        # Target exists on disk but is ignored
+        target = Path("ignored_target.md")
+        target.touch()
+        (repo / ".gitignore").write_text("ignored_target.md\n")
+        subprocess.run(["git", "add", ".gitignore"], cwd=repo, capture_output=True)
+
+        source = Path("source.md")
+        source.write_text(f"[link]({target.name})", encoding="utf-8")
+        subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md", str(source)])
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        # The error should identify the file as ignored
+        assert "[BLOCKING]" in captured.out
+        assert "Target file exists but is ignored by git (.gitignore). To fix: remove from .gitignore or use 'git add -f'." in captured.out
+        assert "ignored_target.md" in captured.out
 
     def test_passes_when_link_target_is_tracked(self, tmp_path, monkeypatch):
         repo = self.setup_repo(tmp_path)
@@ -447,8 +490,8 @@ class TestLinkCheckerGitIntegration:
 
         assert exc_info.value.code == 0
 
-    def test_check_staged_blind_spot(self, tmp_path, monkeypatch):
-        """Verify the blind spot is CLOSED: broken links in unstaged files are now detected."""
+    def test_check_staged_blind_spot(self, tmp_path, monkeypatch, capsys):
+        """Verify the blind spot is CLOSED: broken links in unstaged files are now detected as LEGACY."""
         repo = self.setup_repo(tmp_path)
         monkeypatch.chdir(repo)
 
@@ -462,12 +505,89 @@ class TestLinkCheckerGitIntegration:
         unstaged_file = Path("unstaged.md")
         unstaged_file.write_text("[bad](missing.md)", encoding="utf-8")
 
-        # Run without --check-staged (which is now the only way)
+        # Run without positional arguments -> everything is LEGACY
         with pytest.raises(SystemExit) as exc_info:
             LinkCheckerCLI().run(["--pattern", "*.md"])
 
-        # Should now return 1 because the broken link in the unstaged file is detected.
-        assert exc_info.value.code == 1, "Blind spot still exists: script passed despite broken link in unstaged file"
+        # Should return 0 because the broken link in the unstaged file is [LEGACY].
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "[LEGACY]" in captured.out
+        assert "unstaged.md" in captured.out
+        assert "missing.md" in captured.out
+
+    def test_dual_mode_staged_source_untracked_target(self, tmp_path, monkeypatch, capsys):
+        """TDD: Source staged -> Target untracked -> [BLOCKING] -> Exit 1."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        target = Path("untracked_target.md")
+        target.touch()
+
+        source = Path("source.md")
+        source.write_text(f"[link]({target.name})", encoding="utf-8")
+        subprocess.run(["git", "add", "source.md"], cwd=repo, capture_output=True)
+
+        # Simulate pre-commit passing the staged file as a positional argument
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md", str(source)])
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "[BLOCKING]" in captured.out
+        assert "untracked_target.md" in captured.out
+
+    def test_dual_mode_unstaged_source_missing_target(self, tmp_path, monkeypatch, capsys):
+        """TDD: Source unstaged -> Target missing -> [LEGACY] -> Exit 0."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        source = Path("unstaged.md")
+        source.write_text("[link](missing.md)", encoding="utf-8")
+        # NOT adding source to git
+
+        # Simulate pre-commit NOT passing this file (or just run a check on it)
+        # To test the [LEGACY] behavior, we run the script without positional args
+        # but we want to see if this specific file is reported as LEGACY.
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md"])
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "[LEGACY]" in captured.out
+        assert "unstaged.md" in captured.out
+        assert "missing.md" in captured.out
+
+    def test_dual_mode_manual_run_legacy_debt(self, tmp_path, monkeypatch, capsys):
+        """TDD: No args -> All broken links reported as [LEGACY] -> Exit 0."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        source = Path("broken.md")
+        source.write_text("[link](missing.md)", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md"])
+
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "[LEGACY]" in captured.out
+
+    def test_dual_mode_manual_run_fail_on_legacy(self, tmp_path, monkeypatch, capsys):
+        """TDD: --fail-on-legacy -> any broken link -> Exit 1."""
+        repo = self.setup_repo(tmp_path)
+        monkeypatch.chdir(repo)
+
+        source = Path("broken.md")
+        source.write_text("[link](missing.md)", encoding="utf-8")
+
+        with pytest.raises(SystemExit) as exc_info:
+            LinkCheckerCLI().run(["--pattern", "*.md", "--fail-on-legacy"])
+
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "[LEGACY]" in captured.out
+
 
 class TestLinkCheckerCLI:
     @pytest.fixture
@@ -543,9 +663,9 @@ class TestLinkCheckerCLI:
             # Pass arguments directly to the method
             cli.run(["--paths", str(tmp_path), "--pattern", "*.ipynb"])
 
-        assert exc_info.value.code == 1
+        assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "BROKEN LINK" in captured.out
+        assert "[LEGACY]" in captured.out
 
     def test_run_path_does_not_exist(self, tmp_path, caplog, cli):
         non_existent = tmp_path / "ghost.md"
@@ -582,9 +702,9 @@ class TestLinkCheckerCLI:
         with pytest.raises(SystemExit) as exc_info:
             cli.run(["--paths", str(tmp_path), "--pattern", "*.md"])
 
-        assert exc_info.value.code == 1
+        assert exc_info.value.code == 0
         captured = capsys.readouterr()
-        assert "BROKEN LINK" in captured.out
+        assert "[LEGACY]" in captured.out
 
     def test_e2e_myst_include_with_git_root(self, tmp_path, capsys, caplog):
         git_root = tmp_path / "repo"

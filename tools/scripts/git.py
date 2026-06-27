@@ -247,6 +247,28 @@ def is_tracked(path: Path, cwd: Path | None = None) -> bool:
         return False
 
 
+def is_ignored(path: Path, cwd: Path | None = None) -> bool:
+    """Check if a file is ignored by git.
+
+    Args:
+        path: Absolute path to the file.
+        cwd: Optional directory to run the git command in.
+
+    Returns:
+        True if ignored, False otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "check-ignore", "-v", str(path)],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+        )
+        return result.returncode == 0
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
 def reset_repo(path: Path) -> bool:
     """Forcefully reset a repository to its remote tracking branch.
 

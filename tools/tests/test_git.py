@@ -494,3 +494,34 @@ class TestCommitFiles:
         """git binary not found → return False."""
         mock_run.side_effect = FileNotFoundError()
         assert _module.commit_files(Path("/fake/repo"), "feat: test commit") is False
+
+
+class TestIsIgnored:
+    """Contract: is_ignored(path) returns True if path is ignored by git, False otherwise."""
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_true_when_ignored(self, mock_run):
+        """git check-ignore returns 0 → return True."""
+        mock_run.return_value = MagicMock(returncode=0)
+        result = _module.is_ignored(Path("/fake/repo/ignored.txt"))
+        assert result is True
+        mock_run.assert_called_once_with(
+            ["git", "check-ignore", "-v", "/fake/repo/ignored.txt"],
+            cwd=None,
+            capture_output=True,
+            text=True,
+        )
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_when_not_ignored(self, mock_run):
+        """git check-ignore returns 1 → return False."""
+        mock_run.return_value = MagicMock(returncode=1)
+        result = _module.is_ignored(Path("/fake/repo/not_ignored.txt"))
+        assert result is False
+
+    @patch.object(_module.subprocess, "run")
+    def test_returns_false_on_git_failure(self, mock_run):
+        """git binary not found or other system error → return False."""
+        mock_run.side_effect = FileNotFoundError()
+        result = _module.is_ignored(Path("/fake/repo/file.txt"))
+        assert result is False

@@ -6,8 +6,8 @@ repos:
         name: Check Broken Links
         entry: uv run --active tools/scripts/check_broken_links.py
         language: python
-        files: \.md$
-        pass_filenames: false
+        pass_filenames: true
+        verbose: true
         stages: [pre-commit, manual]
 
       - id: check-link-format
@@ -65,7 +65,7 @@ repos:
         name: Validate frontmatter (ADR-26042)
         entry: uv run --active python -m tools.scripts.check_frontmatter
         language: system
-        pass_filenames: false
+        pass_filenames: true
         files: \.md$
         stages: [pre-commit, manual]
 
@@ -79,10 +79,10 @@ repos:
 
       - id: check-adr-index
         name: Check ADR Index
-        entry: uv run --active tools/scripts/check_adr.py --fix --check-staged
+        entry: uv run --active tools/scripts/check_adr.py --fix
         language: python
         files: ^(architecture/(adr/adr_.*\.md|adr_index\.md)|\.vadocs/(conf\.json|types/adr\.conf\.json))$
-        pass_filenames: false
+        pass_filenames: true
         stages: [pre-commit, manual]
 
       - id: validate-commit-msg

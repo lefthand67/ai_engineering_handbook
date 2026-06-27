@@ -27,7 +27,7 @@ from tools.scripts.paths import (
     BROKEN_LINKS_EXCLUDE_LINK_STRINGS,
     is_excluded,
 )
-from tools.scripts.git import detect_repo_root, get_staged_files, is_tracked
+from tools.scripts.git import detect_repo_root, get_staged_files, is_tracked, is_ignored
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -55,9 +55,14 @@ Default directory: current directory
 Default pattern: *.md""",
         )
         parser.add_argument(
+            "files",
+            nargs="*",
+            help="Files to check (passed by pre-commit as blocking sources).",
+        )
+        parser.add_argument(
             "--paths",
             nargs="*",
-            help="Paths to Markdown files or directories to check (default: current directory if not using pre-commit).",
+            help="Paths to Markdown files or directories to check (default: current directory when no positional files are provided).",
         )
         parser.add_argument(
             "--pattern",
@@ -77,6 +82,12 @@ Default pattern: *.md""",
             help="Specific file names to exclude from the check",
         )
         parser.add_argument(
+            "--fail-on-legacy",
+            action="store_true",
+            default=False,
+            help="Fail the build even if only legacy (unstaged) broken links are found.",
+        )
+        parser.add_argument(
             "--verbose",
             action="store_true",
             default=False,
@@ -93,6 +104,7 @@ Default pattern: *.md""",
         args = self.parser.parse_args(argv)
         verbose = args.verbose
         pattern = args.pattern
+        fail_on_legacy = args.fail_on_legacy
 
         # Configure logging
         logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -107,8 +119,14 @@ Default pattern: *.md""",
             if verbose:
                 logger.warning("Warning: Not in a Git repository. Using current directory as root.")
         else:
-            # Remove 'if verbose:' to satisfy test expectations
             logger.info(f"Using Git root as project root: {root_dir.name}")
+
+        # Blocking sources are files passed as positional arguments (e.g. by pre-commit)
+        blocking_sources = set()
+        if args.files:
+            for f in args.files:
+                p = Path(f).resolve()
+                blocking_sources.add(p)
 
         files = []
         file_finder = FileFinder(args.exclude_dirs, args.exclude_files, verbose)
@@ -116,13 +134,16 @@ Default pattern: *.md""",
         is_current_dir = False
         if args.paths:
             input_paths = args.paths
-        else:
+        elif not args.files:
             is_current_dir = True
             input_paths = [str(Path.cwd())]
+        else:
+            # If positional files are provided, we still scan the repo to find all debt,
+            # but the provided files are marked as blocking.
+            input_paths = [str(root_dir)]
 
         resolved_paths_list = list()
         for p in input_paths:
-            # Resolve input path relative to current working directory (not root_dir!)
             path_obj = Path(p)
             if path_obj.is_absolute():
                 resolved = path_obj.resolve()
@@ -131,8 +152,6 @@ Default pattern: *.md""",
             resolved_paths_list.append(resolved)
 
             if resolved.is_file():
-                # CRITICAL: Always check exclusions for explicit file arguments.
-                # Prevents processing of files in external research repos when passed directly.
                 if is_excluded(str(resolved)):
                     if verbose:
                         logger.debug(f"  EXCLUDING (by directory rule): {resolved}")
@@ -142,6 +161,11 @@ Default pattern: *.md""",
                 files.extend(file_finder.find(resolved, pattern))
             else:
                 logger.warning(f"Warning: Path does not exist: {resolved}")
+
+        # Ensure blocking sources are included in the scan if they weren't already
+        for bs in blocking_sources:
+            if bs not in files:
+                files.append(bs)
 
         if not files:
             logger.info(f"No files matching '{pattern}' found!")
@@ -168,24 +192,28 @@ Default pattern: *.md""",
             exclude_link_strings=list(BROKEN_LINKS_EXCLUDE_LINK_STRINGS),
             use_git_tracking=use_git_tracking,
         )
-        broken_links_found = False
 
-        with tempfile.NamedTemporaryFile(
-            delete=False, mode="w", encoding="utf-8"
-        ) as tf:
-            temp_path = Path(tf.name)
-            for file in files:
-                if verbose:
-                    logger.debug(f"\nChecking file: {file}")
-                links = link_extractor.extract(file)
-                for link, line_no in links:
-                    error = link_validator.validate_link(link, file, line_no)
-                    if error:
-                        with open(temp_path, "a", encoding="utf-8") as f:
-                            f.write(error)
-                        broken_links_found = True
+        blocking_errors = []
+        legacy_errors = []
 
-            Reporter.report(temp_path, broken_links_found)
+        for file in files:
+            if verbose:
+                logger.debug(f"\nChecking file: {file}")
+            links = link_extractor.extract(file)
+            
+            is_blocking = file.resolve() in blocking_sources
+            
+            for link, line_no in links:
+                error = link_validator.validate_link(link, file, line_no)
+                if error:
+                    prefix = "[BLOCKING] " if is_blocking else "[LEGACY] "
+                    full_error = f"{prefix}{error}"
+                    if is_blocking:
+                        blocking_errors.append(full_error)
+                    else:
+                        legacy_errors.append(full_error)
+
+        Reporter.report(blocking_errors, legacy_errors, fail_on_legacy)
 
 
 class LinkExtractor:
@@ -267,13 +295,19 @@ class LinkValidator:
             # Use walk_up=True for Python 3.13 compatibility with relative_to
             return (source_file.parent / link_path).resolve()
 
-    def is_valid_target(self, target_file: Path) -> bool:
-        """Check if target exists and is tracked by git (if tracking enabled)."""
+    def is_valid_target(self, target_file: Path) -> Tuple[bool, Optional[str]]:
+        """Check if target exists and is tracked by git (if tracking enabled).
+        Returns (is_valid, reason).
+        """
         if not target_file.exists():
-            return False
+            return False, "NOT_FOUND"
 
         # Production Link Safety: Enforce tracking only if enabled
         if self.use_git_tracking:
+            # Check if ignored first to distinguish from just untracked
+            if is_ignored(target_file, cwd=self.root_dir):
+                return False, "IGNORED"
+
             if target_file.is_dir():
                 index_files = [
                     target_file / "index.md",
@@ -281,8 +315,13 @@ class LinkValidator:
                     target_file / "index.ipynb",
                     target_file / "README.ipynb",
                 ]
-                return any(p.exists() and is_tracked(p, cwd=self.root_dir) for p in index_files)
-            return is_tracked(target_file, cwd=self.root_dir)
+                # A directory is valid if at least one index file is tracked
+                if any(p.exists() and is_tracked(p, cwd=self.root_dir) for p in index_files):
+                    return True, None
+                return False, "DIR_NO_INDEX"
+
+            if not is_tracked(target_file, cwd=self.root_dir):
+                return False, "UNTRACKED"
 
         # Fallback for non-git environments (e.g. unit tests in tmp_path)
         if target_file.is_dir():
@@ -292,15 +331,17 @@ class LinkValidator:
                 target_file / "index.ipynb",
                 target_file / "README.ipynb",
             ]
-            return any(p.exists() for p in index_files)
-        return True
+            if any(p.exists() for p in index_files):
+                return True, None
+            return False, "DIR_NO_INDEX"
+        return True, None
 
     def validate_link(
         self, link: str, source_file: Path, line_no: int
     ) -> Optional[str]:
         """
         Validate a single link.
-        Returns error message if broken, None if valid/skipped.
+        Returns instructor-style error message if broken, None if valid/skipped.
         """
         if self.is_absolute_url(link):
             if self.verbose:
@@ -324,13 +365,24 @@ class LinkValidator:
             return None
 
         target_file = self.resolve_target_path(link_path, source_file)
+        is_valid, reason = self.is_valid_target(target_file)
 
-        if not self.is_valid_target(target_file):
+        if not is_valid:
             try:
                 rel_source = source_file.relative_to(self.root_dir)
             except ValueError:
                 rel_source = source_file
-            return f"BROKEN LINK: File '{rel_source}:{line_no}' contains broken link: {link}\n"
+
+            # Map reason codes to actionable instructions
+            instructions = {
+                "NOT_FOUND": "Target file does not exist. Please verify the path.",
+                "IGNORED": "Target file exists but is ignored by git (.gitignore). To fix: remove from .gitignore or use 'git add -f'.",
+                "UNTRACKED": "Target file exists but is untracked. To fix: run 'git add <path>' to stage it.",
+                "DIR_NO_INDEX": "Target is a directory, but no tracked index file (index.md, README.md, etc.) was found inside it.",
+            }
+            msg = instructions.get(reason, "Target is invalid or untracked.")
+            return f"BROKEN LINK: File '{rel_source}:{line_no}' contains broken link: {link}\n{msg}\n"
+
         elif self.verbose:
             try:
                 rel_target = target_file.relative_to(self.root_dir)
@@ -424,24 +476,24 @@ class Reporter:
     """Handles result reporting and exit behavior."""
 
     @staticmethod
-    def report(temp_file: Path, broken_links_found: bool) -> None:
-        if broken_links_found:
-            try:
-                with open(temp_file, "r", encoding="utf-8") as f:
-                    report_content = f.read()
-            except FileNotFoundError:
-                logger.error("Error: Temporary report file not found.")
-                sys.exit(1)
-
-            count = sum(
-                1 for line in report_content.splitlines() if "BROKEN LINK" in line
-            )
-            print(f"\n❌ {count} Broken links found:")
-            print(report_content, end="")
-            sys.exit(1)
-        else:
+    def report(blocking_errors: List[str], legacy_errors: List[str], fail_on_legacy: bool) -> None:
+        if not blocking_errors and not legacy_errors:
             print("\n✅ All links are valid!")
             sys.exit(0)
+
+        all_errors = blocking_errors + legacy_errors
+        count = len(all_errors)
+
+        print(f"\n❌ {count} Broken links found:")
+        for err in all_errors:
+            print(err, end="")
+
+        # Exit 1 if blocking errors exist OR if fail_on_legacy is True and legacy errors exist.
+        if blocking_errors or (fail_on_legacy and legacy_errors):
+            sys.exit(1)
+        
+        # Otherwise, it's just a warning (exit 0)
+        sys.exit(0)
 
 
 if __name__ == "__main__":

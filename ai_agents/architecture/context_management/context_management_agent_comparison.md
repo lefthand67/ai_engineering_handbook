@@ -1,15 +1,14 @@
-
 ---
 title: Context Management — Agent Comparison
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-05-01'
 description: Side-by-side comparison of context management across 7 coding agents
   — history transmission, detection methods, compaction strategies, and unique innovations.
 tags:
 - architecture
 - agents
+date: '2026-05-01'
 options:
   version: 1.1.1
   birth: '2026-04-05'

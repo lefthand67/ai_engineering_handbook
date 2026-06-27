@@ -1,10 +1,8 @@
-
 ---
 title: 'The Compaction API Contract: Why System Prompts Don''t Mix'
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-08'
 description: How LLM APIs actually work — stateless, full message array per call,
   response = only new assistant text. Step-by-step compaction flow with code evidence
   from Qwen Code, OpenCode, and Claude Code.
@@ -12,6 +10,7 @@ tags:
 - architecture
 - agents
 - context_management
+date: '2026-04-08'
 options:
   version: 1.0.0
   birth: '2026-04-08'

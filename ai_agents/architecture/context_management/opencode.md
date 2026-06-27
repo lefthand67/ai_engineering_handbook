@@ -1,15 +1,14 @@
-
 ---
 title: Context Management — OpenCode
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-05'
 description: Deep dive into OpenCode's reactive compaction — SQLite-backed message
   storage, dedicated compaction agent with structured summaries, and tool output pruning.
 tags:
 - architecture
 - agents
+date: '2026-04-05'
 options:
   version: 1.0.0
   birth: '2026-04-05'

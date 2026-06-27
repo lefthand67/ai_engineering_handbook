@@ -1,16 +1,15 @@
-
 ---
 title: Context Management — OpenClaw
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-05'
 description: Deep dive into OpenClaw's sliding window approach and auto-compaction
   — how it limits history turns, sizes context budgets, and delegates to the pi-coding-agent
   library.
 tags:
 - architecture
 - agents
+date: '2026-04-05'
 options:
   version: 1.0.0
   birth: '2026-04-05'

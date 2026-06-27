@@ -1,16 +1,15 @@
-
 ---
 title: Context Management — KiloCode
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-05'
 description: 'KiloCode is a fork of OpenCode — identical context management architecture
   with the addition of Agent Manager for multi-session orchestration. Full technical
   breakdown: [OpenCode](opencode.md).'
 tags:
 - architecture
 - agents
+date: '2026-04-05'
 options:
   version: 1.0.0
   birth: '2026-04-05'

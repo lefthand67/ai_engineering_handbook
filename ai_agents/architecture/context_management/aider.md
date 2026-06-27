@@ -1,15 +1,14 @@
-
 ---
 title: Context Management — Aider
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-05'
 description: Deep dive into Aider's async background summarization of conversation
   history — how it manages done_messages, cur_messages, and the token budget system.
 tags:
 - architecture
 - agents
+date: '2026-04-05'
 options:
   version: 1.0.0
   birth: '2026-04-05'

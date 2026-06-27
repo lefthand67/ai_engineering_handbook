@@ -1,15 +1,14 @@
-
 ---
 title: Context Management — Claude Code
 authors:
 - name: Vadim Rudakov
   email: rudakow.wadim@gmail.com
-date: '2026-04-05'
 description: Deep dive into Claude Code's 5-tier context management system — microcompact,
   API-level cache editing, session memory, full compaction, and PTL retry truncation.
 tags:
 - architecture
 - agents
+date: '2026-04-05'
 options:
   version: 1.0.0
   birth: '2026-04-05'
